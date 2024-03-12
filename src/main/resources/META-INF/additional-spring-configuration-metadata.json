@@ -1,0 +1,17 @@
+{"properties": [
+  {
+    "name": "mapbox.api.key",
+    "type": "java.lang.String",
+    "description": "A description for 'mapbox.api.key'"
+  },
+  {
+    "name": "com.tarterware.data-dir",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.data-dir'"
+  },
+  {
+    "name": "mapbox.api.url",
+    "type": "java.lang.String",
+    "description": "A description for 'mapbox.api.url'"
+  }
+]}
