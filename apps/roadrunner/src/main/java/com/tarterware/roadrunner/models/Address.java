@@ -1,11 +1,15 @@
 package com.tarterware.roadrunner.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 @Data
-public class Address {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Address
+{
     // The origin of the data: e.g. GeocodingService, NumericEntry, etc.
     private String source;
 
