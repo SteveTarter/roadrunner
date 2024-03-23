@@ -11,7 +11,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Feature {
+public class Feature
+{
 	@JsonProperty("id")
 	String id;
 	

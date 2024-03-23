@@ -1,7 +1,6 @@
-package com.tarterware.roadrunner.models.mapbox;
+package com.tarterware.roadrunner.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,10 +8,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class IsochroneFeature
+public class PositionResponse
 {
-	@JsonProperty("type")
-	String theType;
+	boolean valid;
 	
-	Geometry geometry;
+	String message;
+	
+	boolean positionLimited;
+	
+	double latitude;
+	
+	double longitude;
 }

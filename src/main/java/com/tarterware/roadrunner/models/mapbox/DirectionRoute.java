@@ -10,11 +10,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class DirectionRoute {
-	
+public class DirectionRoute
+{
 	double duration;
+	
 	double distance;
+	
 	double weight;
+	
 	List<RouteLeg> legs;
-
 }

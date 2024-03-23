@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.tarterware.roadrunner.models.Address;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.services.DirectionsService;
@@ -27,25 +26,15 @@ public class TripController
 	@PostMapping("/get-directions")
 	ResponseEntity<Directions> getDirections(@RequestBody TripPlan tripPlan)
 	{
-		// Check to see a valid TripPlan has been provided before proceeding.
-		if(tripPlan == null)
+		Directions directions = null;
+		try
 		{
-			return new ResponseEntity<Directions>( HttpStatus.BAD_REQUEST);
+			directions = directionsService.getDirectionsForTripPlan(tripPlan);
 		}
-		
-		if((tripPlan.getListStops() == null) || (tripPlan.getListStops().size() < 2))
+		catch(IllegalArgumentException ex)
 		{
-			return new ResponseEntity<Directions>( HttpStatus.BAD_REQUEST);
+			return new ResponseEntity<Directions>(HttpStatus.BAD_REQUEST);
 		}
-		
-		// Get the geodetic position of the given Address.
-		for(Address address : tripPlan.getListStops()) 
-		{
-			geocodingService.setPositionFromAddress(address);
-		}
-		
-		// Pass the list of addresses to obtain Directions to travel between them
-		Directions directions = directionsService.getDirections(tripPlan.getListStops());
 		
 		return new ResponseEntity<Directions>(directions, HttpStatus.OK);
 	}

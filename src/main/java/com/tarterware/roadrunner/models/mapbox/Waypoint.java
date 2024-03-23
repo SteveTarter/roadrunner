@@ -10,10 +10,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Waypoint {
-	
+public class Waypoint
+{
     String name;
+
     double distance;
-    List<Double> location;
     
+    List<Double> location;
 }
