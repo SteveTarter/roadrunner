@@ -15,6 +15,7 @@ import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.tarterware.roadrunner.models.Address;
+import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 
 @Service
@@ -29,7 +30,10 @@ public class DirectionsService
 	@Autowired
 	RestTemplate restTemplate;
     
-    @Value("${com.tarterware.data-dir}")
+	@Autowired
+	GeocodingService geocodingService;
+    
+	@Value("${com.tarterware.data-dir}")
     private String _tarterwareDataDir;
 	
 	private static final Logger logger = LoggerFactory.getLogger(DirectionsService.class);
@@ -117,6 +121,31 @@ public class DirectionsService
             }
         }
         
+		return directions;
+	}
+	
+	public Directions getDirectionsForTripPlan(TripPlan tripPlan)
+	{
+		// Check to see a valid TripPlan has been provided before proceeding.
+		if(tripPlan == null)
+		{
+			throw new IllegalArgumentException("tripPlan cannot be null!");
+		}
+		
+		if((tripPlan.getListStops() == null) || (tripPlan.getListStops().size() < 2))
+		{
+			throw new IllegalArgumentException("There must be at least 2 stops in tripPlan!");
+		}
+		
+		// Get the geodetic position of the given Address.
+		for(Address address : tripPlan.getListStops()) 
+		{
+			geocodingService.setPositionFromAddress(address);
+		}
+		
+		// Pass the list of addresses to obtain Directions to travel between them
+		Directions directions = getDirections(tripPlan.getListStops());
+		
 		return directions;
 	}
 }

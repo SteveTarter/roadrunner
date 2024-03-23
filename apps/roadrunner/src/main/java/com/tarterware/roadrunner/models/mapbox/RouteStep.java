@@ -8,12 +8,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RouteStep {
-
+public class RouteStep
+{
 	String name;
+
 	double duration;
-	double distance;
-	double weight;
-	Geometry geometry;
 	
+	double distance;
+	
+	double weight;
+	
+	Geometry geometry;
 }

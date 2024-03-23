@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RouteLeg {
-	
+public class RouteLeg
+{
 	double weight;
 	double duration;
 	

@@ -11,7 +11,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class FeatureCollection {
+public class FeatureCollection
+{
 	List<String> query;
 	
 	@JsonProperty("type")

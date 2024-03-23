@@ -11,11 +11,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Isochrone {
-	
+public class Isochrone
+{
 	@JsonProperty("type")
 	String theType;
 	
 	List<IsochroneFeature> features;
-	
 }
