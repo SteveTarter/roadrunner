@@ -16,6 +16,8 @@ public class PositionResponse
 	
 	boolean positionLimited;
 	
+	double metersPerSecond;
+	
 	double latitude;
 	
 	double longitude;
