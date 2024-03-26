@@ -1,5 +1,6 @@
 package com.tarterware.roadrunner.models.mapbox;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -10,12 +11,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RouteLeg
+public class Annotation
 {
-	double weight;
-	double duration;
+	List<Double> speed = new ArrayList<Double>();
 	
-	Annotation annotation;
-	
-	List<RouteStep> steps;
+	List<Double> distance = new ArrayList<Double>();
 }

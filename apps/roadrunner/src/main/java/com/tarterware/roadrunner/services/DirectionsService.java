@@ -63,7 +63,12 @@ public class DirectionsService
 		sb.deleteCharAt(sb.length() - 1);
 		
 		// Tell the API that we want to match address features
-		sb.append("?alternatives=true&geometries=geojson&language=en&overview=simplified&steps=true");
+		sb.append("?alternatives=false");
+		sb.append("&annotations=speed,distance");
+		sb.append("&geometries=geojson");
+		sb.append("&language=en");
+		sb.append("&overview=full");
+		sb.append("&steps=true");
         
         String cacheFileName = 
         		_tarterwareDataDir +

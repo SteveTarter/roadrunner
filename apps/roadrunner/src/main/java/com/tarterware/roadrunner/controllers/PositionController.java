@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tarterware.roadrunner.models.PositionRequest;
 import com.tarterware.roadrunner.models.PositionResponse;
+import com.tarterware.roadrunner.models.mapbox.Annotation;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.models.mapbox.RouteLeg;
 import com.tarterware.roadrunner.models.mapbox.RouteStep;
@@ -40,7 +41,6 @@ public class PositionController
 	@Autowired
 	GeocodingService geocodingService;
 	
-	private LineString geodeticLineString;
 	private LineString utmLineString;
 	private CoordinateTransform wgs84ToUtmCoordinatetransformer;
 	private CoordinateTransform utmToWgs84Coordinatetransformer;
@@ -177,6 +177,25 @@ public class PositionController
 		positionResponse.setLatitude(projGeoPoint.y);
 		positionResponse.setLongitude(projGeoPoint.x);
 
+		// Determine what the speed should be.
+		double totalDistance = 0.0;
+		double metersPerSecond = 0.0;
+		boolean distanceReached = false;
+		for(int legIndex = 0;  !distanceReached && (legIndex < listLegs.size());  ++legIndex)
+		{
+			Annotation annotation = listLegs.get(legIndex).getAnnotation();
+			for(int a = 0;  !distanceReached && (a < annotation.getSpeed().size());  ++a)
+			{
+				metersPerSecond = annotation.getSpeed().get(a);
+				totalDistance += annotation.getDistance().get(a);
+				if(totalDistance >= metersTravel)
+				{
+					distanceReached = true;
+				}
+			}
+		}
+		positionResponse.setMetersPerSecond(metersPerSecond);
+		
 		return new ResponseEntity<PositionResponse>(positionResponse, HttpStatus.OK);
 	}
 }
