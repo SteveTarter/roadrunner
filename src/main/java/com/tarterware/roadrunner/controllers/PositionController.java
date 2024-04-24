@@ -28,7 +28,6 @@ import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.models.mapbox.RouteLeg;
 import com.tarterware.roadrunner.models.mapbox.RouteStep;
 import com.tarterware.roadrunner.services.DirectionsService;
-import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 @RestController
@@ -37,9 +36,6 @@ public class PositionController
 {
 	@Autowired
 	DirectionsService directionsService;
-	
-	@Autowired
-	GeocodingService geocodingService;
 	
 	private LineString utmLineString;
 	private CoordinateTransform wgs84ToUtmCoordinatetransformer;
