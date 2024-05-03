@@ -1,10 +1,14 @@
 package com.tarterware.roadrunner.controllers;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +21,8 @@ import com.tarterware.roadrunner.components.VehicleManager;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.VehicleState;
 
+@CrossOrigin(origins =
+{ "http://localhost:3000", "https://roadrunner.info" })
 @RestController
 @RequestMapping("/api/vehicle")
 public class VehicleController
@@ -50,6 +56,21 @@ public class VehicleController
 		return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
 	}
 	
+	
+	@GetMapping("/get-all-vehicle-states")
+	ResponseEntity<List<VehicleState>> getAllVehicleStates()
+	{
+		List<VehicleState> listVehicleStates = new ArrayList<VehicleState>();
+		Map<UUID, Vehicle> vehicleMap = vehicleManager.getVehicleMap();
+		
+		for(Vehicle vehicle : vehicleMap.values())
+		{
+			VehicleState vehicleState = createVehicleStateFor(vehicle.getId());
+			listVehicleStates.add(vehicleState);
+		}
+		
+		return new ResponseEntity<List<VehicleState>>(listVehicleStates, HttpStatus.OK);
+	}
 	
 	private VehicleState createVehicleStateFor(UUID vehicleId)
 	{
