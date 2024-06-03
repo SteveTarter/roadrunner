@@ -22,7 +22,7 @@ import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.VehicleState;
 
 @CrossOrigin(origins =
-{ "http://localhost:3000", "https://roadrunner.info" })
+{ "http://localhost:3000", "https://roadrunner-view.tarterware.info", "https://roadrunner-view.taretrware.com" })
 @RestController
 @RequestMapping("/api/vehicle")
 public class VehicleController
