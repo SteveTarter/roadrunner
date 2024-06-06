@@ -15,7 +15,7 @@ import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 
 @CrossOrigin(origins =
-{ "http://localhost:3000", "https://roadrunner-view.tarterware.info", "https://roadrunner-view.taretrware.com" })
+{ "http://localhost:3000", "https://roadrunner-view.tarterware.info", "https://roadrunner-view.tarterware.com" })
 @RestController
 @RequestMapping("/api/trips")
 public class TripController
