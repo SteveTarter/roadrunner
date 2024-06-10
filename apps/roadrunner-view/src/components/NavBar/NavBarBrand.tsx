@@ -6,7 +6,7 @@ export const NavBarBrand: React.FC = () => {
         <img
           className="nav-bar__logo"
           src="https://tarterware.com/wp-content/uploads/2024/04/cropped-Gemini_Generated_Image_xnjtxoxnjtxoxnjt.jpeg"
-          alt="Oway"
+          alt="Tarterware"
           width="60"
           height="60"
         />

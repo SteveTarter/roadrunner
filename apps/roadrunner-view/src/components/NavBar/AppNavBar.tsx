@@ -32,12 +32,12 @@ export const AppNavBar = () => {
   } = useAuth0();
   const toggle = () => setIsOpen(!isOpen);
 
-  const owayLandingUri = process.env.REACT_APP_OWAY_LANDING_PAGE_URL;
+  const landingPageUri = process.env.REACT_APP_LANDING_PAGE_URL;
 
   const logoutWithRedirect = () =>
     logout({
       logoutParams: {
-        returnTo: owayLandingUri,
+        returnTo: landingPageUri,
       }
     });
 
