@@ -96,7 +96,7 @@ export const HomePage = () => {
                 }
                 {vehicleStateList && (vehicleStateList.length > 0) && (
                     vehicleStateList.map(function(vehicleState){
-                        return <VehicleIcon vehicleState={vehicleState}/>
+                        return <VehicleIcon key={vehicleState.id} vehicleState={vehicleState}/>
                     })
                 )}
             </Map>
