@@ -4,16 +4,16 @@ import type { LayerProps } from "react-map-gl";
 import type { FeatureCollection } from "geojson";
 
 export const VehicleIcon: React.FC<{
-    vehicleState: VehicleState
+    vehicleState: VehicleState, circleRadius: number
 }> = (props) => {
 
-    function getVehicleLayer(id: string): LayerProps {
+    function getVehicleLayer(id: string, colorCode: string, circleRadius: number): LayerProps {
         return {
             id: `point-${id}`,
             type: 'circle',
             paint: {
-                'circle-radius': 10,
-                'circle-color': '#007cbf'
+                'circle-radius': circleRadius,
+                'circle-color': `${colorCode}`
             }
         };
     }
@@ -31,7 +31,7 @@ export const VehicleIcon: React.FC<{
     }
 
     let pointData = getVehiclePoint(props.vehicleState.degLatitude, props.vehicleState.degLongitude);
-    let pointLayer = getVehicleLayer(props.vehicleState.id);
+    let pointLayer = getVehicleLayer(props.vehicleState.id, props.vehicleState.colorCode, props.circleRadius);
 
     return (
         <>

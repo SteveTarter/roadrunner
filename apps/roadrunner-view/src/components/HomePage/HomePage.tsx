@@ -15,6 +15,7 @@ export const HomePage = () => {
     const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN!;
     const mapboxMapStyle = process.env.REACT_APP_MAPBOX_MAP_STYLE!;
 
+    const [circleRadius, setCircleRadius] = useState(10);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [vehicleStateList, setVehicleStateList] = useState<VehicleState[]>([]);
@@ -84,6 +85,31 @@ export const HomePage = () => {
                     latitude: 32.75,
                     zoom: 10,
                 }}
+                onZoom={(viewStateChangeEvent) =>
+                    {
+                        let MIN_RADIUS = 5.0;
+                        let MAX_RADIUS = 30.0;
+                        let MIN_ZOOM = 12.0;
+                        let MAX_ZOOM = 22.0;
+                        let viewState = viewStateChangeEvent.viewState;
+                        let currentZoom = viewState.zoom;
+                        let radius = MIN_RADIUS;
+                        if(currentZoom < MIN_ZOOM) {
+                            radius = MIN_RADIUS;
+                        }
+                        else if(currentZoom > MAX_ZOOM) {
+                            radius = MAX_RADIUS;
+                        }
+                        else {
+                            radius = 
+                                MIN_RADIUS + 
+                                (MAX_RADIUS - MIN_RADIUS) * ((currentZoom - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM));
+                        }
+
+                        console.log(`Zoom is ${currentZoom}; Setting circle radius to ${radius}`)
+                        setCircleRadius(radius);
+                    }
+                }
             >
                 {isDataLoaded ?
                     <ControlPanel 
@@ -96,7 +122,10 @@ export const HomePage = () => {
                 }
                 {vehicleStateList && (vehicleStateList.length > 0) && (
                     vehicleStateList.map(function(vehicleState){
-                        return <VehicleIcon key={vehicleState.id} vehicleState={vehicleState}/>
+                        return <VehicleIcon 
+                            key={vehicleState.id} 
+                            vehicleState={vehicleState} 
+                            circleRadius={circleRadius}/>
                     })
                 )}
             </Map>

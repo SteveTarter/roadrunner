@@ -8,6 +8,7 @@ export class VehicleState {
     metersPerSecondDesired: number;
     metersPerSecond: number;
     mssAcceleration: number;
+    colorCode: string;
 
     constructor(
         id: string,
@@ -18,7 +19,8 @@ export class VehicleState {
         degLongitude: number,
         metersPerSecondDesired: number,
         metersPerSecond: number,
-        mssAcceleration: number
+        mssAcceleration: number,
+        colorCode: string
     ) {
         this.id = id;
         this.metersOffset = metersOffset;
@@ -29,5 +31,6 @@ export class VehicleState {
         this.metersPerSecondDesired = metersPerSecondDesired;
         this.metersPerSecond = metersPerSecond;
         this.mssAcceleration = mssAcceleration;
+        this.colorCode = colorCode;
     }
 }
