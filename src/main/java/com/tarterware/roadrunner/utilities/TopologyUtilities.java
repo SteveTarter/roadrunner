@@ -13,7 +13,42 @@ public class TopologyUtilities
 	public static double METERS_PER_FEET = 1.0 / FEET_PER_METER;
 	public static double FEET_PER_STATUTE_MILE = 5280.0;
 	public static double FEET_PER_NAUTICAL_MILE = 6076.12;
+	public static double KM_EARTH_RADIUS = 6378.14;
 
+	/**
+	 * Get Coordinate at the bearing and range from the given Coordinate.
+	 * 
+	 * @param degLatitude
+	 * @param degLongitude
+	 * @param kmRange
+	 * @param degBearing
+	 * @return destination Coordinate
+	 */
+	static public Coordinate getCoordinateAtBearingAndRange(double degLatitude, double degLongitude, double kmRange, double degBearing)
+	{
+		double radLatitude = Math.toRadians(degLatitude);
+		double radLongitude = Math.toRadians(degLongitude);
+		double radBearing = Math.toRadians(degBearing);
+		
+		double radLatitudeDest = Math.asin(Math.sin(radLatitude)*Math.cos(kmRange/KM_EARTH_RADIUS) + Math.cos(radLatitude)*Math.sin(kmRange/KM_EARTH_RADIUS)*Math.cos(radBearing));
+		double radLongitudeDest = radLongitude + Math.atan2(Math.sin(radBearing)*Math.sin(kmRange/KM_EARTH_RADIUS)*Math.cos(radLatitude),Math.cos(kmRange/KM_EARTH_RADIUS)-Math.sin(radLatitude)*Math.sin(radLatitude));
+		
+		return new Coordinate(Math.toDegrees(radLongitudeDest), Math.toDegrees(radLatitudeDest));
+	}
+	
+	/**
+	 * Get Coordinate at the bearing and range from the given Coordinate.
+	 * 
+	 * @param coordinate
+	 * @param kmRange
+	 * @param degBearing
+	 * @return
+	 */
+	static public Coordinate getCoordinateAtBearingAndRange(Coordinate coordinate, double kmRange, double degBearing)
+	{
+		return getCoordinateAtBearingAndRange(coordinate.y, coordinate.x, kmRange, degBearing);
+	}
+	
 	/**
 	 * Get a WGS84 coordinate system that uses geodetic coordinates (latitude, longitude, and elevation).
 	 * @return A WGS84 geodetic coordinate system.

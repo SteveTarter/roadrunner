@@ -85,7 +85,7 @@ public class Vehicle
 	{
 		super();
 		
-		id = UUID.randomUUID();
+		this.id = UUID.randomUUID();
 		this.directionsService = directionsService;
 		this.mssAcceleration = 2.0;
 	}
