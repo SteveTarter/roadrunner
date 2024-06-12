@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.locationtech.jts.geom.Coordinate;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,8 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tarterware.roadrunner.components.Vehicle;
 import com.tarterware.roadrunner.components.VehicleManager;
+import com.tarterware.roadrunner.models.Address;
+import com.tarterware.roadrunner.models.CrissCrossPlan;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.VehicleState;
+import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 @CrossOrigin(origins =
 { "http://localhost:3000", "https://roadrunner-view.tarterware.info", "https://roadrunner-view.tarterware.com" })
@@ -41,6 +46,60 @@ public class VehicleController
 			vehicleManager.startup();
 		}
 		return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
+	}
+	
+	@PostMapping("/create-crisscross")
+	ResponseEntity<List<VehicleState>> createCrissCrossVehicles(@RequestBody CrissCrossPlan crissCrossPlan)
+	{
+		List<VehicleState> listVehicleStates = new ArrayList<VehicleState>();
+
+		// Create a Coordinate representing the center point.
+		Coordinate centerCoordinate = new Coordinate(crissCrossPlan.getDegLongitude(), crissCrossPlan.getDegLatitude());
+		
+		// Determine the angular distance between the start points
+		double degIncrement = 360.0 / crissCrossPlan.getVehicleCount();
+		double degStartBearing = degIncrement / 2.0;
+		for(int i = 0;  i < crissCrossPlan.getVehicleCount();  ++i)
+		{
+			double degEndBearing = degStartBearing + 180.0;
+			if(degEndBearing > 360.0)
+			{
+				degEndBearing -= 360.0;
+			}
+			
+			Coordinate startCoordinate = TopologyUtilities.getCoordinateAtBearingAndRange(centerCoordinate, crissCrossPlan.getKmRadius(), degStartBearing);
+			Coordinate endCoordinate = TopologyUtilities.getCoordinateAtBearingAndRange(centerCoordinate, crissCrossPlan.getKmRadius(), degEndBearing);
+			
+			Address startAddress = new Address();
+			startAddress.setSource("NumericEntry");
+			startAddress.setLatitude(startCoordinate.getY());
+			startAddress.setLongitude(startCoordinate.getX());
+			
+			Address endAddress = new Address();
+			endAddress.setSource("NumericEntry");
+			endAddress.setLatitude(endCoordinate.getY());
+			endAddress.setLongitude(endCoordinate.getX());
+			
+			TripPlan tripPlan = new TripPlan();
+			List<Address> listStops = new ArrayList<Address>();
+			listStops.add(startAddress);
+			listStops.add(endAddress);
+			tripPlan.setListStops(listStops);
+			
+			UUID vehicleId = vehicleManager.createVehicle(tripPlan);
+			VehicleState vehicleState = createVehicleStateFor(vehicleId);
+			
+			listVehicleStates.add(vehicleState);
+			
+			degStartBearing += degIncrement;
+		}
+		
+		if(vehicleManager.isRunning() == false)
+		{
+			vehicleManager.startup();
+		}
+		
+		return new ResponseEntity<List<VehicleState>>(listVehicleStates, HttpStatus.OK);
 	}
 	
 	@GetMapping("/get-vehicle-state/{vehicleId}")
