@@ -1,5 +1,6 @@
 package com.tarterware.roadrunner.components;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -22,7 +23,8 @@ public class VehicleManager
 
     private Timer timer;
 
-    private Map<UUID, Vehicle> vehicleMap = new HashMap<UUID, Vehicle>();
+    private Map<UUID, Vehicle> vehicleMap = 
+    		Collections.synchronizedMap(new HashMap<UUID, Vehicle>());
 	
 	private static final Logger logger = LoggerFactory.getLogger(VehicleManager.class);
 	
@@ -96,7 +98,7 @@ public class VehicleManager
     	vehicle.setTripPlan(tripPlan);
     	vehicleMap.put(vehicle.getId(), vehicle);
     	
-    	return vehicle.id;
+    	return vehicle.getId();
     }
     
     class UpdateTask extends TimerTask
