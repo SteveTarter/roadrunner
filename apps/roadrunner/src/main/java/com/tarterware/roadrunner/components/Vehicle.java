@@ -1,8 +1,10 @@
 package com.tarterware.roadrunner.components;
 
+import java.awt.Color;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -70,6 +72,9 @@ public class Vehicle
 	@Getter
 	double mssAcceleration;
 	
+	@Getter
+	String colorCode;
+	
 	Instant lastCalculationInstant;
 	
 	private Directions directions;
@@ -88,6 +93,14 @@ public class Vehicle
 		this.id = UUID.randomUUID();
 		this.directionsService = directionsService;
 		this.mssAcceleration = 2.0;
+		
+		// to get rainbow, pastel colors
+		Random random = new Random();
+		final float hue = random.nextFloat();
+		final float saturation = 0.9f;//1.0 for brilliant, 0.0 for dull
+		final float luminance = 1.0f; //1.0 for brighter, 0.0 for black
+		int hexColor = Color.getHSBColor(hue, saturation, luminance).getRGB();
+		this.colorCode = String.format("#%06X", hexColor & 0xFFFFFF);
 	}
 	
 	public void setTripPlan(TripPlan tripPlan)
