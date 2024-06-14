@@ -29,4 +29,6 @@ public class VehicleState
 	double metersPerSecond;
 	
 	double mssAcceleration;
+	
+	String colorCode;
 }
