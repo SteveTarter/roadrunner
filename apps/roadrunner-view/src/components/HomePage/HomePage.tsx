@@ -15,7 +15,7 @@ export const HomePage = () => {
     const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN!;
     const mapboxMapStyle = process.env.REACT_APP_MAPBOX_MAP_STYLE!;
 
-    const [circleRadius, setCircleRadius] = useState(10);
+    const [circleRadius, setCircleRadius] = useState(5);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [vehicleStateList, setVehicleStateList] = useState<VehicleState[]>([]);
@@ -62,7 +62,7 @@ export const HomePage = () => {
 
         }
         catch (error: any) {
-            console.log(`Error caught in fetchAppSettings: ${error.message}`);
+            console.log(`Error caught in fetchVehicleStateList: ${error.message}`);
         }
     }
 
@@ -71,8 +71,8 @@ export const HomePage = () => {
             fetchVehicleStateList()
         );
         return () => window.cancelAnimationFrame(animation);
-      });
-    
+    });
+
     return (
         <div className="body row scroll-y">
             <Map
@@ -85,49 +85,53 @@ export const HomePage = () => {
                     latitude: 32.75,
                     zoom: 10,
                 }}
-                onZoom={(viewStateChangeEvent) =>
-                    {
-                        let MIN_RADIUS = 5.0;
-                        let MAX_RADIUS = 30.0;
-                        let MIN_ZOOM = 12.0;
-                        let MAX_ZOOM = 22.0;
-                        let viewState = viewStateChangeEvent.viewState;
-                        let currentZoom = viewState.zoom;
-                        let radius = MIN_RADIUS;
-                        if(currentZoom < MIN_ZOOM) {
-                            radius = MIN_RADIUS;
-                        }
-                        else if(currentZoom > MAX_ZOOM) {
-                            radius = MAX_RADIUS;
-                        }
-                        else {
-                            radius = 
-                                MIN_RADIUS + 
-                                (MAX_RADIUS - MIN_RADIUS) * ((currentZoom - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM));
-                        }
-
-                        console.log(`Zoom is ${currentZoom}; Setting circle radius to ${radius}`)
-                        setCircleRadius(radius);
+                onZoom={(viewStateChangeEvent) => {
+                    let MIN_RADIUS = 5.0;
+                    let MAX_RADIUS = 120.0;
+                    let MIN_ZOOM = 15.0;
+                    let MAX_ZOOM = 22.0;
+                    let viewState = viewStateChangeEvent.viewState;
+                    let currentZoom = viewState.zoom;
+                    let radius = MIN_RADIUS;
+                    if (currentZoom < MIN_ZOOM) {
+                        radius = MIN_RADIUS;
                     }
+                    else if (currentZoom > MAX_ZOOM) {
+                        radius = MAX_RADIUS;
+                    }
+                    else {
+                        radius = (MAX_RADIUS * Math.pow((2.0 / 3.0), (MAX_ZOOM - currentZoom)));
+                    }
+
+                    if(radius < 0) {
+                        // console.log(`Radius of ${radius} is bogus!  Setting to 5.0!`);
+                        radius = 5;
+                    }
+
+                    // console.log(`Zoom is ${currentZoom}; Setting circle radius to ${radius}`)
+                    setCircleRadius(radius);
+                }
                 }
             >
                 {isDataLoaded ?
-                    <ControlPanel 
-                        vehicleStateList={vehicleStateList}
-                    />
+                    <>
+                        <ControlPanel
+                            vehicleStateList={vehicleStateList}
+                        />
+                        {vehicleStateList && (vehicleStateList.length > 0) && (
+                            vehicleStateList.map(function (vehicleState) {
+                                return <VehicleIcon
+                                    key={vehicleState.id}
+                                    vehicleState={vehicleState}
+                                    circleRadius={circleRadius} />
+                            })
+                        )}
+                    </>
                     :
                     <div>
                         <SpinnerLoading />
                     </div>
                 }
-                {vehicleStateList && (vehicleStateList.length > 0) && (
-                    vehicleStateList.map(function(vehicleState){
-                        return <VehicleIcon 
-                            key={vehicleState.id} 
-                            vehicleState={vehicleState} 
-                            circleRadius={circleRadius}/>
-                    })
-                )}
             </Map>
         </div>
     )
