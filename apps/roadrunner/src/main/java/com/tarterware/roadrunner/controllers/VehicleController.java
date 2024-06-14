@@ -24,6 +24,7 @@ import com.tarterware.roadrunner.models.Address;
 import com.tarterware.roadrunner.models.CrissCrossPlan;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.VehicleState;
+import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 @CrossOrigin(origins =
@@ -115,6 +116,17 @@ public class VehicleController
 		return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
 	}
 	
+	@GetMapping("/get-vehicle-directions/{vehicleId}")
+	ResponseEntity<Directions> getVehicleDirectionsFor(@PathVariable String vehicleId)
+	{
+		Vehicle vehicle = vehicleManager.getVehicle(UUID.fromString(vehicleId));
+		if(vehicle == null)
+		{
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+		}
+		
+		return new ResponseEntity<Directions>(vehicle.getDirections(), HttpStatus.OK);
+	}
 	
 	@GetMapping("/get-all-vehicle-states")
 	ResponseEntity<List<VehicleState>> getAllVehicleStates()

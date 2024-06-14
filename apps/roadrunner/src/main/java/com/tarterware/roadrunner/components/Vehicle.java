@@ -75,9 +75,11 @@ public class Vehicle
 	@Getter
 	String colorCode;
 	
+	@Getter
+	private Directions directions;
+
 	Instant lastCalculationInstant;
 	
-	private Directions directions;
 	private LineString utmLineString;
 	private CoordinateTransform wgs84ToUtmCoordinatetransformer;
 	private CoordinateTransform utmToWgs84Coordinatetransformer;
