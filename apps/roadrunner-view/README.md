@@ -6,6 +6,8 @@ Provides an interface to visualize Vehicles travelling in the roadrunner system.
 
 Provides an interface to visualize Vehicles travelling in the roadrunner system.
 
+This is a companion project of Roadrunner.
+
 Here's an example of a run of a "criss-cross" pattern of 36 vehicles, starting at bearings spaced 10 degrees, centered around the Fort Worth convention center:
 
 ![Roadrunner View example](./Resources/img/RoadrunnerViewer-2024-06-17.png)
