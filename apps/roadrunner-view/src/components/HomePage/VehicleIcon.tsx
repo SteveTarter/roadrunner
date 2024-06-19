@@ -1,18 +1,19 @@
-import { VehicleState } from "../../models/VehicleState";
 import { Layer, Source, useMap } from "react-map-gl";
 import type { LayerProps } from "react-map-gl";
 import type { Feature, FeatureCollection } from "geojson";
 import { useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
+import { VehicleDisplay } from "../../models/VehicleDisplay";
+import { VehicleState } from "../../models/VehicleState";
 
 export const VehicleIcon: React.FC<{
-    vehicleState: VehicleState, circleRadius: number
+    vehicleState: VehicleState, 
+    vehicleDisplay: VehicleDisplay
 }> = (props) => {
     const { getAccessTokenSilently } = useAuth0();
     const { current: map } = useMap();
 
     const [token, setToken] = useState("");
-    const [lineVisible, setLineVisible] = useState(false);
     const [directionsGeometry, setDirectionsGeometry] = useState([]);
 
     useEffect(() => {
@@ -114,25 +115,10 @@ export const VehicleIcon: React.FC<{
     }
 
     let pointData = getVehiclePoint(props.vehicleState.degLatitude, props.vehicleState.degLongitude);
-    let pointLayer = getVehicleLayer(props.vehicleState.id, props.vehicleState.colorCode, props.circleRadius);
+    let pointLayer = getVehicleLayer(props.vehicleState.id, props.vehicleState.colorCode, props.vehicleDisplay.circleRadius);
     let lineData = getLineData(props.vehicleState.id, directionsGeometry);
-    let lineLayer = getLineLayer(props.vehicleState.id, props.vehicleState.colorCode, props.circleRadius);
-
-    // Toggle the route visibility if user clicks on the vehicle. 
-    map?.on('click', (event) => {
-        // Determine the screen position of the vehicle
-        let point = map.project({ lng: props.vehicleState.degLongitude, lat: props.vehicleState.degLatitude });
-
-        // Calculate the distance of the click from the vehicle
-        let xDelta = point.x - event.point.x;
-        let yDelta = point.y - event.point.y;
-        let distance = Math.sqrt(xDelta * xDelta + yDelta * yDelta);
-
-        // If the distance is less than 25, then toggle visibility
-        if (distance < 25.0) {
-            setLineVisible(!lineVisible);
-        }
-    })
+    let lineLayer = getLineLayer(props.vehicleState.id, props.vehicleState.colorCode, props.vehicleDisplay.circleRadius);
+    let lineVisible = props.vehicleDisplay.routeVisible;
 
     return (
         <>
