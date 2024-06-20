@@ -10,11 +10,11 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CrissCrossPlan
 {
-	double degLatitude;
-	
-	double degLongitude;
+    double degLatitude;
+    
+    double degLongitude;
 
-	double kmRadius;
-	
-	int vehicleCount;
+    double kmRadius;
+    
+    int vehicleCount;
 }

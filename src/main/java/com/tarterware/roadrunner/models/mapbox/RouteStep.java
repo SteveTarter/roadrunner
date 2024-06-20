@@ -10,13 +10,13 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RouteStep
 {
-	String name;
+    String name;
 
-	double duration;
-	
-	double distance;
-	
-	double weight;
-	
-	Geometry geometry;
+    double duration;
+    
+    double distance;
+    
+    double weight;
+    
+    Geometry geometry;
 }

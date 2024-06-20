@@ -11,8 +11,8 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class IsochroneFeature
 {
-	@JsonProperty("type")
-	String theType;
-	
-	Geometry geometry;
+    @JsonProperty("type")
+    String theType;
+    
+    Geometry geometry;
 }

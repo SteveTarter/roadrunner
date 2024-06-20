@@ -12,9 +12,9 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Directions
 {
-	String code;
-	
-	List<Waypoint> waypoints;
-	
-	List<DirectionRoute> routes;
+    String code;
+    
+    List<Waypoint> waypoints;
+    
+    List<DirectionRoute> routes;
 }

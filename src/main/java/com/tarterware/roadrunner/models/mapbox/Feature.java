@@ -13,12 +13,12 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Feature
 {
-	@JsonProperty("id")
-	String id;
-	
-	float relevance;
-	
-	List<String> place_type;
-	
-	List<Double> center;
+    @JsonProperty("id")
+    String id;
+    
+    float relevance;
+    
+    List<String> place_type;
+    
+    List<Double> center;
 }

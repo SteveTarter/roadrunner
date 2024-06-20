@@ -10,15 +10,15 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PositionResponse
 {
-	boolean valid;
-	
-	String message;
-	
-	boolean positionLimited;
-	
-	double metersPerSecond;
-	
-	double latitude;
-	
-	double longitude;
+    boolean valid;
+    
+    String message;
+    
+    boolean positionLimited;
+    
+    double metersPerSecond;
+    
+    double latitude;
+    
+    double longitude;
 }
