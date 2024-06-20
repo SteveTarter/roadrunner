@@ -1,4 +1,4 @@
-import { Layer, Source, useMap } from "react-map-gl";
+import { Layer, Source } from "react-map-gl";
 import type { LayerProps } from "react-map-gl";
 import type { Feature, FeatureCollection } from "geojson";
 import { useEffect, useState } from "react";
@@ -11,7 +11,6 @@ export const VehicleIcon: React.FC<{
     vehicleDisplay: VehicleDisplay
 }> = (props) => {
     const { getAccessTokenSilently } = useAuth0();
-    const { current: map } = useMap();
 
     const [token, setToken] = useState("");
     const [directionsGeometry, setDirectionsGeometry] = useState([]);

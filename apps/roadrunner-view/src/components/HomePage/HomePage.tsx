@@ -11,6 +11,7 @@ import { MapWrapper } from '../Utils/MapWrapper';
 
 export const HomePage = () => {
     const { getAccessTokenSilently } = useAuth0();
+
     const { homePageMap } = useMap();
 
     const [token, setToken] = useState("");
@@ -22,13 +23,13 @@ export const HomePage = () => {
     const [isMapLoaded, setIsMapLoaded] = useState(false);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [vehicleStateList, setVehicleStateList] = useState<VehicleState[]>([]);
-    const [vehicleDisplayMap, setVehicleDisplayMap] = useState<MapWrapper<string,VehicleDisplay>>();
+    const [vehicleDisplayMap, setVehicleDisplayMap] = useState<MapWrapper<string, VehicleDisplay>>();
 
     useEffect(() => {
         if (token) {
             return;
         }
-        
+
         const audience = process.env.REACT_APP_AUTH0_AUDIENCE;
         getAccessTokenSilently({
             authorizationParams: {
@@ -41,11 +42,11 @@ export const HomePage = () => {
     }, [token, getAccessTokenSilently]);
 
     useEffect(() => {
-        if(vehicleDisplayMap) {
+        if (vehicleDisplayMap) {
             return;
         }
 
-        setVehicleDisplayMap(new MapWrapper<string,VehicleDisplay>());
+        setVehicleDisplayMap(new MapWrapper<string, VehicleDisplay>());
     }, [vehicleDisplayMap]);
 
     function fetchVehicleStateList() {
@@ -71,9 +72,9 @@ export const HomePage = () => {
                     setVehicleStateList(data);
                     setIsDataLoaded(true);
                     data.map((vehicleState: VehicleState) => {
-                        if(!vehicleDisplayMap?.get(vehicleState.id)) {
+                        if (!vehicleDisplayMap?.get(vehicleState.id)) {
                             let vehicleDisplay = new VehicleDisplay(circleRadius, false);
-                            vehicleDisplayMap?.set(vehicleState.id,vehicleDisplay);
+                            vehicleDisplayMap?.set(vehicleState.id, vehicleDisplay);
                         }
                         return vehicleState;
                     })
@@ -83,6 +84,24 @@ export const HomePage = () => {
         catch (error: any) {
             console.log(`Error caught in fetchVehicleStateList: ${error.message}`);
         }
+    }
+
+    function hideAllRoutes() {
+        vehicleStateList.forEach((vehicleState) => {
+            let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
+            if(vehicleDisplay) {
+                vehicleDisplay.routeVisible = false;
+            }
+        })
+    }
+
+    function showAllRoutes() {
+        vehicleStateList.forEach((vehicleState) => {
+            let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
+            if(vehicleDisplay) {
+                vehicleDisplay.routeVisible = true;
+            }
+        })
     }
 
     function onZoom(viewStateChangeEvent: { viewState: any; }) {
@@ -103,7 +122,7 @@ export const HomePage = () => {
             radius = (MAX_RADIUS * Math.pow((2.0 / 3.0), (MAX_ZOOM - currentZoom)));
         }
 
-        if(radius < 0) {
+        if (radius < 0) {
             radius = MIN_RADIUS;
         }
 
@@ -112,18 +131,17 @@ export const HomePage = () => {
     }
 
     function onClick(event: MapLayerMouseEvent) {
-        console.log(`X = ${event.point.x} Y = ${event.point.y}`);
-        let bestVehicle: VehicleDisplay|undefined = {} as VehicleDisplay;
+        let bestVehicle: VehicleDisplay | undefined = {} as VehicleDisplay;
         let bestDistance = 100;
-        vehicleStateList.forEach( (vehicleState) => {
+        vehicleStateList.forEach((vehicleState) => {
             let point = homePageMap?.project({ lng: vehicleState.degLongitude, lat: vehicleState.degLatitude });
 
             // Calculate the distance of the click from the vehicle
-            if(point) {
+            if (point) {
                 let xDelta = point.x - event.point.x;
                 let yDelta = point.y - event.point.y;
                 let distance = Math.sqrt(xDelta * xDelta + yDelta * yDelta);
-    
+
                 // If the distance is less than 50, then toggle visibility
                 if (distance < bestDistance) {
                     bestDistance = distance;
@@ -131,10 +149,10 @@ export const HomePage = () => {
                 }
             }
         })
-        if(bestVehicle) {
+        if (bestVehicle) {
             bestVehicle.routeVisible = !bestVehicle.routeVisible;
         }
-}
+    }
 
     useEffect(() => {
         const animation = window.requestAnimationFrame(() =>
@@ -162,16 +180,20 @@ export const HomePage = () => {
                     <>
                         <ControlPanel
                             vehicleStateList={vehicleStateList}
+                            hideAllRoutes={hideAllRoutes}
+                            showAllRoutes={showAllRoutes}
                         />
                         {vehicleStateList && (vehicleStateList.length > 0) && (
-                            vehicleStateList.map(function (vehicleState) {
+                            // eslint-disable-next-line
+                            vehicleStateList.map((vehicleState) => {
                                 let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
-                                if (!vehicleDisplay) return;
-                                vehicleDisplay.circleRadius = circleRadius;
-                                return <VehicleIcon
-                                    key={vehicleState.id}
-                                    vehicleState={vehicleState}
-                                    vehicleDisplay={vehicleDisplay} />
+                                if (vehicleDisplay) {
+                                    vehicleDisplay.circleRadius = circleRadius;
+                                    return <VehicleIcon
+                                        key={vehicleState.id}
+                                        vehicleState={vehicleState}
+                                        vehicleDisplay={vehicleDisplay} />
+                                }
                             })
                         )}
                     </>
