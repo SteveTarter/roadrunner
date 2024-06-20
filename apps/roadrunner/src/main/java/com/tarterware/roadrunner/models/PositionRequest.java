@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PositionRequest
 {
-	double metersTravel;
-	
-	TripPlan tripPlan;
+    double metersTravel;
+    
+    TripPlan tripPlan;
 }

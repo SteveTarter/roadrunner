@@ -13,10 +13,10 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class FeatureCollection
 {
-	List<String> query;
-	
-	@JsonProperty("type")
-	String theType;
-	
-	List<Feature> features;
+    List<String> query;
+    
+    @JsonProperty("type")
+    String theType;
+    
+    List<Feature> features;
 }

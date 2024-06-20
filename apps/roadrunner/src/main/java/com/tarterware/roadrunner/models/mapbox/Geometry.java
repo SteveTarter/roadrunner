@@ -13,8 +13,8 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Geometry
 {
-	@JsonProperty("type")
-	String theType;
-	
-	List<List<Double>> coordinates;
+    @JsonProperty("type")
+    String theType;
+    
+    List<List<Double>> coordinates;
 }

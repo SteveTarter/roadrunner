@@ -21,57 +21,57 @@ import com.tarterware.roadrunner.models.mapbox.Directions;
 @Service
 public class DirectionsService
 {
-	@Value("${mapbox.api.url}")
-	private String _restUrlBase;
-	
-	@Value("${mapbox.api.key}")
-	private String _mapBoxApiKey;
-	
-	@Autowired
-	RestTemplate restTemplate;
+    @Value("${mapbox.api.url}")
+    private String _restUrlBase;
     
-	@Autowired
-	GeocodingService geocodingService;
+    @Value("${mapbox.api.key}")
+    private String _mapBoxApiKey;
     
-	@Value("${com.tarterware.data-dir}")
+    @Autowired
+    RestTemplate restTemplate;
+    
+    @Autowired
+    GeocodingService geocodingService;
+    
+    @Value("${com.tarterware.data-dir}")
     private String _tarterwareDataDir;
-	
-	private static final Logger logger = LoggerFactory.getLogger(DirectionsService.class);
+    
+    private static final Logger logger = LoggerFactory.getLogger(DirectionsService.class);
 
-	public Directions getDirections(List<Address> listAddresses)
-	{	            
-	    StringBuilder sb = new StringBuilder(_restUrlBase);
-		
-		// Add path separator if it is needed.
-		if( !_restUrlBase.endsWith("/"))
-		{
-			sb.append("/");
-		}
-		
-		// Add start of GeoCoding endpoint
-		sb.append("directions/v5/mapbox/driving/");
-		
-		for(Address address : listAddresses)
-		{
-			sb.append(address.getLongitude());
-			sb.append(",");
-			sb.append(address.getLatitude());
-			sb.append(";");
-		}
-		
-		// Remove the last comma that was added as a part of the address components
-		sb.deleteCharAt(sb.length() - 1);
-		
-		// Tell the API that we want to match address features
-		sb.append("?alternatives=false");
-		sb.append("&annotations=speed,distance");
-		sb.append("&geometries=geojson");
-		sb.append("&language=en");
-		sb.append("&overview=full");
-		sb.append("&steps=true");
+    public Directions getDirections(List<Address> listAddresses)
+    {                
+        StringBuilder sb = new StringBuilder(_restUrlBase);
+        
+        // Add path separator if it is needed.
+        if( !_restUrlBase.endsWith("/"))
+        {
+            sb.append("/");
+        }
+        
+        // Add start of GeoCoding endpoint
+        sb.append("directions/v5/mapbox/driving/");
+        
+        for(Address address : listAddresses)
+        {
+            sb.append(address.getLongitude());
+            sb.append(",");
+            sb.append(address.getLatitude());
+            sb.append(";");
+        }
+        
+        // Remove the last comma that was added as a part of the address components
+        sb.deleteCharAt(sb.length() - 1);
+        
+        // Tell the API that we want to match address features
+        sb.append("?alternatives=false");
+        sb.append("&annotations=speed,distance");
+        sb.append("&geometries=geojson");
+        sb.append("&language=en");
+        sb.append("&overview=full");
+        sb.append("&steps=true");
         
         String cacheFileName = 
-        		_tarterwareDataDir +
+                _tarterwareDataDir +
                 File.separatorChar +
                 sb.toString()
                 .substring(_restUrlBase.length())
@@ -79,11 +79,11 @@ public class DirectionsService
                 .replace("&", "\\&")
                 .replace("$", "\\$")
                 .replace(";", "\\;");
-		
-		// Add the MapBox API key, or the endpoint will tell us to frig off.
-		sb.append("&access_token=");
-		sb.append(_mapBoxApiKey);
-		
+        
+        // Add the MapBox API key, or the endpoint will tell us to frig off.
+        sb.append("&access_token=");
+        sb.append(_mapBoxApiKey);
+        
         Directions directions = null;
         ObjectMapper objectMapper = new ObjectMapper();
         File cacheFile = new File(cacheFileName);
@@ -126,31 +126,31 @@ public class DirectionsService
             }
         }
         
-		return directions;
-	}
-	
-	public Directions getDirectionsForTripPlan(TripPlan tripPlan)
-	{
-		// Check to see a valid TripPlan has been provided before proceeding.
-		if(tripPlan == null)
-		{
-			throw new IllegalArgumentException("tripPlan cannot be null!");
-		}
-		
-		if((tripPlan.getListStops() == null) || (tripPlan.getListStops().size() < 2))
-		{
-			throw new IllegalArgumentException("There must be at least 2 stops in tripPlan!");
-		}
-		
-		// Get the geodetic position of the given Address.
-		for(Address address : tripPlan.getListStops()) 
-		{
-			geocodingService.setPositionFromAddress(address);
-		}
-		
-		// Pass the list of addresses to obtain Directions to travel between them
-		Directions directions = getDirections(tripPlan.getListStops());
-		
-		return directions;
-	}
+        return directions;
+    }
+    
+    public Directions getDirectionsForTripPlan(TripPlan tripPlan)
+    {
+        // Check to see a valid TripPlan has been provided before proceeding.
+        if(tripPlan == null)
+        {
+            throw new IllegalArgumentException("tripPlan cannot be null!");
+        }
+        
+        if((tripPlan.getListStops() == null) || (tripPlan.getListStops().size() < 2))
+        {
+            throw new IllegalArgumentException("There must be at least 2 stops in tripPlan!");
+        }
+        
+        // Get the geodetic position of the given Address.
+        for(Address address : tripPlan.getListStops()) 
+        {
+            geocodingService.setPositionFromAddress(address);
+        }
+        
+        // Pass the list of addresses to obtain Directions to travel between them
+        Directions directions = getDirections(tripPlan.getListStops());
+        
+        return directions;
+    }
 }
