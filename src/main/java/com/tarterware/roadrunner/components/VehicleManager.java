@@ -24,23 +24,23 @@ public class VehicleManager
     private Timer timer;
 
     private Map<UUID, Vehicle> vehicleMap = 
-    		Collections.synchronizedMap(new HashMap<UUID, Vehicle>());
-	
-	private static final Logger logger = LoggerFactory.getLogger(VehicleManager.class);
-	
-	@Autowired
-	DirectionsService directionsService;
-	
-	public Map<UUID, Vehicle> getVehicleMap()
-	{
-		return vehicleMap;
-	}
-	
-	public Vehicle getVehicle(UUID uuid)
-	{
-		return vehicleMap.get(uuid);
-	}
-	
+            Collections.synchronizedMap(new HashMap<UUID, Vehicle>());
+    
+    private static final Logger logger = LoggerFactory.getLogger(VehicleManager.class);
+    
+    @Autowired
+    DirectionsService directionsService;
+    
+    public Map<UUID, Vehicle> getVehicleMap()
+    {
+        return vehicleMap;
+    }
+    
+    public Vehicle getVehicle(UUID uuid)
+    {
+        return vehicleMap.get(uuid);
+    }
+    
     public void startup()
     {
         if(timer != null)
@@ -94,11 +94,11 @@ public class VehicleManager
     
     public UUID createVehicle(TripPlan tripPlan)
     {
-    	Vehicle vehicle = new Vehicle(directionsService);
-    	vehicle.setTripPlan(tripPlan);
-    	vehicleMap.put(vehicle.getId(), vehicle);
-    	
-    	return vehicle.getId();
+        Vehicle vehicle = new Vehicle(directionsService);
+        vehicle.setTripPlan(tripPlan);
+        vehicleMap.put(vehicle.getId(), vehicle);
+        
+        return vehicle.getId();
     }
     
     class UpdateTask extends TimerTask
@@ -106,11 +106,11 @@ public class VehicleManager
         @Override
         public void run()
         {
-        	// Loop through each of the Vehicles and update them.
-        	for(Vehicle vehicle : vehicleMap.values())
-        	{
-        		vehicle.update();
-        	}
+            // Loop through each of the Vehicles and update them.
+            for(Vehicle vehicle : vehicleMap.values())
+            {
+                vehicle.update();
+            }
         }
     }
 }

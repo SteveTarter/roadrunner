@@ -12,10 +12,10 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RouteLeg
 {
-	double weight;
-	double duration;
-	
-	Annotation annotation;
-	
-	List<RouteStep> steps;
+    double weight;
+    double duration;
+    
+    Annotation annotation;
+    
+    List<RouteStep> steps;
 }

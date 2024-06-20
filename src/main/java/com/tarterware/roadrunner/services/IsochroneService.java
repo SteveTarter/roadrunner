@@ -20,19 +20,19 @@ import com.tarterware.roadrunner.models.mapbox.Isochrone;
 @Service
 public class IsochroneService
 {
-	@Value("${mapbox.api.url}")
-	private String _restUrlBase;
-	
-	@Value("${mapbox.api.key}")
-	private String _mapBoxApiKey;
+    @Value("${mapbox.api.url}")
+    private String _restUrlBase;
+    
+    @Value("${mapbox.api.key}")
+    private String _mapBoxApiKey;
     
     @Value("${com.tarterware.data-dir}")
     private String _tarterwareDataDir;
-	
-	@Autowired
-	RestTemplate restTemplate;
-	
-	private static final Logger logger = LoggerFactory.getLogger(IsochroneService.class);
+    
+    @Autowired
+    RestTemplate restTemplate;
+    
+    private static final Logger logger = LoggerFactory.getLogger(IsochroneService.class);
 
     public Isochrone setIsochroneFromAddress(
             Address address,
@@ -43,16 +43,16 @@ public class IsochroneService
         {
             throw new IllegalArgumentException("Address location must be set!");
         }
-    	if((address.getLatitude() == 0.0) && (address.getLongitude() == 0.0))
-    	{
-    		throw new IllegalArgumentException("Address location must be set!");
-    	}
-    	
-    	return setIsochrone(
-    	        address.getLatitude(), 
-    	        address.getLongitude(), 
-    	        isochroneType, 
-    	        isochroneParameterValue);
+        if((address.getLatitude() == 0.0) && (address.getLongitude() == 0.0))
+        {
+            throw new IllegalArgumentException("Address location must be set!");
+        }
+        
+        return setIsochrone(
+                address.getLatitude(), 
+                address.getLongitude(), 
+                isochroneType, 
+                isochroneParameterValue);
     }
     
     public Isochrone setIsochrone(
@@ -61,7 +61,7 @@ public class IsochroneService
             String isochroneType,
             @PathVariable int isochroneParameterValue)
    {
-    	String isochroneParameterName = "";
+        String isochroneParameterName = "";
         switch(isochroneType)
         {
             case "time":
@@ -89,30 +89,30 @@ public class IsochroneService
             throw new RuntimeException("Isochrone Parameter must be greater than 0, not \"" + isochroneParameterValue + "\"");
         }
         
-		StringBuilder sb = new StringBuilder(_restUrlBase);
-		
-		// Add path separator if it is needed.
-		if( !_restUrlBase.endsWith("/"))
-		{
-			sb.append("/");
-		}
-		
-		// Add start of GeoCoding endpoint
-		sb.append("isochrone/v1/mapbox/driving/");
-		
-    	// Add the geographic location to center the isochrome on.
-		sb.append(longitude);
-		sb.append(",");
-		sb.append(latitude);
-		
-		// Add the type and limit at which to draw the isochrome polygon.
-		sb.append("?");
-		sb.append(isochroneParameterName);
-		sb.append("=");
-		sb.append(isochroneParameterValue);
+        StringBuilder sb = new StringBuilder(_restUrlBase);
+        
+        // Add path separator if it is needed.
+        if( !_restUrlBase.endsWith("/"))
+        {
+            sb.append("/");
+        }
+        
+        // Add start of GeoCoding endpoint
+        sb.append("isochrone/v1/mapbox/driving/");
+        
+        // Add the geographic location to center the isochrome on.
+        sb.append(longitude);
+        sb.append(",");
+        sb.append(latitude);
+        
+        // Add the type and limit at which to draw the isochrome polygon.
+        sb.append("?");
+        sb.append(isochroneParameterName);
+        sb.append("=");
+        sb.append(isochroneParameterValue);
         
         String cacheFileName = 
-        		_tarterwareDataDir +
+                _tarterwareDataDir +
                 File.separatorChar +
                 sb.toString()
                 .substring(_restUrlBase.length())
@@ -120,12 +120,12 @@ public class IsochroneService
                 .replace("&", "\\&")
                 .replace("$", "\\$")
                 .replace(";", "\\;");
-		
-		// Add the MapBox API key, or the endpoint will tell us to frig off.
-		sb.append("&access_token=");
-		sb.append(_mapBoxApiKey);
-		
-		Isochrone isochrone = null;
+        
+        // Add the MapBox API key, or the endpoint will tell us to frig off.
+        sb.append("&access_token=");
+        sb.append(_mapBoxApiKey);
+        
+        Isochrone isochrone = null;
         ObjectMapper objectMapper = new ObjectMapper();
         File cacheFile = new File(cacheFileName);
         if(cacheFile.exists())
@@ -161,6 +161,6 @@ public class IsochroneService
             }
         }
         
-		return isochrone;
+        return isochrone;
     }
 }

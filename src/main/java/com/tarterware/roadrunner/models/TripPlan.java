@@ -13,5 +13,5 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class TripPlan
 {
-	List<Address> listStops = new ArrayList<Address>();
+    List<Address> listStops = new ArrayList<Address>();
 }

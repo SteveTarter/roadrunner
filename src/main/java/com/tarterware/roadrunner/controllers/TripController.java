@@ -20,25 +20,25 @@ import com.tarterware.roadrunner.services.GeocodingService;
 @RequestMapping("/api/trips")
 public class TripController
 {
-	@Autowired
-	DirectionsService directionsService;
-	
-	@Autowired
-	GeocodingService geocodingService;
-	
-	@PostMapping("/get-directions")
-	ResponseEntity<Directions> getDirections(@RequestBody TripPlan tripPlan)
-	{
-		Directions directions = null;
-		try
-		{
-			directions = directionsService.getDirectionsForTripPlan(tripPlan);
-		}
-		catch(IllegalArgumentException ex)
-		{
-			return new ResponseEntity<Directions>(HttpStatus.BAD_REQUEST);
-		}
-		
-		return new ResponseEntity<Directions>(directions, HttpStatus.OK);
-	}
+    @Autowired
+    DirectionsService directionsService;
+    
+    @Autowired
+    GeocodingService geocodingService;
+    
+    @PostMapping("/get-directions")
+    ResponseEntity<Directions> getDirections(@RequestBody TripPlan tripPlan)
+    {
+        Directions directions = null;
+        try
+        {
+            directions = directionsService.getDirectionsForTripPlan(tripPlan);
+        }
+        catch(IllegalArgumentException ex)
+        {
+            return new ResponseEntity<Directions>(HttpStatus.BAD_REQUEST);
+        }
+        
+        return new ResponseEntity<Directions>(directions, HttpStatus.OK);
+    }
 }
