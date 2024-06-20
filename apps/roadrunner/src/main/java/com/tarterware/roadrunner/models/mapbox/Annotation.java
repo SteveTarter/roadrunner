@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Annotation
 {
-	List<Double> speed = new ArrayList<Double>();
-	
-	List<Double> distance = new ArrayList<Double>();
+    List<Double> speed = new ArrayList<Double>();
+    
+    List<Double> distance = new ArrayList<Double>();
 }
