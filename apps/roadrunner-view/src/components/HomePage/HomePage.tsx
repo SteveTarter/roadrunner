@@ -25,6 +25,17 @@ export const HomePage = () => {
     const [vehicleStateList, setVehicleStateList] = useState<VehicleState[]>([]);
     const [vehicleDisplayMap, setVehicleDisplayMap] = useState<MapWrapper<string, VehicleDisplay>>();
 
+    const [count, setCount] = useState(0);
+
+    // Vehicle dimensions controls - maybe move to configurables?
+    const MIN_RADIUS = 5.0;     // Smallest vehicle circle radius
+    const MAX_RADIUS = 120.0;   // Largest vehicle circle radius
+    const MIN_ZOOM = 15.0;      // Zoom level at which vehicle size sticks at minimum
+    const MAX_ZOOM = 22.0;      // Zoom level at which vehicle size sticks at maximum
+
+    // Millisecond duration between frame redraws
+    const MS_FRAME_TIME = 500;
+
     useEffect(() => {
         if (token) {
             return;
@@ -73,23 +84,29 @@ export const HomePage = () => {
                     setIsDataLoaded(true);
                     data.map((vehicleState: VehicleState) => {
                         if (!vehicleDisplayMap?.get(vehicleState.id)) {
-                            let vehicleDisplay = new VehicleDisplay(circleRadius, false);
+                            let vehicleDisplay = new VehicleDisplay(circleRadius, false, false);
                             vehicleDisplayMap?.set(vehicleState.id, vehicleDisplay);
                         }
                         return vehicleState;
                     })
+                })
+                .catch(error => {
+                    //console.log(`Error caught during fetch in fetchVehicleStateList: ${error.message}`);
+                    setIsDataLoaded(false);
+                    return <></>;
                 });
-
         }
         catch (error: any) {
             console.log(`Error caught in fetchVehicleStateList: ${error.message}`);
+            setIsDataLoaded(false);
         }
     }
 
     function hideAllRoutes() {
         vehicleStateList.forEach((vehicleState) => {
             let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
-            if(vehicleDisplay) {
+            if (vehicleDisplay) {
+                vehicleDisplay.popupVisible = false;
                 vehicleDisplay.routeVisible = false;
             }
         })
@@ -98,17 +115,14 @@ export const HomePage = () => {
     function showAllRoutes() {
         vehicleStateList.forEach((vehicleState) => {
             let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
-            if(vehicleDisplay) {
+            if (vehicleDisplay) {
+                vehicleDisplay.popupVisible = true;
                 vehicleDisplay.routeVisible = true;
             }
         })
     }
 
     function onZoom(viewStateChangeEvent: { viewState: any; }) {
-        let MIN_RADIUS = 5.0;
-        let MAX_RADIUS = 120.0;
-        let MIN_ZOOM = 15.0;
-        let MAX_ZOOM = 22.0;
         let viewState = viewStateChangeEvent.viewState;
         let currentZoom = viewState.zoom;
         let radius = MIN_RADIUS;
@@ -151,15 +165,24 @@ export const HomePage = () => {
         })
         if (bestVehicle) {
             bestVehicle.routeVisible = !bestVehicle.routeVisible;
+            bestVehicle.popupVisible = !bestVehicle.popupVisible;
         }
     }
 
     useEffect(() => {
-        const animation = window.requestAnimationFrame(() =>
-            fetchVehicleStateList()
-        );
-        return () => window.cancelAnimationFrame(animation);
-    });
+        const timer = setTimeout(() => {
+            try {
+                fetchVehicleStateList();
+                setCount(count + 1);    // Update count to trigger effect again
+            }
+            catch (error: any) {
+                console.log(`Error caught in fetchVehicleStateList: ${error.message}`);
+                setIsDataLoaded(false);
+            }
+        }, MS_FRAME_TIME)
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line        
+    }, [count]);
 
     return (
         <div className="body row scroll-y">

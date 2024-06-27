@@ -1,19 +1,22 @@
-import { Layer, Source } from "react-map-gl";
+import { Layer, Popup, Source } from "react-map-gl";
 import type { LayerProps } from "react-map-gl";
 import type { Feature, FeatureCollection } from "geojson";
 import { useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { VehicleDisplay } from "../../models/VehicleDisplay";
 import { VehicleState } from "../../models/VehicleState";
+import { Card } from "react-bootstrap";
 
 export const VehicleIcon: React.FC<{
-    vehicleState: VehicleState, 
+    vehicleState: VehicleState,
     vehicleDisplay: VehicleDisplay
 }> = (props) => {
     const { getAccessTokenSilently } = useAuth0();
 
     const [token, setToken] = useState("");
     const [directionsGeometry, setDirectionsGeometry] = useState([]);
+
+    const MPS_TO_MPH = 2.236936;
 
     useEffect(() => {
         if (token) {
@@ -95,7 +98,8 @@ export const VehicleIcon: React.FC<{
             type: 'line',
             paint: {
                 'line-width': circleRadius / 2.0,
-                'line-color': `${colorCode}`
+                'line-color': `${colorCode}`,
+                'line-opacity': 0.5
             }
         };
     }
@@ -118,19 +122,30 @@ export const VehicleIcon: React.FC<{
     let lineData = getLineData(props.vehicleState.id, directionsGeometry);
     let lineLayer = getLineLayer(props.vehicleState.id, props.vehicleState.colorCode, props.vehicleDisplay.circleRadius);
     let lineVisible = props.vehicleDisplay.routeVisible;
+    let popupVisible = props.vehicleDisplay.popupVisible;
 
     return (
         <>
             <Source type='geojson' data={pointData}>
                 <Layer {...pointLayer} />
             </Source>
-            {directionsGeometry && lineVisible ?
+            {directionsGeometry && lineVisible && (
                 <Source type='geojson' data={lineData}>
                     <Layer {...lineLayer} />
                 </Source>
-                :
-                <></>
-            }
+            )}
+            {popupVisible && (
+                <Popup
+                    longitude={props.vehicleState.degLongitude}
+                    latitude={props.vehicleState.degLatitude}
+                    anchor="bottom-left">
+                    <Card.Body>
+                        <Card.Text>
+                        Speed: {(Math.round(MPS_TO_MPH * props.vehicleState.metersPerSecond * 10) / 10).toFixed(1)} MPH
+                        </Card.Text>
+                  </Card.Body>
+                </Popup>
+            )}
         </>
     );
 }
