@@ -10,7 +10,7 @@ This is a companion project of Roadrunner.
 
 Here's an example of a run of a "criss-cross" pattern of 36 vehicles, starting at bearings spaced 10 degrees, centered around the Fort Worth convention center:
 
-![Roadrunner View example](./Resources/img/RoadrunnerViewer-2024-06-17.png)
+![Roadrunner View example](./Resources/img/RoadrunnerViewer-2024-06-27.png)
 
 
 ## Setup environment

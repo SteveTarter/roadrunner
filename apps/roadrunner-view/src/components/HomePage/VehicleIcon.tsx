@@ -1,19 +1,22 @@
-import { VehicleState } from "../../models/VehicleState";
-import { Layer, Source, useMap } from "react-map-gl";
+import { Layer, Popup, Source } from "react-map-gl";
 import type { LayerProps } from "react-map-gl";
 import type { Feature, FeatureCollection } from "geojson";
 import { useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
+import { VehicleDisplay } from "../../models/VehicleDisplay";
+import { VehicleState } from "../../models/VehicleState";
+import { Card } from "react-bootstrap";
 
 export const VehicleIcon: React.FC<{
-    vehicleState: VehicleState, circleRadius: number
+    vehicleState: VehicleState,
+    vehicleDisplay: VehicleDisplay
 }> = (props) => {
     const { getAccessTokenSilently } = useAuth0();
-    const { current: map } = useMap();
 
     const [token, setToken] = useState("");
-    const [lineVisible, setLineVisible] = useState(false);
     const [directionsGeometry, setDirectionsGeometry] = useState([]);
+
+    const MPS_TO_MPH = 2.236936;
 
     useEffect(() => {
         if (token) {
@@ -95,7 +98,8 @@ export const VehicleIcon: React.FC<{
             type: 'line',
             paint: {
                 'line-width': circleRadius / 2.0,
-                'line-color': `${colorCode}`
+                'line-color': `${colorCode}`,
+                'line-opacity': 0.5
             }
         };
     }
@@ -114,38 +118,34 @@ export const VehicleIcon: React.FC<{
     }
 
     let pointData = getVehiclePoint(props.vehicleState.degLatitude, props.vehicleState.degLongitude);
-    let pointLayer = getVehicleLayer(props.vehicleState.id, props.vehicleState.colorCode, props.circleRadius);
+    let pointLayer = getVehicleLayer(props.vehicleState.id, props.vehicleState.colorCode, props.vehicleDisplay.circleRadius);
     let lineData = getLineData(props.vehicleState.id, directionsGeometry);
-    let lineLayer = getLineLayer(props.vehicleState.id, props.vehicleState.colorCode, props.circleRadius);
-
-    // Toggle the route visibility if user clicks on the vehicle. 
-    map?.on('click', (event) => {
-        // Determine the screen position of the vehicle
-        let point = map.project({ lng: props.vehicleState.degLongitude, lat: props.vehicleState.degLatitude });
-
-        // Calculate the distance of the click from the vehicle
-        let xDelta = point.x - event.point.x;
-        let yDelta = point.y - event.point.y;
-        let distance = Math.sqrt(xDelta * xDelta + yDelta * yDelta);
-
-        // If the distance is less than 25, then toggle visibility
-        if (distance < 25.0) {
-            setLineVisible(!lineVisible);
-        }
-    })
+    let lineLayer = getLineLayer(props.vehicleState.id, props.vehicleState.colorCode, props.vehicleDisplay.circleRadius);
+    let lineVisible = props.vehicleDisplay.routeVisible;
+    let popupVisible = props.vehicleDisplay.popupVisible;
 
     return (
         <>
             <Source type='geojson' data={pointData}>
                 <Layer {...pointLayer} />
             </Source>
-            {directionsGeometry && lineVisible ?
+            {directionsGeometry && lineVisible && (
                 <Source type='geojson' data={lineData}>
                     <Layer {...lineLayer} />
                 </Source>
-                :
-                <></>
-            }
+            )}
+            {popupVisible && (
+                <Popup
+                    longitude={props.vehicleState.degLongitude}
+                    latitude={props.vehicleState.degLatitude}
+                    anchor="bottom-left">
+                    <Card.Body>
+                        <Card.Text>
+                        Speed: {(Math.round(MPS_TO_MPH * props.vehicleState.metersPerSecond * 10) / 10).toFixed(1)} MPH
+                        </Card.Text>
+                  </Card.Body>
+                </Popup>
+            )}
         </>
     );
 }
