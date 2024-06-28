@@ -71,6 +71,9 @@ public class Vehicle
     double mssAcceleration;
     
     @Getter
+    double degBearing;
+    
+    @Getter
     String colorCode;
     
     @Getter
@@ -83,7 +86,8 @@ public class Vehicle
     private CoordinateTransform utmToWgs84Coordinatetransformer;
     private LengthIndexedLine lengthIndexedLine;
     private SpatialIndex spatialIndex;
-    
+    private ProjCoordinate lastProjGeoPoint;
+
     private static final Logger logger = LoggerFactory.getLogger(Vehicle.class);
 
     public Vehicle(DirectionsService directionsService)
@@ -225,6 +229,12 @@ public class Vehicle
         ProjCoordinate projGeoPoint = new ProjCoordinate();
         utmToWgs84Coordinatetransformer.transform(projUtmPoint, projGeoPoint);
         
+        if(lastProjGeoPoint != null)
+        {
+            degBearing = _getBearingBetween(lastProjGeoPoint, projGeoPoint);
+        }
+        lastProjGeoPoint = projGeoPoint;
+        
         positionLimited = false;
         positionValid = true;
         degLatitude = projGeoPoint.y;
@@ -232,6 +242,19 @@ public class Vehicle
         this.metersOffset = metersOffset;
         
         _determineDesiredSpeed();
+    }
+    
+    private double _getBearingBetween(ProjCoordinate projGeoPoint1, ProjCoordinate projGeoPoint2)
+    {
+        double longitude1 = projGeoPoint1.x;
+        double longitude2 = projGeoPoint2.x;
+        double latitude1 = Math.toRadians(projGeoPoint1.y);
+        double latitude2 = Math.toRadians(projGeoPoint2.y);
+        double longDiff = Math.toRadians(longitude2 - longitude1);
+        double y = Math.sin(longDiff) * Math.cos(latitude2);
+        double x = Math.cos(latitude1) * Math.sin(latitude2) - Math.sin(latitude1) * Math.cos(latitude2) * Math.cos(longDiff);
+
+        return (Math.toDegrees(Math.atan2(y, x)) + 360) % 360;
     }
     
     private void _determineDesiredSpeed()
@@ -284,7 +307,7 @@ public class Vehicle
                     if(metersPerSecond > metersPerSecondDesired)
                     {
                         metersPerSecond = metersPerSecondDesired;
-                        logger.info("Accelerated to desired speed of " + metersPerSecond + " meters per second reached.");
+                        logger.info("Vehicle " + id + " accelerated to " + metersPerSecond + " meters per second.");
                     }
                 }
                 else
@@ -293,7 +316,7 @@ public class Vehicle
                     if(metersPerSecond < metersPerSecondDesired)
                     {
                         metersPerSecond = metersPerSecondDesired;
-                        logger.info("Slowed to desired speed of " + metersPerSecond + " meters per second reached.");
+                        logger.info("Vehicle " + id + " slowed to " + metersPerSecond + " meters per second.");
                     }
                 }
             }

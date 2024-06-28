@@ -30,5 +30,7 @@ public class VehicleState
     
     double mssAcceleration;
     
+    double degBearing;
+    
     String colorCode;
 }
