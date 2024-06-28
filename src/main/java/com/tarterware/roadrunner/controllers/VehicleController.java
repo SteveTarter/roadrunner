@@ -162,6 +162,7 @@ public class VehicleController
         vehicleState.setMssAcceleration(vehicle.getMssAcceleration());
         vehicleState.setPositionLimited(vehicle.isPositionLimited());
         vehicleState.setPositionValid(vehicle.isPositionValid());
+        vehicleState.setDegBearing(vehicle.getDegBearing());
         vehicleState.setColorCode(vehicle.getColorCode());
         
         return vehicleState;
