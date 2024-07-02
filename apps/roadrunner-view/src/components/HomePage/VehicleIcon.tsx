@@ -1,6 +1,6 @@
-import { Layer, Popup, Source } from "react-map-gl";
+import { Layer, Marker, Popup, Source } from "react-map-gl";
 import type { LayerProps } from "react-map-gl";
-import type { Feature, FeatureCollection } from "geojson";
+import type { Feature } from "geojson";
 import { useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { VehicleDisplay } from "../../models/VehicleDisplay";
@@ -69,29 +69,6 @@ export const VehicleIcon: React.FC<{
         fetchVehicleDirections();
     }, [props.vehicleState.id, token, getAccessTokenSilently]);
 
-    function getVehicleLayer(id: string, colorCode: string, circleRadius: number): LayerProps {
-        return {
-            id: `point-${id}`,
-            type: 'circle',
-            paint: {
-                'circle-radius': circleRadius,
-                'circle-color': `${colorCode}`
-            }
-        };
-    }
-
-    function getVehiclePoint(latitude: number, longitude: number): FeatureCollection {
-        return {
-            type: 'FeatureCollection',
-            features: [
-                {
-                    type: 'Feature', geometry: { type: 'Point', coordinates: [longitude, latitude] },
-                    properties: null
-                }
-            ]
-        };
-    }
-
     function getLineLayer(id: string, colorCode: string, circleRadius: number): LayerProps {
         return {
             id: `line-${id}`,
@@ -117,18 +94,22 @@ export const VehicleIcon: React.FC<{
         };
     }
 
-    let pointData = getVehiclePoint(props.vehicleState.degLatitude, props.vehicleState.degLongitude);
-    let pointLayer = getVehicleLayer(props.vehicleState.id, props.vehicleState.colorCode, props.vehicleDisplay.circleRadius);
     let lineData = getLineData(props.vehicleState.id, directionsGeometry);
     let lineLayer = getLineLayer(props.vehicleState.id, props.vehicleState.colorCode, props.vehicleDisplay.circleRadius);
     let lineVisible = props.vehicleDisplay.routeVisible;
     let popupVisible = props.vehicleDisplay.popupVisible;
+    let pxSize = Math.round(2.5 * props.vehicleDisplay.circleRadius) + "px";
 
     return (
         <>
-            <Source type='geojson' data={pointData}>
-                <Layer {...pointLayer} />
-            </Source>
+            <Marker key={`point-{id}`}
+              longitude={props.vehicleState.degLongitude}
+              latitude={props.vehicleState.degLatitude}
+              rotation={(props.vehicleState.degBearing + 180.0) % 360}>
+                <svg id="triangle" viewBox="0 0 100 100" height={pxSize}>
+                    <polygon points="0 0 50 20 100 0 50 100" fill={props.vehicleState.colorCode}/>
+                </svg>
+            </Marker>
             {directionsGeometry && lineVisible && (
                 <Source type='geojson' data={lineData}>
                     <Layer {...lineLayer} />
@@ -141,7 +122,8 @@ export const VehicleIcon: React.FC<{
                     anchor="bottom-left">
                     <Card.Body>
                         <Card.Text>
-                        Speed: {(Math.round(MPS_TO_MPH * props.vehicleState.metersPerSecond * 10) / 10).toFixed(1)} MPH
+                        Speed: {(Math.round(MPS_TO_MPH * props.vehicleState.metersPerSecond * 10) / 10).toFixed(1)} MPH<br/>
+                        Bearing: {(Math.round(props.vehicleState.degBearing * 10) / 10).toFixed(1)}&deg; 
                         </Card.Text>
                   </Card.Body>
                 </Popup>
