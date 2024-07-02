@@ -229,7 +229,8 @@ public class Vehicle
         ProjCoordinate projGeoPoint = new ProjCoordinate();
         utmToWgs84Coordinatetransformer.transform(projUtmPoint, projGeoPoint);
         
-        if(lastProjGeoPoint != null)
+        if((lastProjGeoPoint != null) && 
+           !((projGeoPoint.x == lastProjGeoPoint.x) && (projGeoPoint.y == lastProjGeoPoint.y)))
         {
             degBearing = _getBearingBetween(lastProjGeoPoint, projGeoPoint);
         }
