@@ -106,7 +106,6 @@ export const HomePage = () => {
         vehicleStateList.forEach((vehicleState) => {
             let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
             if (vehicleDisplay) {
-                vehicleDisplay.popupVisible = false;
                 vehicleDisplay.routeVisible = false;
             }
         })
@@ -116,10 +115,37 @@ export const HomePage = () => {
         vehicleStateList.forEach((vehicleState) => {
             let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
             if (vehicleDisplay) {
-                vehicleDisplay.popupVisible = true;
                 vehicleDisplay.routeVisible = true;
             }
         })
+    }
+
+    function fitAllOnScreen() {
+        if (!isDataLoaded) {
+            return;
+        }
+
+        let minLongitude = 360.0;
+        let minLatitude = 360.0;
+        let maxLongitude = -360.0;
+        let maxLatitude = -360.0;
+        vehicleStateList.forEach((vehicleState) => {
+            if (vehicleState.degLatitude < minLatitude) {
+                minLatitude = vehicleState.degLatitude;
+            }
+            if (vehicleState.degLongitude < minLongitude) {
+                minLongitude = vehicleState.degLongitude;
+            }
+            if (vehicleState.degLatitude > maxLatitude) {
+                maxLatitude = vehicleState.degLatitude;
+            }
+            if (vehicleState.degLongitude > maxLongitude) {
+                maxLongitude = vehicleState.degLongitude;
+            }
+        })
+
+        
+        homePageMap?.fitBounds([[minLongitude, minLatitude], [maxLongitude, maxLatitude]]);
     }
 
     function onZoom(viewStateChangeEvent: { viewState: any; }) {
@@ -205,6 +231,7 @@ export const HomePage = () => {
                             vehicleStateList={vehicleStateList}
                             hideAllRoutes={hideAllRoutes}
                             showAllRoutes={showAllRoutes}
+                            fitAllOnScreen={fitAllOnScreen}
                         />
                         {vehicleStateList && (vehicleStateList.length > 0) && (
                             // eslint-disable-next-line
