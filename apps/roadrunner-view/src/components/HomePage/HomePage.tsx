@@ -17,19 +17,25 @@ export const HomePage = () => {
     const [token, setToken] = useState("");
 
     const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN!;
-    const mapboxMapStyle = process.env.REACT_APP_MAPBOX_MAP_STYLE!;
 
-    const [circleRadius, setCircleRadius] = useState(5);
+    const [vehicleSize, setVehicleSize] = useState(5);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+
     const [vehicleStateList, setVehicleStateList] = useState<VehicleState[]>([]);
     const [vehicleDisplayMap, setVehicleDisplayMap] = useState<MapWrapper<string, VehicleDisplay>>();
+
+    // Map styles
+    const MAP_STYLE_STREET = "mapbox://styles/mapbox/streets-v12";
+    const MAP_STYLE_SATELLITE = "mapbox://styles/mapbox/satellite-streets-v12";
+    const [mapStyle, setMapStyle] = useState(MAP_STYLE_STREET);
 
     const [count, setCount] = useState(0);
 
     // Vehicle dimensions controls - maybe move to configurables?
-    const MIN_RADIUS = 5.0;     // Smallest vehicle circle radius
-    const MAX_RADIUS = 120.0;   // Largest vehicle circle radius
+    const MIN_SIZE = 5.0;     // Smallest vehicle size
+    const MAX_SIZE = 120.0;   // Largest vehicle size
     const MIN_ZOOM = 15.0;      // Zoom level at which vehicle size sticks at minimum
     const MAX_ZOOM = 22.0;      // Zoom level at which vehicle size sticks at maximum
 
@@ -84,14 +90,14 @@ export const HomePage = () => {
                     setIsDataLoaded(true);
                     data.map((vehicleState: VehicleState) => {
                         if (!vehicleDisplayMap?.get(vehicleState.id)) {
-                            let vehicleDisplay = new VehicleDisplay(circleRadius, false, false);
+                            let vehicleDisplay = new VehicleDisplay(vehicleSize, false, false);
                             vehicleDisplayMap?.set(vehicleState.id, vehicleDisplay);
                         }
                         return vehicleState;
                     })
                 })
                 .catch(error => {
-                    //console.log(`Error caught during fetch in fetchVehicleStateList: ${error.message}`);
+                    console.log(`Error caught during fetch in fetchVehicleStateList: ${error.message}`);
                     setIsDataLoaded(false);
                     return <></>;
                 });
@@ -125,6 +131,10 @@ export const HomePage = () => {
             return;
         }
 
+        if (vehicleStateList.length === 0) {
+            return;
+        }
+
         let minLongitude = 360.0;
         let minLatitude = 360.0;
         let maxLongitude = -360.0;
@@ -143,34 +153,58 @@ export const HomePage = () => {
                 maxLongitude = vehicleState.degLongitude;
             }
         })
-
+        
+        // Expand size by 5% each way;
+        let deltaLongitude = maxLongitude - minLongitude;
+        let deltaLatitude = maxLatitude - minLatitude;
+        minLongitude -= (0.05 * deltaLongitude);
+        maxLongitude += (0.05 * deltaLongitude);
+        minLatitude -= (0.05 * deltaLatitude);
+        maxLatitude += (0.05 * deltaLatitude);
         
         homePageMap?.fitBounds([[minLongitude, minLatitude], [maxLongitude, maxLatitude]]);
     }
 
+    function toggleMapStyle() {
+        setIsTransitioning(true);
+        // console.log("Transition started");
+        if (mapStyle === MAP_STYLE_STREET) {
+            setMapStyle(MAP_STYLE_SATELLITE);
+            homePageMap?.getMap().setFog({});
+    }
+        else {
+            setMapStyle(MAP_STYLE_STREET);
+        }
+        setTimeout(() => {
+            // console.log("Transition ended");
+            setIsTransitioning(false);
+          }, 500);
+    }
+
     function onZoom(viewStateChangeEvent: { viewState: any; }) {
+        // console.log("onZoom()");
         let viewState = viewStateChangeEvent.viewState;
         let currentZoom = viewState.zoom;
-        let radius = MIN_RADIUS;
+        let size = MIN_SIZE;
         if (currentZoom < MIN_ZOOM) {
-            radius = MIN_RADIUS;
+            size = MIN_SIZE;
         }
         else if (currentZoom > MAX_ZOOM) {
-            radius = MAX_RADIUS;
+            size = MAX_SIZE;
         }
         else {
-            radius = (MAX_RADIUS * Math.pow((2.0 / 3.0), (MAX_ZOOM - currentZoom)));
+            size = (MAX_SIZE * Math.pow((2.0 / 3.0), (MAX_ZOOM - currentZoom)));
         }
 
-        if (radius < 0) {
-            radius = MIN_RADIUS;
+        if (size < 0) {
+            size = MIN_SIZE;
         }
 
-        // console.log(`Zoom is ${currentZoom}; Setting circle radius to ${radius}`)
-        setCircleRadius(radius);
+        setVehicleSize(size);
     }
 
     function onClick(event: MapLayerMouseEvent) {
+        console.log("onClick()");
         let bestVehicle: VehicleDisplay | undefined = {} as VehicleDisplay;
         let bestDistance = 100;
         vehicleStateList.forEach((vehicleState) => {
@@ -195,6 +229,11 @@ export const HomePage = () => {
         }
     }
 
+    function onLoad() {
+        setIsMapLoaded(true);
+        console.log("onLoad()");
+    }
+
     useEffect(() => {
         const timer = setTimeout(() => {
             try {
@@ -214,9 +253,10 @@ export const HomePage = () => {
         <div className="body row scroll-y">
             <Map
                 id="homePageMap"
-                mapStyle={mapboxMapStyle}
+                mapStyle={mapStyle}
                 mapboxAccessToken={mapboxToken}
-                onLoad={() => setIsMapLoaded(true)}
+                onLoad={() => onLoad()}
+                fog={{}}
                 initialViewState={{
                     longitude: -97.5,
                     latitude: 32.75,
@@ -225,20 +265,21 @@ export const HomePage = () => {
                 onClick={(event) => onClick(event)}
                 onZoom={(viewStateChangeEvent) => onZoom(viewStateChangeEvent)}
             >
-                {isDataLoaded ?
+                {(isDataLoaded && !isTransitioning) ?
                     <>
                         <ControlPanel
                             vehicleStateList={vehicleStateList}
                             hideAllRoutes={hideAllRoutes}
                             showAllRoutes={showAllRoutes}
                             fitAllOnScreen={fitAllOnScreen}
+                            toggleMapStyle={toggleMapStyle}
                         />
                         {vehicleStateList && (vehicleStateList.length > 0) && (
                             // eslint-disable-next-line
                             vehicleStateList.map((vehicleState) => {
                                 let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
                                 if (vehicleDisplay) {
-                                    vehicleDisplay.circleRadius = circleRadius;
+                                    vehicleDisplay.size = vehicleSize;
                                     return <VehicleIcon
                                         key={vehicleState.id}
                                         vehicleState={vehicleState}
