@@ -1,14 +1,14 @@
 export class VehicleDisplay {
-    circleRadius: number;
+    size: number;
     popupVisible: boolean;
     routeVisible: boolean;
 
     constructor(
-        circleRadius: number,
+        size: number,
         popupVisible: boolean,
         routeVisible: boolean
     ) {
-        this.circleRadius = circleRadius;
+        this.size = size;
         this.popupVisible = popupVisible;
         this.routeVisible = routeVisible;
     }

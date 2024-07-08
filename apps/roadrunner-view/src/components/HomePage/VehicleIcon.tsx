@@ -69,12 +69,12 @@ export const VehicleIcon: React.FC<{
         fetchVehicleDirections();
     }, [props.vehicleState.id, token, getAccessTokenSilently]);
 
-    function getLineLayer(id: string, colorCode: string, circleRadius: number): LayerProps {
+    function getLineLayer(id: string, colorCode: string, vehicleSize: number): LayerProps {
         return {
             id: `line-${id}`,
             type: 'line',
             paint: {
-                'line-width': circleRadius / 2.0,
+                'line-width': vehicleSize / 2.0,
                 'line-color': `${colorCode}`,
                 'line-opacity': 0.5
             }
@@ -95,10 +95,10 @@ export const VehicleIcon: React.FC<{
     }
 
     let lineData = getLineData(props.vehicleState.id, directionsGeometry);
-    let lineLayer = getLineLayer(props.vehicleState.id, props.vehicleState.colorCode, props.vehicleDisplay.circleRadius);
+    let lineLayer = getLineLayer(props.vehicleState.id, props.vehicleState.colorCode, props.vehicleDisplay.size);
     let lineVisible = props.vehicleDisplay.routeVisible;
     let popupVisible = props.vehicleDisplay.popupVisible;
-    let pxSize = Math.round(2.5 * props.vehicleDisplay.circleRadius) + "px";
+    let pxSize = Math.round(2.5 * props.vehicleDisplay.size) + "px";
 
     return (
         <>
