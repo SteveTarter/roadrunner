@@ -74,6 +74,12 @@ public class Vehicle
     double degBearing;
     
     @Getter
+    double degBearingDesired;
+    
+    @Getter
+    double degsPerSecondTurn;
+    
+    @Getter
     String colorCode;
     
     @Getter
@@ -97,6 +103,7 @@ public class Vehicle
         this.id = UUID.randomUUID();
         this.directionsService = directionsService;
         this.mssAcceleration = 2.0;
+        this.degsPerSecondTurn = 120.0;
         
         // to get rainbow, pastel colors
         Random random = new Random();
@@ -232,7 +239,7 @@ public class Vehicle
         if((lastProjGeoPoint != null) && 
            !((projGeoPoint.x == lastProjGeoPoint.x) && (projGeoPoint.y == lastProjGeoPoint.y)))
         {
-            degBearing = _getBearingBetween(lastProjGeoPoint, projGeoPoint);
+            degBearingDesired = _getBearingBetween(lastProjGeoPoint, projGeoPoint);
         }
         lastProjGeoPoint = projGeoPoint;
         
@@ -325,6 +332,34 @@ public class Vehicle
             // Determine how far the vehicle should have traveled in the elapsed time.
             double metersTraveled = (msElapsed / 1000.0) * metersPerSecond;
             setMetersOffset(metersOffset + metersTraveled);
+            
+            // If the vehicle bearing isn't at the desired bearing, adjust
+            // the bearing with a rate limiter.
+            if(degBearing != degBearingDesired)
+            {
+                if((degBearingDesired - degBearing) > 180.0) {
+                    degBearing += 360.0;
+                }
+                
+                if(degBearing < degBearingDesired)
+                {
+                    degBearing += (msElapsed / 1000.0) * degsPerSecondTurn;
+                    if(degBearing > degBearingDesired)
+                    {
+                        degBearing = degBearingDesired;
+                    }
+                }
+                else
+                {
+                    degBearing -= (msElapsed / 1000.0) * degsPerSecondTurn;
+                    if(degBearing < degBearingDesired)
+                    {
+                        degBearing = degBearingDesired;
+                    }
+                }
+                
+                degBearing %= 360.0;
+            }
         }
         
         lastCalculationInstant = now;
