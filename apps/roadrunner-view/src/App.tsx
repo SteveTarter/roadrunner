@@ -1,4 +1,5 @@
 import React from 'react';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import './App.css';
 import { Route, Routes } from 'react-router-dom';
 import { HomePage } from './components/HomePage/HomePage';
@@ -7,6 +8,7 @@ import { SpinnerLoading } from './components/Utils/SpinnerLoading';
 import { AuthenticationGuard } from './AuthenticationGuard';
 import { AppNavBar } from './components/NavBar/AppNavBar';
 import { ProfilePage } from './components/ProfilePage/ProfilePage';
+import { DriverViewPage } from './components/DriverViewPage/DriverViewPage';
 
 export const App = () => {
   const { isLoading } = useAuth0();
@@ -34,6 +36,10 @@ export const App = () => {
           <Route
             path="/profile"
             element={<AuthenticationGuard component={ProfilePage} />}
+          />
+          <Route
+            path='/driver-view/:vehicleId'
+            element={<AuthenticationGuard component={DriverViewPage} />}
           />
         </Routes>
       </div>

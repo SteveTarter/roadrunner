@@ -155,8 +155,8 @@ export const HomePage = () => {
         })
         
         // Expand size by 5% each way;
-        let deltaLongitude = maxLongitude - minLongitude;
-        let deltaLatitude = maxLatitude - minLatitude;
+        let deltaLongitude = Math.max(0.1, maxLongitude - minLongitude);
+        let deltaLatitude = Math.max(0.1, maxLatitude - minLatitude);
         minLongitude -= (0.05 * deltaLongitude);
         maxLongitude += (0.05 * deltaLongitude);
         minLatitude -= (0.05 * deltaLatitude);
