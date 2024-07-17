@@ -22,7 +22,8 @@ export const DriverViewPage = () => {
     const [vehicleState, setVehicleState] = useState<VehicleState>();
 
     // Map styles
-    const MAP_STYLE_LITE = "mapbox://styles/mapbox/light-v11";
+    // const MAP_STYLE_LITE = "mapbox://styles/mapbox/light-v11";
+    const MAP_STYLE_SATELLITE = "mapbox://styles/mapbox/satellite-streets-v12";
 
     const [count, setCount] = useState(0);
 
@@ -68,7 +69,8 @@ export const DriverViewPage = () => {
                     setVehicleState(data);
                     setIsDataLoaded(true);
                     driverViewPageMap?.setBearing(data.degBearing);
-                    driverViewPageMap?.setCenter({ lng: data.degLongitude, lat: data.degLatitude });
+                    let shiftedPoint = getCoordinateAtBearingAndRange(data.degLatitude, data.degLongitude, data.degBearing, 35.0);
+                    driverViewPageMap?.setCenter(shiftedPoint);
                     return data;
                 })
                 .catch(error => {
@@ -81,6 +83,22 @@ export const DriverViewPage = () => {
             console.log(`Error caught in fetchVehicleState: ${error.message}`);
             setIsDataLoaded(false);
         }
+    }
+
+    function getCoordinateAtBearingAndRange(degLatitude: number, degLongitude: number, degBearing: number, mRange: number) {
+        const KM_EARTH_RADIUS = 6378.14;
+
+        let radLatitude = degLatitude / 180.0 * Math.PI;
+        let radLongitude = degLongitude / 180.0 * Math.PI;
+        let radBearing = degBearing / 180.0 * Math.PI;
+        let kmRange = mRange / 1000.0;
+
+        let radLatitudeDest = Math.asin(Math.sin(radLatitude)*Math.cos(kmRange/KM_EARTH_RADIUS) + Math.cos(radLatitude)*Math.sin(kmRange/KM_EARTH_RADIUS)*Math.cos(radBearing));
+        let radLongitudeDest = radLongitude + Math.atan2(Math.sin(radBearing)*Math.sin(kmRange/KM_EARTH_RADIUS)*Math.cos(radLatitude),Math.cos(kmRange/KM_EARTH_RADIUS)-Math.sin(radLatitude)*Math.sin(radLatitude));
+        let degLatitudeDest = radLatitudeDest / Math.PI * 180.0;
+        let degLongitudeDest = radLongitudeDest / Math.PI * 180.0;
+
+        return {lng: degLongitudeDest, lat: degLatitudeDest};
     }
 
     useEffect(() => {
@@ -150,7 +168,7 @@ export const DriverViewPage = () => {
                 <>
                     <Map
                         id="driverViewPageMap"
-                        mapStyle={MAP_STYLE_LITE}
+                        mapStyle={MAP_STYLE_SATELLITE}
                         mapboxAccessToken={mapboxToken}
                         fog={{}}
                         initialViewState={{
