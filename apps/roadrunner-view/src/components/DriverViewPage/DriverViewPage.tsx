@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Map, { useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
+import mapboxgl from 'mapbox-gl';
 
 export const DriverViewPage = () => {
     // Get the Vehicle ID from the URL in the window
@@ -49,6 +50,22 @@ export const DriverViewPage = () => {
             });
     }, [token, getAccessTokenSilently]);
 
+    /*
+    function updateCameraPosition(position: mapboxgl.LngLatLike, altitude: number, pitch: number, bearing: number) {
+        const camera = driverViewPageMap?.getMap().getFreeCameraOptions();
+
+        if (camera) {
+            camera.setPitchBearing(pitch, bearing);
+            camera.position = mapboxgl.MercatorCoordinate.fromLngLat(
+                position,
+                altitude
+            );
+
+            driverViewPageMap?.getMap().setFreeCameraOptions(camera);
+        }
+    }
+    */
+
     function fetchVehicleState() {
         if (!token || token.length === 0) {
             return;
@@ -68,9 +85,25 @@ export const DriverViewPage = () => {
                 .then(data => {
                     setVehicleState(data);
                     setIsDataLoaded(true);
+                    /*
+                    let position: mapboxgl.LngLatLike = {lat: data.degLatitude, lng: data.degLongitude};
+                    let altitude: number = 5.0;
+                    let pitch: number = 85.0;
+                    let bearing: number = data.degBearing;
+                    updateCameraPosition(position, altitude, pitch, bearing);
+                    */
                     driverViewPageMap?.setBearing(data.degBearing);
-                    let shiftedPoint = getCoordinateAtBearingAndRange(data.degLatitude, data.degLongitude, data.degBearing, 35.0);
+                    let shiftedPoint = getCoordinateAtBearingAndRange(data.degLatitude, data.degLongitude, data.degBearing, 25.0);
                     driverViewPageMap?.setCenter(shiftedPoint);
+                    let freeCameraOptions = driverViewPageMap?.getMap().getFreeCameraOptions();
+                    if (freeCameraOptions) {
+                        const position = { lng: data.degLongitude, lat: data.degLatitude };
+                        const altitude = 3.0;
+                        let newPosition = mapboxgl.MercatorCoordinate.fromLngLat(position, altitude);
+                        //console.log(`oldPosition = ${freeCameraOptions.position?.x}, ${freeCameraOptions.position?.y}, ${freeCameraOptions.position?.z}\nnewPosition = ${newPosition.x}, ${newPosition.y}, ${newPosition.z}`);
+                        freeCameraOptions.position = newPosition;
+                    }
+
                     return data;
                 })
                 .catch(error => {
@@ -93,12 +126,12 @@ export const DriverViewPage = () => {
         let radBearing = degBearing / 180.0 * Math.PI;
         let kmRange = mRange / 1000.0;
 
-        let radLatitudeDest = Math.asin(Math.sin(radLatitude)*Math.cos(kmRange/KM_EARTH_RADIUS) + Math.cos(radLatitude)*Math.sin(kmRange/KM_EARTH_RADIUS)*Math.cos(radBearing));
-        let radLongitudeDest = radLongitude + Math.atan2(Math.sin(radBearing)*Math.sin(kmRange/KM_EARTH_RADIUS)*Math.cos(radLatitude),Math.cos(kmRange/KM_EARTH_RADIUS)-Math.sin(radLatitude)*Math.sin(radLatitude));
+        let radLatitudeDest = Math.asin(Math.sin(radLatitude) * Math.cos(kmRange / KM_EARTH_RADIUS) + Math.cos(radLatitude) * Math.sin(kmRange / KM_EARTH_RADIUS) * Math.cos(radBearing));
+        let radLongitudeDest = radLongitude + Math.atan2(Math.sin(radBearing) * Math.sin(kmRange / KM_EARTH_RADIUS) * Math.cos(radLatitude), Math.cos(kmRange / KM_EARTH_RADIUS) - Math.sin(radLatitude) * Math.sin(radLatitude));
         let degLatitudeDest = radLatitudeDest / Math.PI * 180.0;
         let degLongitudeDest = radLongitudeDest / Math.PI * 180.0;
 
-        return {lng: degLongitudeDest, lat: degLatitudeDest};
+        return { lng: degLongitudeDest, lat: degLatitudeDest };
     }
 
     useEffect(() => {
@@ -158,6 +191,13 @@ export const DriverViewPage = () => {
                     'fill-extrusion-opacity': 0.8
                 }
             });
+            driverViewPageMap?.getMap().addSource('mapbox-dem', {
+                type: 'raster-dem',
+                url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                tileSize: 512,
+                maxzoom: 14
+            });
+            driverViewPageMap?.getMap().setTerrain({ source: 'mapbox-dem', exaggeration: 1.0 });
         }, MS_LOAD_DELAY_TIME);
         return () => clearTimeout(timer);
     }, [driverViewPageMap]);
@@ -170,7 +210,6 @@ export const DriverViewPage = () => {
                         id="driverViewPageMap"
                         mapStyle={MAP_STYLE_SATELLITE}
                         mapboxAccessToken={mapboxToken}
-                        fog={{}}
                         initialViewState={{
                             zoom: 21,
                             pitch: 85,
