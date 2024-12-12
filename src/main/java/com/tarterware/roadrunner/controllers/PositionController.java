@@ -16,11 +16,9 @@ import org.locationtech.proj4j.ProjCoordinate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tarterware.roadrunner.models.PositionRequest;
@@ -32,8 +30,6 @@ import com.tarterware.roadrunner.models.mapbox.RouteStep;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
-@CrossOrigin(origins =
-{ "http://localhost:3000", "https://roadrunner-view.tarterware.info", "https://roadrunner-view.tarterware.com" })
 @RestController
 @RequestMapping("/api/position")
 public class PositionController
@@ -195,10 +191,5 @@ public class PositionController
         positionResponse.setMetersPerSecond(metersPerSecond);
         
         return new ResponseEntity<PositionResponse>(positionResponse, HttpStatus.OK);
-    }
-    
-    @RequestMapping(method = RequestMethod.OPTIONS)
-    public ResponseEntity<?> handleOptions() {
-        return ResponseEntity.ok().build();
     }
 }
