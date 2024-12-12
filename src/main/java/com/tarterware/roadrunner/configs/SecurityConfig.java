@@ -4,6 +4,7 @@ import java.util.Arrays;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -20,7 +21,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
     @Override
     protected void configure(HttpSecurity security) throws Exception
     {
-        security.httpBasic().and().csrf().disable();
+        security.httpBasic().and().csrf().disable()
+        	.authorizeRequests()
+        	// Allow OPTIONS requests without authentication
+        	.antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+        	// Secure all other endpoints
+        	.anyRequest().authenticated()
+        	.and()
+        	.oauth2ResourceServer().jwt();
     }
 
     @Bean
@@ -32,7 +40,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
             "https://roadrunner-view.tarterware.com"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        configuration.setExposedHeaders(Arrays.asList("Authorization"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
