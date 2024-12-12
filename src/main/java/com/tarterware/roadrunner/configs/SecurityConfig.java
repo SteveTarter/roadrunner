@@ -21,7 +21,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
     @Override
     protected void configure(HttpSecurity security) throws Exception
     {
-        security.httpBasic().and().csrf().disable()
+        security
+            .cors()
+            .and()
+            .csrf().disable()
         	.authorizeRequests()
         	// Allow OPTIONS requests without authentication
         	.antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
