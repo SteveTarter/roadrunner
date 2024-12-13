@@ -51,31 +51,6 @@ resource "kubernetes_namespace" "roadrunner_namespace" {
   }
 }
 
-# Define the secret used to retrieve images from Dockerhub
-resource "kubernetes_secret" "dockerhub_secret" {
-  metadata {
-    name = "dockerhub-secret"
-    namespace = var.roadrunner_namespace
-  }
-
-  type = "kubernetes.io/dockerconfigjson"
-
-  data = {
-    ".dockerconfigjson" = "${data.template_file.docker_config_script.rendered}"
-  }
-}
-
-data "template_file" "docker_config_script" {
-  template = "${file("${path.module}/docker_config.json")}"
-  vars = {
-    docker-username           = "${var.docker_username}"
-    docker-password           = "${var.docker_password}"
-    docker-server             = "${var.docker_server}"
-    docker-email              = "${var.docker_email}"
-    auth                      = base64encode("${var.docker_username}:${var.docker_password}")
-  }
-}
-
 module "roadrunner" {
   source = "./modules/roadrunner"
 

@@ -9,29 +9,6 @@ variable "region" {
   default     = "us-east-1"
 }
 
-variable "docker_username" {
-  description = "Docker username for registry authentication"
-  sensitive   = true
-  type        = string
-}
-
-variable "docker_password" {
-  description = "Docker password for registry authentication"
-  sensitive   = true
-  type        = string
-}
-
-variable "docker_email" {
-  description = "Docker email for registry authentication"
-  sensitive   = true
-  type        = string
-}
-
-variable "docker_server" {
-  description = "Docker server for registry authentication"
-  type        = string
-}
-
 variable "roadrunner_namespace" {
   description = "Namespace for Roadrunner application"
   type        = string

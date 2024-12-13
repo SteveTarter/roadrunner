@@ -24,10 +24,6 @@ resource "kubernetes_deployment" "roadrunner_view_deployment" {
       }
 
       spec {
-        image_pull_secrets {
-          name = "dockerhub-secret"
-        }
-
         container {
           name  = "roadrunner-view"
           image = "tarterware/roadrunner-view:latest"

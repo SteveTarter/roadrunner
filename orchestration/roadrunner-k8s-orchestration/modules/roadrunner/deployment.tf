@@ -24,11 +24,7 @@ resource "kubernetes_deployment" "roadrunner" {
       }
 
       spec {
-        image_pull_secrets {
-          name = "dockerhub-secret"
-        }
-
-        # If installing to EKS, ensure the mile-weaver subdirectory is created
+        # Ensure the mile-weaver subdirectory is created
         init_container {
           name  = "setup-dir"
           image = "busybox:latest"
