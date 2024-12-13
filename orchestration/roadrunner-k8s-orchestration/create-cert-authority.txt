@@ -1,0 +1,19 @@
+# Open shell as superuser
+sudo su
+
+# Create directories to create certificates
+mkdir ca
+cd ca
+mkdir newcerts certs crl private requests
+
+# Set index and initial serial number.  Note the serial number is an even number of digits.
+touch index.txt
+echo '4201' > serial
+
+# Create the certificate authority, and update the CA's registered on this machine.
+openssl genrsa -aes256 -out private/cakey.pem 4096
+openssl req -new -x509 -key /root/ca/private/cakey.pem -out cacert.pem -days 3650 -set_serial 0
+cp -p /root/ca/private/cakey.pem /root/ca/private/tarterware-ca.crt
+cp -p /root/ca/private/tarterware-ca.crt /usr/local/share/ca-certificates
+update-ca-certificates
+

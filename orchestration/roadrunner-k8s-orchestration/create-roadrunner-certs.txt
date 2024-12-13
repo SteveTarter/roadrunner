@@ -1,0 +1,29 @@
+# Create the certs directory that will recieve the certificates
+mkdir -p certs
+
+# Open shell as superuser
+sudo su
+
+export ROADRUNNER_HOME=$PWD
+
+cd /root/ca/requests/
+
+# Create certificate for roadrunner.tarterware.info
+openssl genrsa -aes256 -out roadrunner.tarterware.info.key.pem 2048
+openssl rsa -in roadrunner.tarterware.info.key.pem -out roadrunner.tarterware.info.key
+openssl req -new -sha256 -key roadrunner.tarterware.info.key.pem -reqexts SAN -extensions SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=DNS:roadrunner.tarterware.info")) -out roadrunner.tarterware.info.csr
+openssl x509 -req -days 3650 -CA ../cacert.pem -CAkey ../private/cakey.pem -CAcreateserial -extensions SAN -extfile <(cat /etc/ssl/openssl.cnf <(printf "\n[SAN]\nsubjectAltName=DNS:roadrunner.tarterware.info")) -in roadrunner.tarterware.info.csr -out roadrunner.tarterware.info.pem
+
+# Create certificate for roadrunner-view.tarterware.info
+openssl genrsa -aes256 -out roadrunner-view.tarterware.info.key.pem 2048
+openssl rsa -in roadrunner-view.tarterware.info.key.pem -out roadrunner-view.tarterware.info.key
+openssl req -new -sha256 -key roadrunner-view.tarterware.info.key.pem -reqexts SAN -extensions SAN -config <(cat /etc/ssl/openssl.cnf <(printf "[SAN]\nsubjectAltName=DNS:roadrunner-view.tarterware.info")) -out roadrunner-view.tarterware.info.csr
+openssl x509 -req -days 3650 -CA ../cacert.pem -CAkey ../private/cakey.pem -CAcreateserial -extensions SAN -extfile <(cat /etc/ssl/openssl.cnf <(printf "\n[SAN]\nsubjectAltName=DNS:roadrunner-view.tarterware.info")) -in roadrunner-view.tarterware.info.csr -out roadrunner-view.tarterware.info.pem
+
+# Now, copy them for use by minikube
+cp *.key $ROADRUNNER_HOME/certs/
+cp *.info.pem $ROADRUNNER_HOME/certs/
+# Substitute your user and group below
+chown tarter:tarter $ROADRUNNER_HOME/certs/* 
+
+exit # exit superuser mode
