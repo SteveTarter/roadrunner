@@ -1,6 +1,12 @@
+# This ConfigMap provides configuration properties for the Roadrunner application,
+# enabling connectivity to external services like Mapbox and Auth0, and defining
+# application-specific settings.
+
 resource "kubernetes_config_map" "roadrunner_config" {
   metadata {
     name = "roadrunner-config"
+    # The namespace is dynamically determined from the variable to ensure separation
+    # and organization of resources within the Kubernetes cluster.
     namespace = var.roadrunner_namespace
   }
 

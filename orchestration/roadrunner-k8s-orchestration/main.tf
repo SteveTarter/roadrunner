@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.75.0"
+      version = "~> 5.75.0" # Pinning version to ensure compatibility and avoid breaking changes in future versions
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
@@ -29,23 +29,24 @@ provider "aws" {
 # Configure Helm provider
 provider "helm" {
   kubernetes {
-    config_path = "~/.kube/config" # Path to the kubeconfig file for Minikube
+    config_path = var.kubeconfig_path # Parameterized path for kubeconfig
     config_context = var.cluster_name
   }
 }
 
 provider "kubernetes" {
-  config_path = "~/.kube/config" # Path to the kubeconfig file for Minikube
+  config_path = var.kubeconfig_path # Parameterized path for kubeconfig
   config_context = var.cluster_name
 }
 
 provider "kubectl" {
-  config_path = "~/.kube/config"
+  config_path = var.kubeconfig_path # Parameterized path for kubeconfig
   config_context = var.cluster_name
 }
 
 # Define the namespace to be used for Roadrunner
 resource "kubernetes_namespace" "roadrunner_namespace" {
+  # Creates a dedicated namespace for the Roadrunner application to organize resources and enforce separation within the Kubernetes cluster.
   metadata {
     name = var.roadrunner_namespace
   }
@@ -53,6 +54,8 @@ resource "kubernetes_namespace" "roadrunner_namespace" {
 
 module "roadrunner" {
   source = "./modules/roadrunner"
+
+  # This module sets up the core infrastructure for the Roadrunner application, including networking, IAM roles, and Kubernetes resources.
 
   region                         = var.region
   cluster_name                   = var.cluster_name
@@ -74,6 +77,8 @@ module "roadrunner" {
 
 module "roadrunner_view" {
   source = "./modules/roadrunner_view"
+
+  # This module configures the frontend for the Roadrunner application and relies on the `roadrunner` module to provide backend services and infrastructure. The dependency ensures that the backend is fully set up before the frontend configuration is applied.
 
   roadrunner_namespace                 = var.roadrunner_namespace
   roadrunner_rest_url_base             = var.roadrunner_rest_url_base

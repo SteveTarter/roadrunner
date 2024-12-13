@@ -24,7 +24,8 @@ resource "kubernetes_deployment" "roadrunner" {
       }
 
       spec {
-        # Ensure the mile-weaver subdirectory is created
+        # Ensures that a specific subdirectory exists on the mount point
+        # before the main application container starts.
         init_container {
           name  = "setup-dir"
           image = "busybox:latest"
@@ -45,7 +46,6 @@ resource "kubernetes_deployment" "roadrunner" {
 
           port {
             container_port = 8080
-            protocol       = "TCP"
           }
 
           volume_mount {
@@ -73,6 +73,7 @@ resource "kubernetes_deployment" "roadrunner" {
           }
         }
 
+        # For Minikube: Uses host path for local storage.
         dynamic "volume" {
           for_each = terraform.workspace == "minikube" ? [1] : []
           content {
@@ -85,6 +86,7 @@ resource "kubernetes_deployment" "roadrunner" {
           }
         }
 
+        # For EKS: Uses a Persistent Volume Claim (PVC) backed by EFS.
         dynamic "volume" {
           for_each = terraform.workspace == "eks" ? [1] : []
           content {

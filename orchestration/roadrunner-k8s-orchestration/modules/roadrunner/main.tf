@@ -1,6 +1,6 @@
 module "eks_roadrunner_files_resources" {
   source = "./eks"
-  count  = terraform.workspace == "eks" ? 1 : 0
+  count  = terraform.workspace == "eks" ? 1 : 0 # Only deploys these resources in the EKS workspace
 
   region               = var.region
   cluster_name         = var.cluster_name

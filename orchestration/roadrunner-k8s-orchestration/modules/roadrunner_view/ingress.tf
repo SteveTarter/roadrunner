@@ -2,6 +2,8 @@ resource "kubernetes_ingress_v1" "roadrunner_view_ingress" {
   metadata {
     name = "roadrunner-view-ingress"
     namespace = var.roadrunner_namespace
+    # Configures annotations dynamically based on the environment (Minikube or EKS).
+    # Minikube uses NGINX, while EKS uses an Application Load Balancer (ALB).
     annotations = terraform.workspace == "minikube" ? {
       "kubernetes.io/ingress.class"              = "nginx"
       "kubernetes.io/ingress.allow-http"         = "true"
@@ -17,8 +19,10 @@ resource "kubernetes_ingress_v1" "roadrunner_view_ingress" {
   }
 
   spec {
+    # Sets the ingress class dynamically: NGINX for Minikube, ALB for EKS.
     ingress_class_name = terraform.workspace == "minikube" ? "nginx" : "alb"
 
+    # Defines rules for Minikube environment.
     dynamic "rule" {
       for_each = terraform.workspace == "minikube" ? [true] : []
       content {
@@ -42,6 +46,7 @@ resource "kubernetes_ingress_v1" "roadrunner_view_ingress" {
       }
     }
 
+    # Defines rules for EKS environment.
     dynamic "rule" {
       for_each = terraform.workspace == "eks" ? [true] : []
       content {
@@ -65,6 +70,8 @@ resource "kubernetes_ingress_v1" "roadrunner_view_ingress" {
       }
     }
 
+    # Configures TLS settings dynamically based on the environment.
+    # Minikube uses a local hostname, while EKS uses a public domain.
     tls {
       hosts = terraform.workspace == "minikube" ? ["roadrunner-view.tarterware.info"] : ["roadrunner-view.tarterware.com"]
       secret_name = terraform.workspace == "minikube" ? "roadrunner-view.tarterware.info-tls" : "roadrunner-view.tarterware.com-tls"
