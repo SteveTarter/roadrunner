@@ -1,5 +1,5 @@
 ## Description
-This project provides Terraform scripts and instructions to deploy the Roadrunner application on either an AWS EKS cluster or a Minikube setup.
+This project provides Terraform scripts and instructions to deploy the Roadrunner application on either an AWS EKS cluster or a Minikube setup.  The runtime consists of two applications: a server application [roadrunner](https://github.com/SteveTarter/roadrunner) and a view application [roadrunner-view](https://github.com/SteveTarter/roadrunner-view).
 
 ## Prerequisites
 This project assumes you have a cluster created using resources available at [SteveTarter / eks-with-efs-and-alb](https://github.com/SteveTarter/eks-with-efs-and-alb). The referenced Terraform scripts set up an EKS cluster with the necessary infrastructure. Alternatively, instructions for setting up a compatible Minikube environment are included there.
