@@ -64,6 +64,8 @@ public class VehicleManager
         
         timer.cancel();
         timer = null;
+        
+        vehicleMap.clear();
     }
     
     public boolean isRunning()
