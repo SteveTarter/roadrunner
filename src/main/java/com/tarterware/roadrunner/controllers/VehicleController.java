@@ -140,6 +140,14 @@ public class VehicleController
         return new ResponseEntity<List<VehicleState>>(listVehicleStates, HttpStatus.OK);
     }
     
+    @GetMapping("/reset-server")
+    ResponseEntity<List<VehicleState>> resetServer()
+    {
+    	vehicleManager.shutdown();
+    	
+    	return new ResponseEntity(new ArrayList(), HttpStatus.OK);
+    }
+    
     private VehicleState createVehicleStateFor(UUID vehicleId)
     {
         Vehicle vehicle = vehicleManager.getVehicle(vehicleId);
