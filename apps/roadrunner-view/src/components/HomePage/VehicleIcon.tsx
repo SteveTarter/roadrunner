@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { VehicleDisplay } from "../../models/VehicleDisplay";
 import { VehicleState } from "../../models/VehicleState";
-import { Card } from "react-bootstrap";
+import { Button, Card } from "react-bootstrap";
 
 export const VehicleIcon: React.FC<{
     vehicleState: VehicleState,
@@ -125,6 +125,9 @@ export const VehicleIcon: React.FC<{
                         Speed: {(Math.round(MPS_TO_MPH * props.vehicleState.metersPerSecond * 10) / 10).toFixed(1)} MPH<br/>
                         Bearing: {(Math.round(props.vehicleState.degBearing * 10) / 10).toFixed(1)}&deg; 
                         </Card.Text>
+                        <Button variant="primary" href={`/driver-view/${props.vehicleState.id}`}>
+                            Jump into vehicle
+                        </Button>
                   </Card.Body>
                 </Popup>
             )}
