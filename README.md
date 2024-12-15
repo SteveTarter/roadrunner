@@ -113,3 +113,29 @@ Companion project of the Roadrunner Viewer
 
 </details>
 
+#### Reset server
+
+<details>
+ <summary><code>GET</code> <code><b>/api/vehicle/reset-server</b></code> <code>(Resets vehicle server)</code></summary>
+
+##### Parameters
+
+> | name      |  type     | data type               | description                                                           |
+> |-----------|-----------|-------------------------|-----------------------------------------------------------------------|
+> | None      |  required | object (JSON or YAML)   | N/A  |
+
+
+##### Responses
+
+> | http code     | content-type                      | response                                                            |
+> |---------------|-----------------------------------|---------------------------------------------------------------------|
+> | `201`         | `text/plain;charset=UTF-8`        | `Configuration created successfully`                                |
+> | `405`         | `text/html;charset=utf-8`         | None                                                                |
+
+##### Example cURL
+
+> ```javascript
+>  curl -X GET http://localhost:8080/api/vehicle/reset-server -H "Content-Type: application/json"
+
+</details>
+
