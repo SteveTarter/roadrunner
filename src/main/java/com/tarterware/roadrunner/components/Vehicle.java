@@ -335,33 +335,52 @@ public class Vehicle
             
             // If the vehicle bearing isn't at the desired bearing, adjust
             // the bearing with a rate limiter.
-            if(degBearing != degBearingDesired)
+            degBearing = normalize(degBearing);
+            degBearingDesired = normalize(degBearingDesired);
+            
+            // Compute the shortest angle difference [-180, 180]
+            double degAngleDiff = shortestAngleDifference(degBearing, degBearingDesired);
+
+            if(degAngleDiff != 0.0)
             {
-                if((degBearingDesired - degBearing) > 180.0) {
-                    degBearing += 360.0;
-                }
-                
-                if(degBearing < degBearingDesired)
+            	// Calculate the maximum turn allowed
+            	double degMaxTurn = degsPerSecondTurn * (msElapsed / 1000.0);
+
+                // Determine the new bearing
+                if (Math.abs(degAngleDiff) <= degMaxTurn)
                 {
-                    degBearing += (msElapsed / 1000.0) * degsPerSecondTurn;
-                    if(degBearing > degBearingDesired)
-                    {
-                        degBearing = degBearingDesired;
-                    }
+                    // We can reach the desired bearing within this step
+                    degBearing = degBearingDesired;
                 }
                 else
                 {
-                    degBearing -= (msElapsed / 1000.0) * degsPerSecondTurn;
-                    if(degBearing < degBearingDesired)
-                    {
-                        degBearing = degBearingDesired;
-                    }
+                    // Turn in the appropriate direction
+                    double turnDirection = degAngleDiff > 0 ? 1 : -1;
+                    double newDegBearing = degBearing + turnDirection * degMaxTurn;
+                    degBearing = normalize(newDegBearing);
                 }
-                
-                degBearing %= 360.0;
             }
         }
         
         lastCalculationInstant = now;
+    }
+    
+    // Normalize an angle to the range [0, 360)
+    private static double normalize(double angle)
+    {
+        angle = angle % 360;
+        if (angle < 0)
+        {
+            angle += 360;
+        }
+        return angle;
+    }
+
+    // Compute the shortest angle difference in the range [-180, 180]
+    private static double shortestAngleDifference(double current, double target) 
+    {
+        double diff = (target - current + 360) % 360; // Difference between bearings, normalized
+        if (diff > 180) diff -= 360; // Adjust to range [-180, 180]
+        return diff;
     }
 }
