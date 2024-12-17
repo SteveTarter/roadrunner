@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Map, { useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
-import mapboxgl from 'mapbox-gl';
+import { Card } from 'react-bootstrap';
 
 export const DriverViewPage = () => {
     // Get the Vehicle ID from the URL in the window
@@ -28,6 +28,9 @@ export const DriverViewPage = () => {
 
     const [count, setCount] = useState(0);
 
+    // Conversion from meters per second to miles per hour.
+    const MPS_TO_MPH = 2.236936;
+
     // Millisecond duration between frame redraws.
     const MS_FRAME_TIME = 100;
 
@@ -50,22 +53,6 @@ export const DriverViewPage = () => {
             });
     }, [token, getAccessTokenSilently]);
 
-    /*
-    function updateCameraPosition(position: mapboxgl.LngLatLike, altitude: number, pitch: number, bearing: number) {
-        const camera = driverViewPageMap?.getMap().getFreeCameraOptions();
-
-        if (camera) {
-            camera.setPitchBearing(pitch, bearing);
-            camera.position = mapboxgl.MercatorCoordinate.fromLngLat(
-                position,
-                altitude
-            );
-
-            driverViewPageMap?.getMap().setFreeCameraOptions(camera);
-        }
-    }
-    */
-
     function fetchVehicleState() {
         if (!token || token.length === 0) {
             return;
@@ -85,24 +72,9 @@ export const DriverViewPage = () => {
                 .then(data => {
                     setVehicleState(data);
                     setIsDataLoaded(true);
-                    /*
-                    let position: mapboxgl.LngLatLike = {lat: data.degLatitude, lng: data.degLongitude};
-                    let altitude: number = 5.0;
-                    let pitch: number = 85.0;
-                    let bearing: number = data.degBearing;
-                    updateCameraPosition(position, altitude, pitch, bearing);
-                    */
                     driverViewPageMap?.setBearing(data.degBearing);
                     let shiftedPoint = getCoordinateAtBearingAndRange(data.degLatitude, data.degLongitude, data.degBearing, 25.0);
                     driverViewPageMap?.setCenter(shiftedPoint);
-                    let freeCameraOptions = driverViewPageMap?.getMap().getFreeCameraOptions();
-                    if (freeCameraOptions) {
-                        const position = { lng: data.degLongitude, lat: data.degLatitude };
-                        const altitude = 3.0;
-                        let newPosition = mapboxgl.MercatorCoordinate.fromLngLat(position, altitude);
-                        //console.log(`oldPosition = ${freeCameraOptions.position?.x}, ${freeCameraOptions.position?.y}, ${freeCameraOptions.position?.z}\nnewPosition = ${newPosition.x}, ${newPosition.y}, ${newPosition.z}`);
-                        freeCameraOptions.position = newPosition;
-                    }
 
                     return data;
                 })
@@ -212,10 +184,23 @@ export const DriverViewPage = () => {
                         mapboxAccessToken={mapboxToken}
                         initialViewState={{
                             zoom: 21,
-                            pitch: 85,
+                            pitch: 84,
                         }}
+                        pitch={80}
+                        zoom={22}
+                        minZoom={19}
+                        maxZoom={24}
                         onLoad={onMapLoad}
                     >
+                        <Card style={{ width: '18rem', alignSelf: 'end'}}>
+                            <Card.Body>
+                                <Card.Text>
+                                    ID: {vehicleState.id}<br/>
+                                    Speed: {(Math.round(MPS_TO_MPH * vehicleState.metersPerSecond * 10) / 10).toFixed(1)} MPH<br/>
+                                    Bearing: {(Math.round(vehicleState.degBearing * 10) / 10).toFixed(1)}&deg; 
+                                </Card.Text>
+                            </Card.Body>
+                        </Card>
                     </Map>
                 </>
                 :
