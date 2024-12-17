@@ -1,10 +1,11 @@
 import './DriverViewPage.css';
 import { useAuth0 } from "@auth0/auth0-react";
 import { useCallback, useEffect, useState } from "react";
-import Map, { useMap } from "react-map-gl";
+import Map, { Layer, LayerProps, Source, useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Card } from 'react-bootstrap';
+import { Feature } from 'geojson';
 
 export const DriverViewPage = () => {
     // Get the Vehicle ID from the URL in the window
@@ -21,6 +22,12 @@ export const DriverViewPage = () => {
     const [isDataLoaded, setIsDataLoaded] = useState(false);
 
     const [vehicleState, setVehicleState] = useState<VehicleState>();
+
+    const [directionsGeometry, setDirectionsGeometry] = useState([]);
+
+    const [lineData, setLineData] = useState<Feature>();
+
+    const [lineLayer, setLineLayer] = useState<LayerProps>();
 
     // Map styles
     // const MAP_STYLE_LITE = "mapbox://styles/mapbox/light-v11";
@@ -52,6 +59,31 @@ export const DriverViewPage = () => {
                 setToken(token);
             });
     }, [token, getAccessTokenSilently]);
+
+    function getLineLayer(id: string, colorCode: string): LayerProps {
+        return {
+            id: `line-${id}`,
+            type: 'line',
+            paint: {
+                'line-width': 8.0,
+                'line-color': `${colorCode}`,
+                'line-opacity': 0.5
+            }
+        };
+    }
+
+    function getLineData(id: string, directionsGeometry: any): Feature {
+        return {
+            type: 'Feature',
+            properties: {
+                title: `line-${id}`
+            },
+            geometry: {
+                type: 'MultiLineString',
+                coordinates: directionsGeometry
+            }
+        };
+    }
 
     function fetchVehicleState() {
         if (!token || token.length === 0) {
@@ -105,6 +137,66 @@ export const DriverViewPage = () => {
 
         return { lng: degLongitudeDest, lat: degLatitudeDest };
     }
+    useEffect(() => {
+
+        function fetchVehicleDirections() {
+            if (!token || token.length === 0) {
+                return;
+            }
+
+            if (!vehicleState) {
+                return;
+            }
+            
+            try {
+                // Get the latest VehicleStates
+                const restUrlBase = process.env.REACT_APP_ROADRUNNER_REST_URL_BASE!;
+                const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-vehicle-directions/${vehicleState.id}`;
+                fetch(getStatesUrl, {
+                    method: 'get',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    }
+                })
+                    .then(async response => response.json())
+                    .then(data => {
+                        let dg: any = [];
+                        for (let i = 0; i < data.routes[0].legs[0].steps.length; ++i) {
+                            dg.push(data.routes[0].legs[0].steps[i].geometry.coordinates);
+                        }
+
+                        setDirectionsGeometry(dg);
+                    });
+
+            }
+            catch (error: any) {
+                console.log(`Error caught in fetchVehicleDirections: ${error.message}`);
+            }
+        };
+        fetchVehicleDirections();
+    }, [vehicleState, token, getAccessTokenSilently]);
+
+    useEffect(() => {
+        if (!vehicleState) {
+            return;
+        }
+
+        let lineLayer = getLineLayer(vehicleState.id, vehicleState.colorCode);
+        setLineLayer(lineLayer);
+    }, [vehicleState]);
+
+    useEffect(() => {
+        if (!directionsGeometry) {
+            return;
+        }
+
+        if (!vehicleState) {
+            return;
+        }
+
+        let lineData = getLineData(vehicleState.id, directionsGeometry)
+        setLineData(lineData);
+    }, [vehicleState, directionsGeometry]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -201,6 +293,11 @@ export const DriverViewPage = () => {
                                 </Card.Text>
                             </Card.Body>
                         </Card>
+                        {directionsGeometry && lineData && lineLayer && (
+                            <Source type='geojson' data={lineData}>
+                                <Layer {...lineLayer} />
+                            </Source>
+                        )}
                     </Map>
                 </>
                 :
