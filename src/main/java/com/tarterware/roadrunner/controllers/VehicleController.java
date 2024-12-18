@@ -145,7 +145,7 @@ public class VehicleController
     {
     	vehicleManager.shutdown();
     	
-    	return new ResponseEntity(new ArrayList(), HttpStatus.OK);
+    	return new ResponseEntity<List<VehicleState>>(new ArrayList<VehicleState>(), HttpStatus.OK);
     }
     
     private VehicleState createVehicleStateFor(UUID vehicleId)
