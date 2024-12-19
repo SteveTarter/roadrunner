@@ -27,12 +27,10 @@ export const App = () => {
         <AppNavBar />
         <Routes>
           <Route path='/'
-            element={<AuthenticationGuard
-              component={HomePage} />} />
+            element={<AuthenticationGuard component={HomePage} />} />
           <Route
             path='/home'
-            element={<AuthenticationGuard
-              component={HomePage} />} />
+            element={<AuthenticationGuard component={HomePage} />} />
           <Route
             path="/profile"
             element={<AuthenticationGuard component={ProfilePage} />}
