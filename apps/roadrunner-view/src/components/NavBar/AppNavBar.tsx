@@ -39,24 +39,22 @@ export const AppNavBar = () => {
 
   const landingPageUri = process.env.REACT_APP_LANDING_PAGE_URL;
 
-      useEffect(() => {
-          if (token) {
-              return;
-          }
-  
-          const audience = process.env.REACT_APP_AUTH0_AUDIENCE;
-          getAccessTokenSilently({
-              authorizationParams: {
-                  audience: audience,
-              }
-          })
-              .then(async token => {
-                  setToken(token);
-              });
-      }, [token, getAccessTokenSilently]);
-  
-  
-      
+  useEffect(() => {
+    if (token) {
+      return;
+    }
+
+    const audience = process.env.REACT_APP_AUTH0_AUDIENCE;
+    getAccessTokenSilently({
+      authorizationParams: {
+        audience: audience,
+      }
+    })
+      .then(async token => {
+        setToken(token);
+      });
+  }, [token, getAccessTokenSilently]);
+
   const logoutWithRedirect = () =>
     logout({
       logoutParams: {
@@ -72,7 +70,7 @@ export const AppNavBar = () => {
       kmRadius: 10.0,
       vehicleCount: 15,
     };
-    
+
     try {
       const response = await fetch(url, {
         method: 'post',
@@ -82,11 +80,11 @@ export const AppNavBar = () => {
         },
         body: JSON.stringify(body),
       });
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-  
+
       const data = await response.json();
       console.log("Success:", data);
     } catch (error) {
@@ -104,11 +102,11 @@ export const AppNavBar = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-  
+
       const data = await response.json();
       console.log("Success:", data);
       navigate("/home");
@@ -117,9 +115,9 @@ export const AppNavBar = () => {
       alert("Failed to reset server.");
     }
   };
-    
+
   fontawesome.library.add(faPowerOff, faUser);
-    
+
   return (
     <div className="nav-container">
       <Navbar color="light" light expand="md" container={false}>
@@ -153,57 +151,57 @@ export const AppNavBar = () => {
                 </NavItem>
               )}
               <div className="d-flex justify-content-start align-items-center">
-              {isAuthenticated && (
-                <UncontrolledDropdown nav inNavbar>
-                  <DropdownToggle nav caret id="manageDropDown">
-                    Manage
-                  </DropdownToggle>
-                  <DropdownMenu>
-                    <DropdownItem header>Manage</DropdownItem>
-                    <DropdownItem
-                      id="crissCrossBtn"
-                      onClick={() => handleCreateCrissCross()}
-                    >
-                      Create criss-cross
-                    </DropdownItem>
-                    <DropdownItem
-                      id="resetServerBtn"
-                      onClick={() => handleResetServer()}
-                    >
-                      Reset server
-                    </DropdownItem>
-                  </DropdownMenu>
-                </UncontrolledDropdown>
-              )}
-              {isAuthenticated && (
-                <UncontrolledDropdown nav inNavbar>
-                  <DropdownToggle nav caret id="profileDropDown">
-                    <img
-                      src={user?.picture}
-                      alt="Profile"
-                      className="nav-user-profile rounded-circle"
-                      width="50"
-                    />
-                  </DropdownToggle>
-                  <DropdownMenu>
-                    <DropdownItem header>{user?.name}</DropdownItem>
-                    <DropdownItem
-                      tag={RouterNavLink}
-                      to="/profile"
-                      className="dropdown-profile"
-                    >
-                      <FontAwesomeIcon icon="user" className="mr-3" /> Profile
-                    </DropdownItem>
-                    <DropdownItem
-                      id="qsLogoutBtn"
-                      onClick={() => logoutWithRedirect()}
-                    >
-                      <FontAwesomeIcon icon="power-off" className="mr-3" /> Log
-                      out
-                    </DropdownItem>
-                  </DropdownMenu>
-                </UncontrolledDropdown>
-              )}
+                {isAuthenticated && (
+                  <UncontrolledDropdown nav inNavbar>
+                    <DropdownToggle nav caret id="manageDropDown">
+                      Manage
+                    </DropdownToggle>
+                    <DropdownMenu>
+                      <DropdownItem header>Manage</DropdownItem>
+                      <DropdownItem
+                        id="crissCrossBtn"
+                        onClick={() => handleCreateCrissCross()}
+                      >
+                        Create criss-cross
+                      </DropdownItem>
+                      <DropdownItem
+                        id="resetServerBtn"
+                        onClick={() => handleResetServer()}
+                      >
+                        Reset server
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </UncontrolledDropdown>
+                )}
+                {isAuthenticated && (
+                  <UncontrolledDropdown nav inNavbar>
+                    <DropdownToggle nav caret id="profileDropDown">
+                      <img
+                        src={user?.picture}
+                        alt="Profile"
+                        className="nav-user-profile rounded-circle"
+                        width="50"
+                      />
+                    </DropdownToggle>
+                    <DropdownMenu>
+                      <DropdownItem header>{user?.name}</DropdownItem>
+                      <DropdownItem
+                        tag={RouterNavLink}
+                        to="/profile"
+                        className="dropdown-profile"
+                      >
+                        <FontAwesomeIcon icon="user" className="mr-3" /> Profile
+                      </DropdownItem>
+                      <DropdownItem
+                        id="qsLogoutBtn"
+                        onClick={() => logoutWithRedirect()}
+                      >
+                        <FontAwesomeIcon icon="power-off" className="mr-3" /> Log
+                        out
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </UncontrolledDropdown>
+                )}
               </div>
             </Nav>
           </Collapse>
