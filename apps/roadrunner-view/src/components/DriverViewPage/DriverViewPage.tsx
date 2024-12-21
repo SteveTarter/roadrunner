@@ -1,7 +1,7 @@
 import './DriverViewPage.css';
 import { useAuth0 } from "@auth0/auth0-react";
 import { useCallback, useEffect, useState } from "react";
-import Map, { Layer, LayerProps, Source, useMap } from "react-map-gl";
+import Map, { FullscreenControl, Layer, LayerProps, Source, useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Card } from 'react-bootstrap';
@@ -147,7 +147,7 @@ export const DriverViewPage = () => {
             if (!vehicleState) {
                 return;
             }
-            
+
             try {
                 // Get the latest VehicleStates
                 const restUrlBase = process.env.REACT_APP_ROADRUNNER_REST_URL_BASE!;
@@ -284,20 +284,23 @@ export const DriverViewPage = () => {
                         maxZoom={24}
                         onLoad={onMapLoad}
                     >
-                        <Card style={{ width: '18rem', alignSelf: 'end'}}>
-                            <Card.Body>
-                                <Card.Text>
-                                    ID: {vehicleState.id}<br/>
-                                    Speed: {(Math.round(MPS_TO_MPH * vehicleState.metersPerSecond * 10) / 10).toFixed(1)} MPH<br/>
-                                    Bearing: {(Math.round(vehicleState.degBearing * 10) / 10).toFixed(1)}&deg; 
-                                </Card.Text>
-                            </Card.Body>
-                        </Card>
+                        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "300px" }}>
+
+                            <Card style={{ width: '10rem', alignSelf: 'end' }}>
+                                <Card.Body>
+                                    <Card.Text>
+                                        Speed: {(Math.round(MPS_TO_MPH * vehicleState.metersPerSecond * 10) / 10).toFixed(1)} MPH<br />
+                                        Bearing: {(Math.round(vehicleState.degBearing * 10) / 10).toFixed(1)}&deg;
+                                    </Card.Text>
+                                </Card.Body>
+                            </Card>
+                        </div>
                         {directionsGeometry && lineData && lineLayer && (
                             <Source type='geojson' data={lineData}>
                                 <Layer {...lineLayer} />
                             </Source>
                         )}
+                        <FullscreenControl />
                     </Map>
                 </>
                 :

@@ -66,18 +66,18 @@ export const ControlPanel = (props: {
     const formattedData = {
       listStops: [
         {
-          address1: inputValues.find(input => input.name === "originAddress address-search")?.value || "",
-          address2: inputValues.find(input => input.name === "originApartment")?.value || "",
-          city: inputValues.find(input => input.name === "originCity")?.value || "",
-          state: inputValues.find(input => input.name === "originState")?.value || "",
-          zipCode: parseInt(inputValues.find(input => input.name === "originZip")?.value || "0")
+          address1: inputValues.find(input => input.name.startsWith("originAddress"))?.value || "",
+          address2: inputValues.find(input => input.name.startsWith("originApartment"))?.value || "",
+          city: inputValues.find(input => input.name.startsWith("originCity"))?.value || "",
+          state: inputValues.find(input => input.name.startsWith("originState"))?.value || "",
+          zipCode: parseInt(inputValues.find(input => input.name.startsWith("originZip"))?.value || "0")
         },
         {
-          address1: inputValues.find(input => input.name === "destinationAddress address-search")?.value || "",
-          address2: inputValues.find(input => input.name === "destinationApartment")?.value || "",
-          city: inputValues.find(input => input.name === "destinationCity")?.value || "",
-          state: inputValues.find(input => input.name === "destinationState")?.value || "",
-          zipCode: parseInt(inputValues.find(input => input.name === "destinationZip")?.value || "0")
+          address1: inputValues.find(input => input.name.startsWith("destinationAddress"))?.value || "",
+          address2: inputValues.find(input => input.name.startsWith("destinationApartment"))?.value || "",
+          city: inputValues.find(input => input.name.startsWith("destinationCity"))?.value || "",
+          state: inputValues.find(input => input.name.startsWith("destinationState"))?.value || "",
+          zipCode: parseInt(inputValues.find(input => input.name.startsWith("destinationZip"))?.value || "0")
         }
       ]
     };
