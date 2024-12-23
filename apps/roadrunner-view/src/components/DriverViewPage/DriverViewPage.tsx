@@ -31,7 +31,7 @@ export const DriverViewPage = () => {
 
     // Map styles
     // const MAP_STYLE_LITE = "mapbox://styles/mapbox/light-v11";
-    const MAP_STYLE_SATELLITE = "mapbox://styles/mapbox/satellite-streets-v12";
+    const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
 
     const [count, setCount] = useState(0);
 
@@ -225,36 +225,15 @@ export const DriverViewPage = () => {
                 }
             }
 
-            driverViewPageMap?.getMap().addLayer({
-                id: '3d-buildings',
-                source: 'composite',
-                'source-layer': 'building',
-                filter: ['==', 'extrude', 'true'],
-                type: 'fill-extrusion',
-                minzoom: 15,
-                paint: {
-                    'fill-extrusion-color': '#aaa',
-                    'fill-extrusion-height': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        15,
-                        0,
-                        15.05,
-                        ['get', 'height']
-                    ],
-                    'fill-extrusion-base': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        15,
-                        0,
-                        15.05,
-                        ['get', 'min_height']
-                    ],
-                    'fill-extrusion-opacity': 0.8
-                }
+            driverViewPageMap?.getMap().setFog({
+                range: [19, 20],
+                'horizon-blend': 0.3,
+                color: 'white',
+                'high-color': '#add8e6',
+                'space-color': '#d8f2ff',
+                'star-intensity': 0.0
             });
+
             driverViewPageMap?.getMap().addSource('mapbox-dem', {
                 type: 'raster-dem',
                 url: 'mapbox://mapbox.mapbox-terrain-dem-v1',

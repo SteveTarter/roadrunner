@@ -5,6 +5,7 @@ import { Input } from "reactstrap";
 import { useAuth0 } from "@auth0/auth0-react";
 // eslint-disable-next-line
 import { AddressAutofill } from '@mapbox/search-js-react';
+import { useNavigate } from "react-router-dom";
 
 export const ControlPanel = (props: {
   vehicleStateList: VehicleState[],
@@ -20,6 +21,8 @@ export const ControlPanel = (props: {
   const [isActionPanelActive, setIsActionPanelActive] = useState(false);
   const [isCreateVehicleActive, setIsCreateVehicleActive] = useState(false);
 
+  const navigate = useNavigate();
+  
   const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN!;
 
   const AddressAutofill = require('@mapbox/search-js-react').AddressAutofill;
@@ -102,6 +105,9 @@ export const ControlPanel = (props: {
       const data = await response.json();
       console.log("Success:", data);
       setIsCreateVehicleActive(false);
+
+      // Hop into the vehicle
+      navigate(`/driver-view/${data.id}`);
     } catch (error) {
       console.error("Error creating new vehicle:", error);
       alert("Failed to create new vehicle.");
