@@ -105,7 +105,8 @@ export const DriverViewPage = () => {
                     setVehicleState(data);
                     setIsDataLoaded(true);
                     driverViewPageMap?.setBearing(data.degBearing);
-                    let shiftedPoint = getCoordinateAtBearingAndRange(data.degLatitude, data.degLongitude, data.degBearing, 25.0);
+                    let mRange = 20.0 * window.innerHeight / 932.0;
+                    let shiftedPoint = getCoordinateAtBearingAndRange(data.degLatitude, data.degLongitude, data.degBearing, mRange);
                     driverViewPageMap?.setCenter(shiftedPoint);
 
                     return data;
