@@ -4,8 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import Map, { FullscreenControl, Layer, LayerProps, Source, useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
-import { Card } from 'react-bootstrap';
+import { Button, Card } from 'react-bootstrap';
 import { Feature } from 'geojson';
+import { faHome } from '@fortawesome/fontawesome-free-solid'
+import { useNavigate } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import fontawesome from '@fortawesome/fontawesome';
 
 export const DriverViewPage = () => {
     // Get the Vehicle ID from the URL in the window
@@ -29,9 +33,12 @@ export const DriverViewPage = () => {
 
     const [lineLayer, setLineLayer] = useState<LayerProps>();
 
+    const navigate = useNavigate();
+    
     // Map styles
     // const MAP_STYLE_LITE = "mapbox://styles/mapbox/light-v11";
-    const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
+    const MAP_STYLE_SATELLITE = "mapbox://styles/mapbox/satellite-v9";
+    //const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
 
     const [count, setCount] = useState(0);
 
@@ -59,6 +66,10 @@ export const DriverViewPage = () => {
                 setToken(token);
             });
     }, [token, getAccessTokenSilently]);
+
+    function gotoHomePage() {
+        navigate('/home');
+    }
 
     function getLineLayer(id: string, colorCode: string): LayerProps {
         return {
@@ -138,8 +149,8 @@ export const DriverViewPage = () => {
 
         return { lng: degLongitudeDest, lat: degLatitudeDest };
     }
-    useEffect(() => {
 
+    useEffect(() => {
         function fetchVehicleDirections() {
             if (!token || token.length === 0) {
                 return;
@@ -246,6 +257,8 @@ export const DriverViewPage = () => {
         return () => clearTimeout(timer);
     }, [driverViewPageMap]);
 
+    fontawesome.library.add(faHome);
+    
     return (
         <div className="body row scroll-y">
             {(isDataLoaded && vehicleState) ?
@@ -264,6 +277,11 @@ export const DriverViewPage = () => {
                         maxZoom={24}
                         onLoad={onMapLoad}
                     >
+                        <div style={{ position: "fixed", top: 10, left: 10 }}>
+                            <Button onClick={gotoHomePage}>
+                                <FontAwesomeIcon icon="home"/>
+                            </Button>
+                        </div>
                         <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "300px" }}>
 
                             <Card style={{ width: '10rem', alignSelf: 'end' }}>

@@ -8,6 +8,7 @@ import { VehicleIcon } from './VehicleIcon';
 import { VehicleDisplay } from '../../models/VehicleDisplay';
 import { VehicleState } from '../../models/VehicleState';
 import { MapWrapper } from '../Utils/MapWrapper';
+import { AppNavBar } from '../NavBar/AppNavBar';
 
 export const HomePage = () => {
     const { getAccessTokenSilently } = useAuth0();
@@ -153,7 +154,7 @@ export const HomePage = () => {
                 maxLongitude = vehicleState.degLongitude;
             }
         })
-        
+
         // Expand size by 5% each way;
         let deltaLongitude = Math.max(0.1, maxLongitude - minLongitude);
         let deltaLatitude = Math.max(0.1, maxLatitude - minLatitude);
@@ -161,7 +162,7 @@ export const HomePage = () => {
         maxLongitude += (0.05 * deltaLongitude);
         minLatitude -= (0.05 * deltaLatitude);
         maxLatitude += (0.05 * deltaLatitude);
-        
+
         homePageMap?.fitBounds([[minLongitude, minLatitude], [maxLongitude, maxLatitude]]);
     }
 
@@ -171,14 +172,14 @@ export const HomePage = () => {
         if (mapStyle === MAP_STYLE_STREET) {
             setMapStyle(MAP_STYLE_SATELLITE);
             homePageMap?.getMap().setFog({});
-    }
+        }
         else {
             setMapStyle(MAP_STYLE_STREET);
         }
         setTimeout(() => {
             // console.log("Transition ended");
             setIsTransitioning(false);
-          }, 500);
+        }, 500);
     }
 
     function onZoom(viewStateChangeEvent: { viewState: any; }) {
@@ -250,50 +251,53 @@ export const HomePage = () => {
     }, [count]);
 
     return (
-        <div className="body row scroll-y">
-            <Map
-                id="homePageMap"
-                mapStyle={mapStyle}
-                mapboxAccessToken={mapboxToken}
-                onLoad={() => onLoad()}
-                fog={{}}
-                initialViewState={{
-                    longitude: -97.5,
-                    latitude: 32.75,
-                    zoom: 10,
-                }}
-                onClick={(event) => onClick(event)}
-                onZoom={(viewStateChangeEvent) => onZoom(viewStateChangeEvent)}
-            >
-                {(isDataLoaded && !isTransitioning) ?
-                    <>
-                        <ControlPanel
-                            vehicleStateList={vehicleStateList}
-                            hideAllRoutes={hideAllRoutes}
-                            showAllRoutes={showAllRoutes}
-                            fitAllOnScreen={fitAllOnScreen}
-                            toggleMapStyle={toggleMapStyle}
-                        />
-                        {vehicleStateList && (vehicleStateList.length > 0) && (
-                            // eslint-disable-next-line
-                            vehicleStateList.map((vehicleState) => {
-                                let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
-                                if (vehicleDisplay) {
-                                    vehicleDisplay.size = vehicleSize;
-                                    return <VehicleIcon
-                                        key={vehicleState.id}
-                                        vehicleState={vehicleState}
-                                        vehicleDisplay={vehicleDisplay} />
-                                }
-                            })
-                        )}
-                    </>
-                    :
-                    <div>
-                        <SpinnerLoading />
-                    </div>
-                }
-            </Map>
-        </div>
+        <>
+            <div className="body row scroll-y">
+                <Map
+                    id="homePageMap"
+                    mapStyle={mapStyle}
+                    mapboxAccessToken={mapboxToken}
+                    onLoad={() => onLoad()}
+                    fog={{}}
+                    initialViewState={{
+                        longitude: -97.5,
+                        latitude: 32.75,
+                        zoom: 10,
+                    }}
+                    onClick={(event) => onClick(event)}
+                    onZoom={(viewStateChangeEvent) => onZoom(viewStateChangeEvent)}
+                >
+                    <AppNavBar />
+                    {(isDataLoaded && !isTransitioning) ?
+                        <>
+                            <ControlPanel
+                                vehicleStateList={vehicleStateList}
+                                hideAllRoutes={hideAllRoutes}
+                                showAllRoutes={showAllRoutes}
+                                fitAllOnScreen={fitAllOnScreen}
+                                toggleMapStyle={toggleMapStyle}
+                            />
+                            {vehicleStateList && (vehicleStateList.length > 0) && (
+                                // eslint-disable-next-line
+                                vehicleStateList.map((vehicleState) => {
+                                    let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
+                                    if (vehicleDisplay) {
+                                        vehicleDisplay.size = vehicleSize;
+                                        return <VehicleIcon
+                                            key={vehicleState.id}
+                                            vehicleState={vehicleState}
+                                            vehicleDisplay={vehicleDisplay} />
+                                    }
+                                })
+                            )}
+                        </>
+                        :
+                        <div>
+                            <SpinnerLoading />
+                        </div>
+                    }
+                </Map>
+            </div>
+        </>
     )
 }
