@@ -16,24 +16,24 @@ export const Auth0ProviderWithNavigate = ({
   const redirectUri = process.env.REACT_APP_AUTH0_CALLBACK_URL;
 
   const onRedirectCallback = (appState?: AppState) => {
-    navigate(appState?.returnTo || window.location.pathname);
+  navigate(appState?.returnTo || window.location.pathname);
   };
 
   if (!(domain && clientId && redirectUri)) {
-    return null;
+  return null;
   }
 
   return (
-    <Auth0Provider
-      domain={domain}
-      clientId={clientId}
-      authorizationParams={{
-        redirect_uri: redirectUri,
-      }}
-      onRedirectCallback={onRedirectCallback}
-      useRefreshTokensFallback={true}
-    >
-      {children}
-    </Auth0Provider>
+  <Auth0Provider
+    domain={domain}
+    clientId={clientId}
+    authorizationParams={{
+    redirect_uri: redirectUri,
+    }}
+    onRedirectCallback={onRedirectCallback}
+    useRefreshTokensFallback={true}
+  >
+    {children}
+  </Auth0Provider>
   );
 };
