@@ -3,26 +3,26 @@
   "version": "1.0.0",
   "description": "roadrunner viewer",
   "dependencies": {
-    "@auth0/auth0-react": "^2.2.4",
-    "@fortawesome/fontawesome": "^1.1.8",
-    "@fortawesome/fontawesome-free-solid": "^5.0.13",
-    "@fortawesome/react-fontawesome": "^0.2.0",
+    "@auth0/auth0-react": "^2.2",
+    "@fortawesome/fontawesome": "^1.1",
+    "@fortawesome/fontawesome-free-solid": "^5.0",
+    "@fortawesome/react-fontawesome": "^0.2",
     "@mapbox/search-js-react": "^1.0.0-beta.24",
-    "@types/node": "^22.10.2",
-    "@types/react": "^19.0.2",
-    "@types/react-dom": "^19.0.2",
-    "bootstrap": "^5.3.3",
-    "dotenv": "^16.4.7",
-    "geojson": "^0.5.0",
-    "mapbox-gl": "^3.9.1",
-    "react": "^19.0.0",
-    "react-bootstrap": "^2.10.7",
-    "react-dom": "^19.0.0",
-    "react-map-gl": "^7.1.8",
-    "react-router-dom": "^7.1.1",
-    "react-scripts": "^5.0.1",
-    "reactstrap": "^9.2.3",
-    "typescript": "^5.7.2"
+    "@types/node": "^22.10",
+    "@types/react": "^18.3",
+    "@types/react-dom": "^18.3",
+    "bootstrap": "^5.3",
+    "dotenv": "^16.4",
+    "geojson": "^0.5",
+    "mapbox-gl": "^3.4",
+    "react": "^18.3",
+    "react-bootstrap": "^2.10",
+    "react-dom": "^18.3",
+    "react-map-gl": "^7.1",
+    "react-router-dom": "^7.1",
+    "react-scripts": "^5.0",
+    "reactstrap": "^9.2",
+    "typescript": "^4"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -47,7 +47,7 @@
     ]
   },
   "devDependencies": {
-    "@types/mapbox-gl": "^3.9.1",
-    "@types/react-dom": "^19.0.0"
+    "@types/mapbox-gl": "^3.4",
+    "@types/react-dom": "^18.3"
   }
 }

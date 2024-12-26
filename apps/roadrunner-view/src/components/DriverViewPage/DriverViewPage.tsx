@@ -228,7 +228,7 @@ export const DriverViewPage = () => {
   const onMapLoad = useCallback(() => {
     const timer = setTimeout(() => {
       console.log("onMapLoad()");
-      const layers = driverViewPageMap?.getStyle().layers;
+      const layers = driverViewPageMap?.getStyle()?.layers;
       if (layers) {
         for (const layer of layers) {
           if (layer.type === 'symbol' && layer.layout && layer.layout['text-field']) {
