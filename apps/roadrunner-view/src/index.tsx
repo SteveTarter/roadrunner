@@ -12,10 +12,10 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <MapProvider>
-    <BrowserRouter>
-      <Auth0ProviderWithNavigate>
-        <App />
-      </Auth0ProviderWithNavigate>
-    </BrowserRouter>
+  <BrowserRouter>
+    <Auth0ProviderWithNavigate>
+    <App />
+    </Auth0ProviderWithNavigate>
+  </BrowserRouter>
   </MapProvider>
 );

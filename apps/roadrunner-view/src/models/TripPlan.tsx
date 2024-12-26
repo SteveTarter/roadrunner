@@ -1,9 +1,9 @@
 import { Address } from "./Address";
 
 export class TripPlan {
-    listStops: Address[];
+  listStops: Address[];
 
-    constructor(listStops: Address[]) {
-        this.listStops = listStops;
-    }
+  constructor(listStops: Address[]) {
+    this.listStops = listStops;
+  }
 }

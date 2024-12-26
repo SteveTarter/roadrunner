@@ -10,11 +10,11 @@ export const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({
   component,
 }) => {
   const Component = withAuthenticationRequired(component, {
-    onRedirecting: () => (
-      <div className="page-layout">
-        <SpinnerLoading />
-      </div>
-    ),
+  onRedirecting: () => (
+    <div className="page-layout">
+    <SpinnerLoading />
+    </div>
+  ),
   });
 
   return <Component />;
