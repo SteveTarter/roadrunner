@@ -1,12 +1,11 @@
 import './DriverViewPage.css';
 import { useAuth0 } from "@auth0/auth0-react";
 import { useCallback, useEffect, useState } from "react";
-import Map, { FullscreenControl, Layer, LayerProps, Source, useMap } from "react-map-gl";
+import Map, { FullscreenControl, useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Button, Card } from 'react-bootstrap';
-import { Feature } from 'geojson';
-import { faHome } from '@fortawesome/fontawesome-free-solid'
+import { faHome, faMap, faGlobe } from '@fortawesome/fontawesome-free-solid'
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import fontawesome from '@fortawesome/fontawesome';
@@ -24,21 +23,17 @@ export const DriverViewPage = () => {
   const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN!;
 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const [vehicleState, setVehicleState] = useState<VehicleState>();
 
-  const [directionsGeometry, setDirectionsGeometry] = useState([]);
-
-  const [lineData, setLineData] = useState<Feature>();
-
-  const [lineLayer, setLineLayer] = useState<LayerProps>();
 
   const navigate = useNavigate();
 
-  // Map styles
-  // const MAP_STYLE_LITE = "mapbox://styles/mapbox/light-v11";
-  const MAP_STYLE_SATELLITE = "mapbox://styles/mapbox/satellite-streets-v12";
-  //const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
+  // Map style
+  const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
+  const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
+  const [mapStyle, setMapStyle] = useState(MAP_STYLE_STREET);
 
   const [count, setCount] = useState(0);
 
@@ -69,31 +64,6 @@ export const DriverViewPage = () => {
 
   function gotoHomePage() {
     navigate('/home');
-  }
-
-  function getLineLayer(id: string, colorCode: string): LayerProps {
-    return {
-      id: `line-${id}`,
-      type: 'line',
-      paint: {
-        'line-width': 8.0,
-        'line-color': `${colorCode}`,
-        'line-opacity': 0.5
-      }
-    };
-  }
-
-  function getLineData(id: string, directionsGeometry: any): Feature {
-    return {
-      type: 'Feature',
-      properties: {
-        title: `line-${id}`
-      },
-      geometry: {
-        type: 'MultiLineString',
-        coordinates: directionsGeometry
-      }
-    };
   }
 
   function fetchVehicleState() {
@@ -150,65 +120,20 @@ export const DriverViewPage = () => {
     return { lng: degLongitudeDest, lat: degLatitudeDest };
   }
 
-  useEffect(() => {
-    function fetchVehicleDirections() {
-      if (!token || token.length === 0) {
-        return;
-      }
-
-      if (!vehicleState) {
-        return;
-      }
-
-      try {
-        // Get the latest VehicleStates
-        const restUrlBase = process.env.REACT_APP_ROADRUNNER_REST_URL_BASE!;
-        const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-vehicle-directions/${vehicleState.id}`;
-        fetch(getStatesUrl, {
-          method: 'get',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          }
-        })
-          .then(async response => response.json())
-          .then(data => {
-            let dg: any = [];
-            for (let i = 0; i < data.routes[0].legs[0].steps.length; ++i) {
-              dg.push(data.routes[0].legs[0].steps[i].geometry.coordinates);
-            }
-
-            setDirectionsGeometry(dg);
-          });
-
-      }
-      catch (error: any) {
-        console.log(`Error caught in fetchVehicleDirections: ${error.message}`);
-      }
-    };
-    fetchVehicleDirections();
-  }, [vehicleState, token, getAccessTokenSilently]);
-
-  useEffect(() => {
-    if (!vehicleState) {
-      return;
+  function toggleMapStyle() {
+    setIsTransitioning(true);
+    // console.log("Transition started");
+    if (mapStyle === MAP_STYLE_STREET) {
+      setMapStyle(MAP_STYLE_SATELLITE);
     }
-
-    let lineLayer = getLineLayer(vehicleState.id, vehicleState.colorCode);
-    setLineLayer(lineLayer);
-  }, [vehicleState]);
-
-  useEffect(() => {
-    if (!directionsGeometry) {
-      return;
+    else {
+      setMapStyle(MAP_STYLE_STREET);
     }
-
-    if (!vehicleState) {
-      return;
-    }
-
-    let lineData = getLineData(vehicleState.id, directionsGeometry)
-    setLineData(lineData);
-  }, [vehicleState, directionsGeometry]);
+    setTimeout(() => {
+      // console.log("Transition ended");
+      setIsTransitioning(false);
+    }, 500);
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -237,37 +162,6 @@ export const DriverViewPage = () => {
         }
       }
 
-      driverViewPageMap?.getMap().addLayer({
-        id: '3d-buildings',
-        source: 'composite',
-        'source-layer': 'building',
-        filter: ['==', 'extrude', 'true'],
-        type: 'fill-extrusion',
-        minzoom: 15,
-        paint: {
-            'fill-extrusion-color': '#aaa',
-            'fill-extrusion-height': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                15,
-                0,
-                15.05,
-                ['get', 'height']
-            ],
-            'fill-extrusion-base': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                15,
-                0,
-                15.05,
-                ['get', 'min_height']
-            ],
-            'fill-extrusion-opacity': 0.8
-        }
-    });
-
       driverViewPageMap?.getMap().setFog({
         range: [19, 20],
         'horizon-blend': 0.3,
@@ -288,15 +182,15 @@ export const DriverViewPage = () => {
     return () => clearTimeout(timer);
   }, [driverViewPageMap]);
 
-  fontawesome.library.add(faHome);
+  fontawesome.library.add(faHome, faGlobe, faMap);
 
   return (
     <div className="body row scroll-y">
-      {(isDataLoaded && vehicleState) ?
+      {(isDataLoaded && !isTransitioning && vehicleState) ?
         <>
           <Map
             id="driverViewPageMap"
-            mapStyle={MAP_STYLE_SATELLITE}
+            mapStyle={mapStyle}
             mapboxAccessToken={mapboxToken}
             initialViewState={{
               zoom: 21,
@@ -310,7 +204,18 @@ export const DriverViewPage = () => {
           >
             <div style={{ position: "fixed", top: 10, left: 10 }}>
               <Button onClick={gotoHomePage}>
-                <FontAwesomeIcon icon="home" className="mr-3"/>
+                <FontAwesomeIcon icon="home" className="mr-3" />
+              </Button>
+            </div>
+            <div style={{ position: "fixed", top: 10, left: 60 }}>
+              <Button onClick={toggleMapStyle}>
+                {(mapStyle === MAP_STYLE_STREET) ?
+                  <>
+                    <FontAwesomeIcon title="Satellte Display" icon="globe" className="mr-3" />
+                  </>
+                  :
+                  <FontAwesomeIcon title="Map Display" icon="map" className="mr-3" />
+                }
               </Button>
             </div>
             <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "300px" }}>
@@ -324,11 +229,6 @@ export const DriverViewPage = () => {
                 </Card.Body>
               </Card>
             </div>
-            {directionsGeometry && lineData && lineLayer && (
-              <Source type='geojson' data={lineData}>
-                <Layer {...lineLayer} />
-              </Source>
-            )}
             <FullscreenControl />
           </Map>
         </>
