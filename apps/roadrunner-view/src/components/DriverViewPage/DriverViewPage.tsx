@@ -5,7 +5,7 @@ import Map, { FullscreenControl, useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Button, Card } from 'react-bootstrap';
-import { faHome } from '@fortawesome/fontawesome-free-solid'
+import { faHome, faMap, faGlobe } from '@fortawesome/fontawesome-free-solid'
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import fontawesome from '@fortawesome/fontawesome';
@@ -23,6 +23,7 @@ export const DriverViewPage = () => {
   const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN!;
 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const [vehicleState, setVehicleState] = useState<VehicleState>();
 
@@ -30,8 +31,9 @@ export const DriverViewPage = () => {
   const navigate = useNavigate();
 
   // Map style
-  //const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
-  const MAP_STYLE_SATELLITE = "mapbox://styles/mapbox/standard";
+  const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
+  const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
+  const [mapStyle, setMapStyle] = useState(MAP_STYLE_STREET);
 
   const [count, setCount] = useState(0);
 
@@ -118,6 +120,21 @@ export const DriverViewPage = () => {
     return { lng: degLongitudeDest, lat: degLatitudeDest };
   }
 
+  function toggleMapStyle() {
+    setIsTransitioning(true);
+    // console.log("Transition started");
+    if (mapStyle === MAP_STYLE_STREET) {
+      setMapStyle(MAP_STYLE_SATELLITE);
+    }
+    else {
+      setMapStyle(MAP_STYLE_STREET);
+    }
+    setTimeout(() => {
+      // console.log("Transition ended");
+      setIsTransitioning(false);
+    }, 500);
+  }
+
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
@@ -165,15 +182,15 @@ export const DriverViewPage = () => {
     return () => clearTimeout(timer);
   }, [driverViewPageMap]);
 
-  fontawesome.library.add(faHome);
+  fontawesome.library.add(faHome, faGlobe, faMap);
 
   return (
     <div className="body row scroll-y">
-      {(isDataLoaded && vehicleState) ?
+      {(isDataLoaded && !isTransitioning && vehicleState) ?
         <>
           <Map
             id="driverViewPageMap"
-            mapStyle={MAP_STYLE_SATELLITE}
+            mapStyle={mapStyle}
             mapboxAccessToken={mapboxToken}
             initialViewState={{
               zoom: 21,
@@ -187,7 +204,18 @@ export const DriverViewPage = () => {
           >
             <div style={{ position: "fixed", top: 10, left: 10 }}>
               <Button onClick={gotoHomePage}>
-                <FontAwesomeIcon icon="home" className="mr-3"/>
+                <FontAwesomeIcon icon="home" className="mr-3" />
+              </Button>
+            </div>
+            <div style={{ position: "fixed", top: 10, left: 60 }}>
+              <Button onClick={toggleMapStyle}>
+                {(mapStyle == MAP_STYLE_STREET) ?
+                  <>
+                    <FontAwesomeIcon title="Satellte Display" icon="globe" className="mr-3" />
+                  </>
+                  :
+                  <FontAwesomeIcon title="Map Display" icon="map" className="mr-3" />
+                }
               </Button>
             </div>
             <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "300px" }}>
