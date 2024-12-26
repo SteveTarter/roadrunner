@@ -209,7 +209,7 @@ export const DriverViewPage = () => {
             </div>
             <div style={{ position: "fixed", top: 10, left: 60 }}>
               <Button onClick={toggleMapStyle}>
-                {(mapStyle == MAP_STYLE_STREET) ?
+                {(mapStyle === MAP_STYLE_STREET) ?
                   <>
                     <FontAwesomeIcon title="Satellte Display" icon="globe" className="mr-3" />
                   </>
