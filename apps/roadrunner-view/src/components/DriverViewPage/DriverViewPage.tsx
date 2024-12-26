@@ -1,11 +1,10 @@
 import './DriverViewPage.css';
 import { useAuth0 } from "@auth0/auth0-react";
 import { useCallback, useEffect, useState } from "react";
-import Map, { FullscreenControl, Layer, LayerProps, Source, useMap } from "react-map-gl";
+import Map, { FullscreenControl, useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Button, Card } from 'react-bootstrap';
-import { Feature } from 'geojson';
 import { faHome } from '@fortawesome/fontawesome-free-solid'
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -27,18 +26,12 @@ export const DriverViewPage = () => {
 
   const [vehicleState, setVehicleState] = useState<VehicleState>();
 
-  const [directionsGeometry, setDirectionsGeometry] = useState([]);
-
-  const [lineData, setLineData] = useState<Feature>();
-
-  const [lineLayer, setLineLayer] = useState<LayerProps>();
 
   const navigate = useNavigate();
 
-  // Map styles
-  // const MAP_STYLE_LITE = "mapbox://styles/mapbox/light-v11";
-  const MAP_STYLE_SATELLITE = "mapbox://styles/mapbox/satellite-streets-v12";
+  // Map style
   //const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
+  const MAP_STYLE_SATELLITE = "mapbox://styles/mapbox/standard";
 
   const [count, setCount] = useState(0);
 
@@ -69,31 +62,6 @@ export const DriverViewPage = () => {
 
   function gotoHomePage() {
     navigate('/home');
-  }
-
-  function getLineLayer(id: string, colorCode: string): LayerProps {
-    return {
-      id: `line-${id}`,
-      type: 'line',
-      paint: {
-        'line-width': 8.0,
-        'line-color': `${colorCode}`,
-        'line-opacity': 0.5
-      }
-    };
-  }
-
-  function getLineData(id: string, directionsGeometry: any): Feature {
-    return {
-      type: 'Feature',
-      properties: {
-        title: `line-${id}`
-      },
-      geometry: {
-        type: 'MultiLineString',
-        coordinates: directionsGeometry
-      }
-    };
   }
 
   function fetchVehicleState() {
@@ -151,66 +119,6 @@ export const DriverViewPage = () => {
   }
 
   useEffect(() => {
-    function fetchVehicleDirections() {
-      if (!token || token.length === 0) {
-        return;
-      }
-
-      if (!vehicleState) {
-        return;
-      }
-
-      try {
-        // Get the latest VehicleStates
-        const restUrlBase = process.env.REACT_APP_ROADRUNNER_REST_URL_BASE!;
-        const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-vehicle-directions/${vehicleState.id}`;
-        fetch(getStatesUrl, {
-          method: 'get',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          }
-        })
-          .then(async response => response.json())
-          .then(data => {
-            let dg: any = [];
-            for (let i = 0; i < data.routes[0].legs[0].steps.length; ++i) {
-              dg.push(data.routes[0].legs[0].steps[i].geometry.coordinates);
-            }
-
-            setDirectionsGeometry(dg);
-          });
-
-      }
-      catch (error: any) {
-        console.log(`Error caught in fetchVehicleDirections: ${error.message}`);
-      }
-    };
-    fetchVehicleDirections();
-  }, [vehicleState, token, getAccessTokenSilently]);
-
-  useEffect(() => {
-    if (!vehicleState) {
-      return;
-    }
-
-    let lineLayer = getLineLayer(vehicleState.id, vehicleState.colorCode);
-    setLineLayer(lineLayer);
-  }, [vehicleState]);
-
-  useEffect(() => {
-    if (!directionsGeometry) {
-      return;
-    }
-
-    if (!vehicleState) {
-      return;
-    }
-
-    let lineData = getLineData(vehicleState.id, directionsGeometry)
-    setLineData(lineData);
-  }, [vehicleState, directionsGeometry]);
-
-  useEffect(() => {
     const timer = setTimeout(() => {
       try {
         fetchVehicleState();
@@ -236,37 +144,6 @@ export const DriverViewPage = () => {
           }
         }
       }
-
-      driverViewPageMap?.getMap().addLayer({
-        id: '3d-buildings',
-        source: 'composite',
-        'source-layer': 'building',
-        filter: ['==', 'extrude', 'true'],
-        type: 'fill-extrusion',
-        minzoom: 15,
-        paint: {
-            'fill-extrusion-color': '#aaa',
-            'fill-extrusion-height': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                15,
-                0,
-                15.05,
-                ['get', 'height']
-            ],
-            'fill-extrusion-base': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                15,
-                0,
-                15.05,
-                ['get', 'min_height']
-            ],
-            'fill-extrusion-opacity': 0.8
-        }
-    });
 
       driverViewPageMap?.getMap().setFog({
         range: [19, 20],
@@ -324,11 +201,6 @@ export const DriverViewPage = () => {
                 </Card.Body>
               </Card>
             </div>
-            {directionsGeometry && lineData && lineLayer && (
-              <Source type='geojson' data={lineData}>
-                <Layer {...lineLayer} />
-              </Source>
-            )}
             <FullscreenControl />
           </Map>
         </>
