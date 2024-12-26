@@ -37,7 +37,7 @@ export const DriverViewPage = () => {
 
   // Map styles
   // const MAP_STYLE_LITE = "mapbox://styles/mapbox/light-v11";
-  const MAP_STYLE_SATELLITE = "mapbox://styles/mapbox/satellite-v9";
+  const MAP_STYLE_SATELLITE = "mapbox://styles/mapbox/satellite-streets-v12";
   //const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
 
   const [count, setCount] = useState(0);
@@ -237,6 +237,37 @@ export const DriverViewPage = () => {
         }
       }
 
+      driverViewPageMap?.getMap().addLayer({
+        id: '3d-buildings',
+        source: 'composite',
+        'source-layer': 'building',
+        filter: ['==', 'extrude', 'true'],
+        type: 'fill-extrusion',
+        minzoom: 15,
+        paint: {
+            'fill-extrusion-color': '#aaa',
+            'fill-extrusion-height': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                15,
+                0,
+                15.05,
+                ['get', 'height']
+            ],
+            'fill-extrusion-base': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                15,
+                0,
+                15.05,
+                ['get', 'min_height']
+            ],
+            'fill-extrusion-opacity': 0.8
+        }
+    });
+
       driverViewPageMap?.getMap().setFog({
         range: [19, 20],
         'horizon-blend': 0.3,
@@ -279,7 +310,7 @@ export const DriverViewPage = () => {
           >
             <div style={{ position: "fixed", top: 10, left: 10 }}>
               <Button onClick={gotoHomePage}>
-                <FontAwesomeIcon icon="home"/>
+                <FontAwesomeIcon icon="home" className="mr-3"/>
               </Button>
             </div>
             <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "300px" }}>
