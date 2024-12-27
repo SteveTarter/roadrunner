@@ -218,7 +218,7 @@ export const DriverViewPage = () => {
                 }
               </Button>
             </div>
-            <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "300px" }}>
+            <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "10rem" }}>
 
               <Card style={{ width: '10rem', alignSelf: 'end' }}>
                 <Card.Body>
