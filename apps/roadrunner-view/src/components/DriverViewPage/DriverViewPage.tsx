@@ -185,7 +185,7 @@ export const DriverViewPage = () => {
   fontawesome.library.add(faHome, faGlobe, faMap);
 
   return (
-    <div className="body row scroll-y">
+    <div className="body row">
       {(isDataLoaded && !isTransitioning && vehicleState) ?
         <>
           <Map
