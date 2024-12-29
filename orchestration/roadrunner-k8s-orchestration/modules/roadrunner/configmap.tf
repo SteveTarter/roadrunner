@@ -17,6 +17,7 @@ mapbox.api.url=https://api.mapbox.com/
 spring.data.rest.base-path=/
 com.tarterware.data-dir=/tarterware-data
 spring.web.allow-cors=true
+management.endpoints.web.exposure.include=health,info
 spring.security.oauth2.resourceserver.jwt.issuer-uri=${var.auth0_api_issuer_url}
 EOT
   }
