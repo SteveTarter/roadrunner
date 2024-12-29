@@ -26,17 +26,16 @@ public class SecurityConfig
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
 			.cors(Customizer.withDefaults())
-			.csrf((csrf) -> csrf.disable())
-        	.authorizeHttpRequests((authorizeRequests) ->
-            		authorizeRequests
-                    		.anyRequest().authenticated()
-        			)
-        	.oauth2ResourceServer((oauth2ResourceServer) ->
-            		oauth2ResourceServer.jwt((jwt) ->
-                    		jwt
-                    				.decoder(jwtDecoder())
-            				)
-        			);
+			.csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(authorizeRequests -> authorizeRequests
+                    // Allow unauthenticated access to actuator health and info endpoints
+                    .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                    // All other requests require authentication
+                    .anyRequest().authenticated()
+                )
+            .oauth2ResourceServer(oauth2ResourceServer -> oauth2ResourceServer
+                    .jwt(jwt -> jwt.decoder(jwtDecoder()))
+                );
 			
 		return http.build();
 	}
