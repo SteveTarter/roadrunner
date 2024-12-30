@@ -6,16 +6,17 @@ resource "kubernetes_ingress_v1" "roadrunner_ingress" {
     # Configures annotations dynamically based on the environment (Minikube or EKS).
     # Minikube uses NGINX, while EKS uses an Application Load Balancer (ALB).
     annotations = terraform.workspace == "minikube" ? {
-      "kubernetes.io/ingress.class"              = "nginx"
-      "kubernetes.io/ingress.allow-http"         = "true"
-      "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
+      "kubernetes.io/ingress.class"                = "nginx"
+      "kubernetes.io/ingress.allow-http"           = "true"
+      "nginx.ingress.kubernetes.io/ssl-redirect"   = "true"
     } : {
-      "alb.ingress.kubernetes.io/scheme"          = "internet-facing"
-      "alb.ingress.kubernetes.io/target-type"     = "ip"
-      "alb.ingress.kubernetes.io/listen-ports"    = "[{\"HTTPS\": 443}]"
-      "alb.ingress.kubernetes.io/certificate-arn" = var.tarterware_cert_arn
-      "alb.ingress.kubernetes.io/ssl-policy"      = "ELBSecurityPolicy-2016-08"
-      "alb.ingress.kubernetes.io/group.name"      = "shared-alb"
+      "alb.ingress.kubernetes.io/scheme"           = "internet-facing"
+      "alb.ingress.kubernetes.io/target-type"      = "ip"
+      "alb.ingress.kubernetes.io/listen-ports"     = "[{\"HTTPS\": 443}]"
+      "alb.ingress.kubernetes.io/certificate-arn"  = var.tarterware_cert_arn
+      "alb.ingress.kubernetes.io/ssl-policy"       = "ELBSecurityPolicy-2016-08"
+      "alb.ingress.kubernetes.io/group.name"       = "shared-alb"
+      "alb.ingress.kubernetes.io/healthcheck-path" = "/actuator/health"
     }
   }
 
