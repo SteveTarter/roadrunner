@@ -5,10 +5,10 @@ import Map, { FullscreenControl, useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Button, Card } from 'react-bootstrap';
-import { faHome, faMap, faGlobe } from '@fortawesome/fontawesome-free-solid'
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import fontawesome from '@fortawesome/fontawesome';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { faSatellite, faHome, faMap } from '@fortawesome/free-solid-svg-icons';
 
 export const DriverViewPage = () => {
   // Get the Vehicle ID from the URL in the window
@@ -182,7 +182,7 @@ export const DriverViewPage = () => {
     return () => clearTimeout(timer);
   }, [driverViewPageMap]);
 
-  fontawesome.library.add(faHome, faGlobe, faMap);
+  library.add(faHome, faSatellite, faMap);
 
   return (
     <div className="body row scroll-y">
@@ -204,17 +204,17 @@ export const DriverViewPage = () => {
           >
             <div style={{ position: "fixed", top: 10, left: 10 }}>
               <Button onClick={gotoHomePage}>
-                <FontAwesomeIcon icon="home" className="mr-3" />
+                <FontAwesomeIcon icon={ faHome } className="mr-3" />
               </Button>
             </div>
             <div style={{ position: "fixed", top: 10, left: 60 }}>
               <Button onClick={toggleMapStyle}>
                 {(mapStyle === MAP_STYLE_STREET) ?
                   <>
-                    <FontAwesomeIcon title="Satellte Display" icon="globe" className="mr-3" />
+                    <FontAwesomeIcon title="Satellte Display" icon={ faSatellite } className="mr-3" />
                   </>
                   :
-                  <FontAwesomeIcon title="Map Display" icon="map" className="mr-3" />
+                  <FontAwesomeIcon title="Map Display" icon={ faMap } className="mr-3" />
                 }
               </Button>
             </div>
