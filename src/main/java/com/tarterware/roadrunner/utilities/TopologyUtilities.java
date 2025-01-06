@@ -98,6 +98,33 @@ public class TopologyUtilities
     }
     
     /**
+     * Determines if a new coordinate transformer is needed based on a change in UTM zones.
+     * This method calculates the UTM zone for the given longitudes and checks
+     * if the zone has changed between the old and new longitude values.
+     *
+     * @param oldLongitude The longitude of the previous location in degrees.
+     * @param newLongitude The longitude of the current location in degrees.
+     * @return {@code true} if the UTM zone has changed and a new transformer is needed;
+     *         {@code false} otherwise.
+     * @throws IllegalArgumentException if either longitude is not within the range [-180, 180].
+     */
+    public static boolean isNewTransformerNeeded(double oldLongitude, double newLongitude)
+    {
+        if( Math.abs(oldLongitude) > 180.0)
+        {
+            throw new IllegalArgumentException("Not a valid longitude: " + oldLongitude);
+        }
+        if( Math.abs(newLongitude) > 180.0)
+        {
+            throw new IllegalArgumentException("Not a valid longitude: " + newLongitude);
+        }
+        
+        int oldZone = (int) Math.ceil((oldLongitude + 180.0) / 6.0);
+        int newZone = (int) Math.ceil((newLongitude + 180.0) / 6.0);
+        return oldZone != newZone;
+    }
+    
+    /**
      * Return a UTM coordinate system appropriate for the given geodetic coordinate.
      * @param coord Location.
      * @return A UTM coordinate system.
