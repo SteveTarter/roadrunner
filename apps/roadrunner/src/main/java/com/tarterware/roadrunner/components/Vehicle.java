@@ -30,102 +30,245 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
+/**
+ * Represents a vehicle that navigates a predefined route, tracking its position, speed,
+ * and bearing in real-time. The class supports geospatial transformations using UTM
+ * and WGS84 coordinates and handles dynamic route adjustments and updates.
+ * 
+ * <p>The {@code Vehicle} class provides functionality to:
+ * <ul>
+ *   <li>Set a trip plan and initialize route geometry.</li>
+ *   <li>Update the vehicle's position, speed, and bearing based on elapsed time.</li>
+ *   <li>Handle transitions between UTM zones dynamically during route traversal.</li>
+ *   <li>Log and manage the vehicle's movement along the route.</li>
+ * </ul>
+ * </p>
+ * 
+ * <p>Features include:
+ * <ul>
+ *   <li>Geospatial transformations between UTM and WGS84 coordinates.</li>
+ *   <li>Dynamic bearing adjustments based on route geometry.</li>
+ *   <li>Acceleration, deceleration, and turning constraints for realistic movement simulation.</li>
+ *   <li>Management of route segment data for efficient spatial calculations.</li>
+ * </ul>
+ * </p>
+ * 
+ * <p>Example usage:
+ * <pre>
+ *     DirectionsService directionsService = new DirectionsService();
+ *     Vehicle vehicle = new Vehicle(directionsService);
+ *     
+ *     TripPlan tripPlan = new TripPlan(...); // Define a trip plan
+ *     vehicle.setTripPlan(tripPlan);         // Set the trip plan for the vehicle
+ *     
+ *     vehicle.update();                      // Update the vehicle's state
+ * </pre>
+ * </p>
+ * 
+ * @see com.tarterware.roadrunner.models.TripPlan
+ * @see com.tarterware.roadrunner.services.DirectionsService
+ * @see com.tarterware.roadrunner.utilities.TopologyUtilities
+ */
 @ToString
 @EqualsAndHashCode
 @AllArgsConstructor
 public class Vehicle
 {
+	/**
+	 * Represents data associated with a line segment in a route, including its UTM transformations
+	 * and offset information. This class encapsulates information necessary to manage and
+	 * transform coordinates for a specific segment of a route.
+	 * 
+	 * <p>Each instance of this class corresponds to a line segment within a UTM zone. It includes:
+	 * <ul>
+	 *   <li>The cumulative offset in meters from the start of the route.</li>
+	 *   <li>A {@link LengthIndexedLine} representing the geometry of the segment.</li>
+	 *   <li>Coordinate transformation utilities for converting between geodetic (WGS84) and UTM coordinates.</li>
+	 * </ul>
+	 * </p>
+	 * 
+	 * <p>This data structure is used to manage the routing logic and spatial transformations
+	 * required to track a vehicle's position along a route.</p>
+	 * 
+	 * @see LengthIndexedLine
+	 * @see CoordinateTransform
+	 */
     @Data
     class LineSegmentData
     {
-    	private double metersOffset;
-    	
-    	private LengthIndexedLine lengthIndexedLine;
-    	
+        /**
+         * The cumulative offset, in meters, from the start of the route to the start of this line segment.
+         */
+        private double metersOffset;
+
+        /**
+         * The line geometry of this segment, indexed by length for efficient spatial queries.
+         */
+        private LengthIndexedLine lengthIndexedLine;
+
+        /**
+         * The coordinate transformer for converting from geodetic (WGS84) coordinates to UTM coordinates.
+         */
         private CoordinateTransform wgs84ToUtmCoordinatetransformer;
-        
+
+        /**
+         * The coordinate transformer for converting from UTM coordinates to geodetic (WGS84) coordinates.
+         */
         private CoordinateTransform utmToWgs84Coordinatetransformer;
     }
 
     DirectionsService directionsService;
     
+ // Unique identifier for the vehicle instance.
     @Getter
     UUID id;
 
+    // Represents the trip plan that this vehicle follows.
     @Getter
     TripPlan tripPlan;
-    
+
+    // Current offset along the route in meters.
     @Getter
     double metersOffset;
-    
+
+    // Indicates if the vehicle's position is constrained to the route's boundaries.
     @Getter
     boolean positionLimited;
-    
+
+    // Indicates if the vehicle's position is valid (e.g., within the defined route).
     @Getter
     boolean positionValid;
-    
+
+    // Current latitude of the vehicle in degrees.
     @Getter
     double degLatitude;
-    
+
+    // Current longitude of the vehicle in degrees.
     @Getter
     double degLongitude;
-    
+
+    // The desired speed of the vehicle in meters per second.
     @Getter
     double metersPerSecondDesired;
-    
+
+    // The current speed of the vehicle in meters per second.
     @Getter
     double metersPerSecond;
-    
+
+    // The maximum acceleration of the vehicle in meters per second squared.
     @Getter
     double mssAcceleration;
-    
+
+    // The current bearing (heading) of the vehicle in degrees (0-360).
     @Getter
     double degBearing;
-    
+
+    // The desired bearing (heading) of the vehicle in degrees (0-360).
     @Getter
     double degBearingDesired;
-    
+
+    // The maximum turning rate of the vehicle in degrees per second.
     @Getter
     double degsPerSecondTurn;
-    
+
+    // The color code (hex) representing the vehicle's visual appearance.
     @Getter
     String colorCode;
-    
+
+    // Directions object containing route details, waypoints, and legs for the trip.
     @Getter
     private Directions directions;
 
+    // Timestamp of the last position update calculation.
     Instant lastCalculationInstant;
-    
-    private LineString utmLineString;
-    private CoordinateTransform wgs84ToUtmCoordinatetransformer;
-    private CoordinateTransform utmToWgs84Coordinatetransformer;
-    private LengthIndexedLine lengthIndexedLine;
-    private ProjCoordinate lastProjGeoPoint;
-    private double lastLongitude;
-    private List<LineSegmentData> listLineSegmentData = new ArrayList<LineSegmentData>();
-    
-    private static final Logger logger = LoggerFactory.getLogger(Vehicle.class);
 
+    // Last geodetic point in projected coordinates, used for bearing calculations.
+    private ProjCoordinate lastProjGeoPoint;
+
+    // A list of data about each line segment in the route, including geometry and UTM transformers.
+    private List<LineSegmentData> listLineSegmentData = new ArrayList<>();
+
+    // Logger instance for logging vehicle activity and debug information.
+    private static final Logger logger = LoggerFactory.getLogger(Vehicle.class);
+    
+    /**
+     * Constructs a new {@code Vehicle} instance with default settings and associates it 
+     * with the specified {@link DirectionsService}.
+     * 
+     * <p>The constructor initializes the following:
+     * <ul>
+     *   <li>A unique identifier for the vehicle.</li>
+     *   <li>Default acceleration and turning rates.</li>
+     *   <li>A random pastel color for visual representation.</li>
+     *   <li>Associates the vehicle with the provided {@link DirectionsService} 
+     *       for fetching route directions.</li>
+     * </ul>
+     * </p>
+     * 
+     * @param directionsService The {@link DirectionsService} instance used to retrieve
+     *                          directions for the vehicle's routes. Must not be {@code null}.
+     * 
+     * @throws IllegalArgumentException if {@code directionsService} is {@code null}.
+     * 
+     * <p>Example usage:
+     * <pre>
+     *     DirectionsService directionsService = new DirectionsService();
+     *     Vehicle vehicle = new Vehicle(directionsService);
+     * </pre>
+     */
     public Vehicle(DirectionsService directionsService)
     {
         super();
         
+        // Initialize the vehicle with a unique identifier.
         this.id = UUID.randomUUID();
+        
+        // Service used to fetch directions for trip plans.
         this.directionsService = directionsService;
+        
+        // Default acceleration (m/s^2) for the vehicle.
         this.mssAcceleration = 2.0;
+        
+        // Default turning rate (degrees per second).
         this.degsPerSecondTurn = 120.0;
         
-        // to get rainbow, pastel colors
+     // Generate a random pastel color for the vehicle's visual representation.
         Random random = new Random();
         final float hue = random.nextFloat();
-        final float saturation = 0.9f;//1.0 for brilliant, 0.0 for dull
-        final float luminance = 1.0f; //1.0 for brighter, 0.0 for black
+        final float saturation = 0.9f; // Saturation: 1.0 for brilliant, 0.0 for dull.
+        final float luminance = 1.0f;  // Luminance: 1.0 for bright, 0.0 for dark.
         int hexColor = Color.getHSBColor(hue, saturation, luminance).getRGB();
         this.colorCode = String.format("#%06X", hexColor & 0xFFFFFF);
     }
     
+    /**
+     * Sets the trip plan for the vehicle and initializes the route geometry, segment data,
+     * and coordinate transformations for the specified trip.
+     * 
+     * <p>This method processes the trip plan by:
+     * <ul>
+     *   <li>Retrieving directions based on the trip plan.</li>
+     *   <li>Creating a list of {@link LineSegmentData} objects to manage route segments.</li>
+     *   <li>Handling UTM zone transitions and ensuring proper coordinate transformations.</li>
+     *   <li>Initializing the vehicle's position at the start of the route.</li>
+     * </ul>
+     * </p>
+     * 
+     * @param tripPlan The {@link TripPlan} object representing the desired route.
+     *                 Must not be {@code null}.
+     * @throws IllegalArgumentException if the {@code tripPlan} is {@code null}.
+     * 
+     * <p>Example usage:
+     * <pre>
+     *     TripPlan plan = new TripPlan(...);  // Define a trip plan
+     *     vehicle.setTripPlan(plan);         // Assign the trip plan to the vehicle
+     * </pre>
+     */
     public void setTripPlan(TripPlan tripPlan)
     {
+    	LengthIndexedLine lengthIndexedLine;
+    	
+        // Check for a valid trip plan.
         if(tripPlan == null)
         {
             throw new IllegalArgumentException("TripPlan cannot be null!");
@@ -143,14 +286,14 @@ public class Vehicle
         List<Double> startLocation = directions.getWaypoints().get(0).getLocation();
         ProjCoordinate geodeticCoordinate = new ProjCoordinate(startLocation.get(0), startLocation.get(1), 0.0);
         Coordinate coord = TopologyUtilities.projCoordToCoord(geodeticCoordinate);
-        wgs84ToUtmCoordinatetransformer = TopologyUtilities.getWgs84ToUtmCoordinateTransformer(coord);
-        utmToWgs84Coordinatetransformer = TopologyUtilities.getUtmToWgs84CoordinateTransformer(coord);
+        CoordinateTransform wgs84ToUtmCoordinatetransformer = TopologyUtilities.getWgs84ToUtmCoordinateTransformer(coord);
+        CoordinateTransform utmToWgs84Coordinatetransformer = TopologyUtilities.getUtmToWgs84CoordinateTransformer(coord);
         lineSegmentData.setWgs84ToUtmCoordinatetransformer(wgs84ToUtmCoordinatetransformer);
         lineSegmentData.setUtmToWgs84Coordinatetransformer(utmToWgs84Coordinatetransformer);
-        lastLongitude = startLocation.get(0);
+        double lastLongitude = startLocation.get(0);
         List<Coordinate> utmCoordList = new ArrayList<Coordinate>();
 
-        // Now, loop through the legs of the route and create the JTS versions
+        // Iterate over route legs and steps to generate geometry and update line segment data.
         List<RouteLeg> listLegs = directions.getRoutes().get(0).getLegs();
         for(RouteLeg leg : listLegs)
         {
@@ -165,7 +308,7 @@ public class Vehicle
             		lastLongitude = newLongitude;
             		
                     // Create a length indexed string for this segment and store it in the list
-                    utmLineString = geometryFactory.createLineString(utmCoordList.toArray(new Coordinate[0]));
+            		LineString utmLineString = geometryFactory.createLineString(utmCoordList.toArray(new Coordinate[0]));
                     lengthIndexedLine = new LengthIndexedLine(utmLineString);
                     lineSegmentData.setLengthIndexedLine(lengthIndexedLine);
                     listLineSegmentData.add(lineSegmentData);
@@ -198,9 +341,8 @@ public class Vehicle
             }
         }
         
-        // The end of the trip has been reached.
-        // Create a length indexed string for this segment and store it in the list
-        utmLineString = geometryFactory.createLineString(utmCoordList.toArray(new Coordinate[0]));
+        // Finalize the last line segment's data at the end of the trip.
+        LineString utmLineString = geometryFactory.createLineString(utmCoordList.toArray(new Coordinate[0]));
         lengthIndexedLine = new LengthIndexedLine(utmLineString);
         lineSegmentData.setLengthIndexedLine(lengthIndexedLine);
         listLineSegmentData.add(lineSegmentData);
@@ -211,15 +353,33 @@ public class Vehicle
         
         // Finally, set the current location.
         setMetersOffset(0.0);
-
-        // Set the transformer back to the beginning
-        startLocation = directions.getWaypoints().get(0).getLocation();
-        geodeticCoordinate = new ProjCoordinate(startLocation.get(0), startLocation.get(1), 0.0);
-        coord = TopologyUtilities.projCoordToCoord(geodeticCoordinate);
-        wgs84ToUtmCoordinatetransformer = TopologyUtilities.getWgs84ToUtmCoordinateTransformer(coord);
-        utmToWgs84Coordinatetransformer = TopologyUtilities.getUtmToWgs84CoordinateTransformer(coord);
     }
     
+    /**
+     * Updates the vehicle's position along the route based on the specified offset in meters.
+     * 
+     * <p>This method adjusts the vehicle's geographic location, position validity, and
+     * bearing based on the given offset. It handles various cases, such as:
+     * <ul>
+     *   <li>Setting the position to the start of the route if the offset is zero.</li>
+     *   <li>Setting the position to the end of the route if the offset matches the total route distance.</li>
+     *   <li>Handling out-of-bounds offsets by limiting the position to the nearest valid boundary.</li>
+     *   <li>Determining the current position within the route's segments for valid offsets.</li>
+     * </ul>
+     * </p>
+     * 
+     * <p>The method also calculates the desired speed and updates the vehicle's desired bearing
+     * based on the new position.</p>
+     * 
+     * @param metersOffset The distance offset along the route in meters. A value of 0 sets the
+     *                     position to the start of the route, and a value equal to the route's
+     *                     total distance sets the position to the end.
+     * 
+     * <p>Example usage:
+     * <pre>
+     *     vehicle.setMetersOffset(500.0); // Move the vehicle to 500 meters along the route.
+     * </pre>
+     */
     public void setMetersOffset(double metersOffset)
     {
         if(metersOffset == 0.0)
@@ -230,7 +390,6 @@ public class Vehicle
             positionValid = true;
             degLatitude = startLocation.get(1);
             degLongitude = startLocation.get(0);
-    		lastLongitude = degLongitude;
 
             this.metersOffset = metersOffset;
             _determineDesiredSpeed();
@@ -245,7 +404,6 @@ public class Vehicle
             List<Double> endLocation = directions.getWaypoints().get(waypointCount - 1).getLocation();
             degLatitude = endLocation.get(1);
             degLongitude = endLocation.get(0);
-    		lastLongitude = degLongitude;
             
             this.metersOffset = metersOffset;
             _determineDesiredSpeed();
@@ -261,7 +419,6 @@ public class Vehicle
             positionValid = false;
             degLatitude = startLocation.get(1);
             degLongitude = startLocation.get(0);
-    		lastLongitude = degLongitude;
             
             this.metersOffset = metersOffset;
             _determineDesiredSpeed();
@@ -277,7 +434,6 @@ public class Vehicle
             positionValid = false;
             degLatitude = endLocation.get(1);
             degLongitude = endLocation.get(0);
-    		lastLongitude = degLongitude;
             
             this.metersOffset = metersOffset;
             _determineDesiredSpeed();
@@ -324,43 +480,35 @@ public class Vehicle
         _determineDesiredSpeed();
     }
     
-    private double _getBearingBetween(ProjCoordinate projGeoPoint1, ProjCoordinate projGeoPoint2)
-    {
-        double longitude1 = projGeoPoint1.x;
-        double longitude2 = projGeoPoint2.x;
-        double latitude1 = Math.toRadians(projGeoPoint1.y);
-        double latitude2 = Math.toRadians(projGeoPoint2.y);
-        double longDiff = Math.toRadians(longitude2 - longitude1);
-        double y = Math.sin(longDiff) * Math.cos(latitude2);
-        double x = Math.cos(latitude1) * Math.sin(latitude2) - Math.sin(latitude1) * Math.cos(latitude2) * Math.cos(longDiff);
-
-        return (Math.toDegrees(Math.atan2(y, x)) + 360) % 360;
-    }
-    
-    private void _determineDesiredSpeed()
-    {
-        // Determine what metersPerSecondDesired should be.
-        double totalDistance = 0.0;
-        double speed = 0.0;
-        boolean distanceReached = false;
-        List<RouteLeg> listLegs = directions.getRoutes().get(0).getLegs();
-        for(int legIndex = 0;  !distanceReached && (legIndex < listLegs.size());  ++legIndex)
-        {
-            Annotation annotation = listLegs.get(legIndex).getAnnotation();
-            for(int a = 0;  !distanceReached && (a < annotation.getSpeed().size());  ++a)
-            {
-                speed = annotation.getSpeed().get(a);
-                totalDistance += annotation.getDistance().get(a);
-                if(totalDistance >= metersOffset)
-                {
-                    distanceReached = true;
-                }
-            }
-        }
-        
-        metersPerSecondDesired = speed;        
-    }
-    
+    /**
+     * Updates the vehicle's state based on the elapsed time since the last calculation.
+     * 
+     * <p>This method performs the following operations:
+     * <ul>
+     *   <li>Adjusts the vehicle's speed to approach the desired speed, respecting the
+     *       acceleration or deceleration limits.</li>
+     *   <li>Calculates the distance the vehicle has traveled during the elapsed time
+     *       and updates its position along the route.</li>
+     *   <li>Adjusts the vehicle's bearing (heading) toward the desired bearing, respecting
+     *       the maximum turning rate.</li>
+     *   <li>Logs changes in the vehicle's speed and state (e.g., reaching the destination).</li>
+     * </ul>
+     * </p>
+     * 
+     * <p>The method ensures the vehicle's state remains consistent with the route, handling
+     * cases such as reaching the end of the route or being limited by route boundaries.</p>
+     * 
+     * <p>If the vehicle is at the end of the route, its speed is set to zero, and further updates
+     * will not move the vehicle.</p>
+     * 
+     * <p>Example usage:
+     * <pre>
+     *     vehicle.update(); // Updates the vehicle's position and state.
+     * </pre>
+     * 
+     * @see #setMetersOffset(double)
+     * @see #shortestAngleDifference(double, double)
+     */
     public void update()
     {
         Instant now = Instant.now();
@@ -410,31 +558,56 @@ public class Vehicle
             degBearing = normalize(degBearing);
             degBearingDesired = normalize(degBearingDesired);
             
-            // Compute the shortest angle difference [-180, 180]
+            // Calculate the shortest angle difference [-180, 180]
             double degAngleDiff = shortestAngleDifference(degBearing, degBearingDesired);
 
             if(degAngleDiff != 0.0)
             {
             	// Calculate the maximum turn allowed
             	double degMaxTurn = degsPerSecondTurn * (msElapsed / 1000.0);
-
-                // Determine the new bearing
-                if (Math.abs(degAngleDiff) <= degMaxTurn)
-                {
-                    // We can reach the desired bearing within this step
-                    degBearing = degBearingDesired;
-                }
-                else
-                {
-                    // Turn in the appropriate direction
-                    double turnDirection = degAngleDiff > 0 ? 1 : -1;
-                    double newDegBearing = degBearing + turnDirection * degMaxTurn;
-                    degBearing = normalize(newDegBearing);
-                }
+                degBearing += Math.signum(degAngleDiff) * Math.min(Math.abs(degAngleDiff), degMaxTurn);
+                degBearing = normalize(degBearing);
             }
         }
         
         lastCalculationInstant = now;
+    }
+    
+    private double _getBearingBetween(ProjCoordinate projGeoPoint1, ProjCoordinate projGeoPoint2)
+    {
+        double longitude1 = projGeoPoint1.x;
+        double longitude2 = projGeoPoint2.x;
+        double latitude1 = Math.toRadians(projGeoPoint1.y);
+        double latitude2 = Math.toRadians(projGeoPoint2.y);
+        double longDiff = Math.toRadians(longitude2 - longitude1);
+        double y = Math.sin(longDiff) * Math.cos(latitude2);
+        double x = Math.cos(latitude1) * Math.sin(latitude2) - Math.sin(latitude1) * Math.cos(latitude2) * Math.cos(longDiff);
+
+        return (Math.toDegrees(Math.atan2(y, x)) + 360) % 360;
+    }
+    
+    private void _determineDesiredSpeed()
+    {
+        // Determine what metersPerSecondDesired should be.
+        double totalDistance = 0.0;
+        double speed = 0.0;
+        boolean distanceReached = false;
+        List<RouteLeg> listLegs = directions.getRoutes().get(0).getLegs();
+        for(int legIndex = 0;  !distanceReached && (legIndex < listLegs.size());  ++legIndex)
+        {
+            Annotation annotation = listLegs.get(legIndex).getAnnotation();
+            for(int a = 0;  !distanceReached && (a < annotation.getSpeed().size());  ++a)
+            {
+                speed = annotation.getSpeed().get(a);
+                totalDistance += annotation.getDistance().get(a);
+                if(totalDistance >= metersOffset)
+                {
+                    distanceReached = true;
+                }
+            }
+        }
+        
+        metersPerSecondDesired = speed;        
     }
     
     // Normalize an angle to the range [0, 360)
