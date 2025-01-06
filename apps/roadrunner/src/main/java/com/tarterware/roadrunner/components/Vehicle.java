@@ -8,13 +8,9 @@ import java.util.Random;
 import java.util.UUID;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.index.SpatialIndex;
-import org.locationtech.jts.index.strtree.STRtree;
 import org.locationtech.jts.linearref.LengthIndexedLine;
-import org.locationtech.jts.linearref.LocationIndexedLine;
 import org.locationtech.proj4j.CoordinateTransform;
 import org.locationtech.proj4j.ProjCoordinate;
 import org.slf4j.Logger;
@@ -29,6 +25,7 @@ import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
@@ -38,6 +35,18 @@ import lombok.ToString;
 @AllArgsConstructor
 public class Vehicle
 {
+    @Data
+    class LineSegmentData
+    {
+    	private double metersOffset;
+    	
+    	private LengthIndexedLine lengthIndexedLine;
+    	
+        private CoordinateTransform wgs84ToUtmCoordinatetransformer;
+        
+        private CoordinateTransform utmToWgs84Coordinatetransformer;
+    }
+
     DirectionsService directionsService;
     
     @Getter
@@ -91,9 +100,10 @@ public class Vehicle
     private CoordinateTransform wgs84ToUtmCoordinatetransformer;
     private CoordinateTransform utmToWgs84Coordinatetransformer;
     private LengthIndexedLine lengthIndexedLine;
-    private SpatialIndex spatialIndex;
     private ProjCoordinate lastProjGeoPoint;
-
+    private double lastLongitude;
+    private List<LineSegmentData> listLineSegmentData = new ArrayList<LineSegmentData>();
+    
     private static final Logger logger = LoggerFactory.getLogger(Vehicle.class);
 
     public Vehicle(DirectionsService directionsService)
@@ -116,12 +126,14 @@ public class Vehicle
     
     public void setTripPlan(TripPlan tripPlan)
     {
-        metersOffset = 0.0;
-
         if(tripPlan == null)
         {
             throw new IllegalArgumentException("TripPlan cannot be null!");
         }
+        
+        metersOffset = 0.0;
+        LineSegmentData lineSegmentData = new LineSegmentData();
+        lineSegmentData.setMetersOffset(metersOffset);
         
         // Get the directions to follow the TripRequest.
         directions = directionsService.getDirectionsForTripPlan(tripPlan);
@@ -133,7 +145,9 @@ public class Vehicle
         Coordinate coord = TopologyUtilities.projCoordToCoord(geodeticCoordinate);
         wgs84ToUtmCoordinatetransformer = TopologyUtilities.getWgs84ToUtmCoordinateTransformer(coord);
         utmToWgs84Coordinatetransformer = TopologyUtilities.getUtmToWgs84CoordinateTransformer(coord);
-        
+        lineSegmentData.setWgs84ToUtmCoordinatetransformer(wgs84ToUtmCoordinatetransformer);
+        lineSegmentData.setUtmToWgs84Coordinatetransformer(utmToWgs84Coordinatetransformer);
+        lastLongitude = startLocation.get(0);
         List<Coordinate> utmCoordList = new ArrayList<Coordinate>();
 
         // Now, loop through the legs of the route and create the JTS versions
@@ -143,24 +157,53 @@ public class Vehicle
             // Create a version of the leg in UTM coordinates
             for(RouteStep step : leg.getSteps())
             {
+            	// Test to see if the path has moved into another UTM region.
+            	// If so, new transformers need to be created.
+            	double newLongitude = step.getGeometry().getCoordinates().get(0).get(0);
+            	if(TopologyUtilities.isNewTransformerNeeded(lastLongitude, newLongitude))
+            	{
+            		lastLongitude = newLongitude;
+            		
+                    // Create a length indexed string for this segment and store it in the list
+                    utmLineString = geometryFactory.createLineString(utmCoordList.toArray(new Coordinate[0]));
+                    lengthIndexedLine = new LengthIndexedLine(utmLineString);
+                    lineSegmentData.setLengthIndexedLine(lengthIndexedLine);
+                    listLineSegmentData.add(lineSegmentData);
+                    
+                    // Add the length of that line to the total offset
+                    metersOffset += lengthIndexedLine.getEndIndex();
+
+                    // Create a new LineSegmentData to record this UTM zone's path.
+                    lineSegmentData = new LineSegmentData();
+                    lineSegmentData.setMetersOffset(metersOffset);
+                    utmCoordList = new ArrayList<Coordinate>();
+
+                    // Create new transformers appropriate for this UTM zone.
+                    startLocation = step.getGeometry().getCoordinates().get(0);
+                    geodeticCoordinate = new ProjCoordinate(startLocation.get(0), startLocation.get(1), 0.0);
+                    coord = TopologyUtilities.projCoordToCoord(geodeticCoordinate);
+                    wgs84ToUtmCoordinatetransformer = TopologyUtilities.getWgs84ToUtmCoordinateTransformer(coord);
+                    utmToWgs84Coordinatetransformer = TopologyUtilities.getUtmToWgs84CoordinateTransformer(coord);
+                    lineSegmentData.setWgs84ToUtmCoordinatetransformer(wgs84ToUtmCoordinatetransformer);
+                    lineSegmentData.setUtmToWgs84Coordinatetransformer(utmToWgs84Coordinatetransformer);
+            	}
+            	
                 ProjCoordinate projUtmCoord = new ProjCoordinate();
                 for(List<Double> coordinate : step.getGeometry().getCoordinates())
                 {
-                    geodeticCoordinate = new ProjCoordinate(coordinate.get(0), coordinate.get(1), 0.0);
+                	geodeticCoordinate = new ProjCoordinate(coordinate.get(0), coordinate.get(1), 0.0);
                     wgs84ToUtmCoordinatetransformer.transform(geodeticCoordinate, projUtmCoord);
                     utmCoordList.add(TopologyUtilities.projCoordToCoord(projUtmCoord));
                 }
             }
         }
+        
+        // The end of the trip has been reached.
+        // Create a length indexed string for this segment and store it in the list
         utmLineString = geometryFactory.createLineString(utmCoordList.toArray(new Coordinate[0]));
-        
-        // Create a spatial index, then stuff the envelope of the UTM line string in it.
-        spatialIndex = new STRtree();
-        Envelope envelope = utmLineString.getEnvelopeInternal();
-        spatialIndex.insert(envelope, new LocationIndexedLine(utmLineString));
-        
-        // Create a length indexed string, and determine what the milepost scale factor should be.
         lengthIndexedLine = new LengthIndexedLine(utmLineString);
+        lineSegmentData.setLengthIndexedLine(lengthIndexedLine);
+        listLineSegmentData.add(lineSegmentData);
 
         this.tripPlan = tripPlan;
 
@@ -168,6 +211,13 @@ public class Vehicle
         
         // Finally, set the current location.
         setMetersOffset(0.0);
+
+        // Set the transformer back to the beginning
+        startLocation = directions.getWaypoints().get(0).getLocation();
+        geodeticCoordinate = new ProjCoordinate(startLocation.get(0), startLocation.get(1), 0.0);
+        coord = TopologyUtilities.projCoordToCoord(geodeticCoordinate);
+        wgs84ToUtmCoordinatetransformer = TopologyUtilities.getWgs84ToUtmCoordinateTransformer(coord);
+        utmToWgs84Coordinatetransformer = TopologyUtilities.getUtmToWgs84CoordinateTransformer(coord);
     }
     
     public void setMetersOffset(double metersOffset)
@@ -180,7 +230,8 @@ public class Vehicle
             positionValid = true;
             degLatitude = startLocation.get(1);
             degLongitude = startLocation.get(0);
-            
+    		lastLongitude = degLongitude;
+
             this.metersOffset = metersOffset;
             _determineDesiredSpeed();
             return;
@@ -194,6 +245,7 @@ public class Vehicle
             List<Double> endLocation = directions.getWaypoints().get(waypointCount - 1).getLocation();
             degLatitude = endLocation.get(1);
             degLongitude = endLocation.get(0);
+    		lastLongitude = degLongitude;
             
             this.metersOffset = metersOffset;
             _determineDesiredSpeed();
@@ -209,6 +261,7 @@ public class Vehicle
             positionValid = false;
             degLatitude = startLocation.get(1);
             degLongitude = startLocation.get(0);
+    		lastLongitude = degLongitude;
             
             this.metersOffset = metersOffset;
             _determineDesiredSpeed();
@@ -224,17 +277,36 @@ public class Vehicle
             positionValid = false;
             degLatitude = endLocation.get(1);
             degLongitude = endLocation.get(0);
+    		lastLongitude = degLongitude;
             
             this.metersOffset = metersOffset;
             _determineDesiredSpeed();
             return;
         }
         
+        // First, determine the appropriate LineSegmentData to use.
+        LineSegmentData activeLineSegmentData = null;
+        double localMetersOffset = metersOffset;
+        boolean foundLineSegment = false;
+        for(int i = 0 ;  !foundLineSegment && (i < listLineSegmentData.size());  ++i)
+        {
+        	LineSegmentData lineSegmentData = listLineSegmentData.get(i);
+        	if(metersOffset >= lineSegmentData.getMetersOffset())
+        	{
+        		activeLineSegmentData = lineSegmentData;
+        		localMetersOffset = metersOffset - lineSegmentData.getMetersOffset();
+        	}
+        	else
+        	{
+        		foundLineSegment = true;
+        	}
+        }
+        
         // Now find the geodetic coordinate to return.
-        Coordinate utmPoint = lengthIndexedLine.extractPoint(metersOffset);
+        Coordinate utmPoint = activeLineSegmentData.getLengthIndexedLine().extractPoint(localMetersOffset);
         ProjCoordinate projUtmPoint = TopologyUtilities.coordToProjCoord(utmPoint);
         ProjCoordinate projGeoPoint = new ProjCoordinate();
-        utmToWgs84Coordinatetransformer.transform(projUtmPoint, projGeoPoint);
+        activeLineSegmentData.getUtmToWgs84Coordinatetransformer().transform(projUtmPoint, projGeoPoint);
         
         if((lastProjGeoPoint != null) && 
            !((projGeoPoint.x == lastProjGeoPoint.x) && (projGeoPoint.y == lastProjGeoPoint.y)))
