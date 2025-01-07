@@ -39,6 +39,17 @@ resource "kubernetes_deployment" "roadrunner_view_deployment" {
               name = "roadrunner-view-config"
             }
           }
+
+          resources {
+            requests = {
+              memory = "1.5Gi"
+              cpu    = "500m"
+            }
+            limits = {
+              memory = "2Gi"
+              cpu    = "1"
+            }
+          }
         }
       }
     }
