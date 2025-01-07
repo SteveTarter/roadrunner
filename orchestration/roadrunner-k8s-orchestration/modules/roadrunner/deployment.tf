@@ -58,6 +58,17 @@ resource "kubernetes_deployment" "roadrunner" {
             name       = "tarterware-data"
             mount_path = var.tarterware_data_dir
           }
+
+          resources {
+            requests = {
+              memory = "512Mi"
+              cpu    = "500m"
+            }
+            limits = {
+              memory = "1Gi"
+              cpu    = "1"
+            }
+          }
         }
 
         volume {
