@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { faSatellite, faHome, faMap } from '@fortawesome/free-solid-svg-icons';
+import { ViewControl } from './ViewControl';
 
 export const DriverViewPage = () => {
   // Get the Vehicle ID from the URL in the window
@@ -27,6 +28,8 @@ export const DriverViewPage = () => {
 
   const [vehicleState, setVehicleState] = useState<VehicleState>();
 
+  // Driver view offset from straight ahead
+  const [degViewOffset, setDegViewOffset] = useState(0);
 
   const navigate = useNavigate();
 
@@ -85,9 +88,10 @@ export const DriverViewPage = () => {
         .then(data => {
           setVehicleState(data);
           setIsDataLoaded(true);
-          driverViewPageMap?.setBearing(data.degBearing);
+          let degViewBearing = data.degBearing + degViewOffset
+          driverViewPageMap?.setBearing(degViewBearing);
           let mRange = 20.0 * window.innerHeight / 932.0;
-          let shiftedPoint = getCoordinateAtBearingAndRange(data.degLatitude, data.degLongitude, data.degBearing, mRange);
+          let shiftedPoint = getCoordinateAtBearingAndRange(data.degLatitude, data.degLongitude, degViewBearing, mRange);
           driverViewPageMap?.setCenter(shiftedPoint);
 
           return data;
@@ -220,11 +224,17 @@ export const DriverViewPage = () => {
             </div>
             <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "10rem" }}>
 
-              <Card style={{ width: '10rem', alignSelf: 'end' }}>
+              <Card style={{ width: '10rem', alignSelf: 'end', textAlign: 'center' }}>
                 <Card.Body>
-                  <Card.Text>
-                    Speed: {(Math.round(MPS_TO_MPH * vehicleState.metersPerSecond * 10) / 10).toFixed(1)} MPH<br />
-                    Bearing: {(Math.round(vehicleState.degBearing * 10) / 10).toFixed(1)}&deg;
+                  <ViewControl degViewOffset={degViewOffset} setDegViewOffset={setDegViewOffset} />
+                  <Card.Text style={{ fontSize: '1.1rem' }}>
+                    <br/>
+                    {`${(Math.round(MPS_TO_MPH * vehicleState.metersPerSecond * 10) / 10)
+                      .toFixed(1)
+                      .padStart(4, ' ')}`} MPH<br />
+                    {`${(Math.round(vehicleState.degBearing * 10) / 10)
+                      .toFixed(1)
+                      .padStart(5, ' ')}`}&deg;
                   </Card.Text>
                 </Card.Body>
               </Card>
