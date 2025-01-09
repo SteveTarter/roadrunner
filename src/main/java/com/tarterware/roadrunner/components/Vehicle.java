@@ -425,7 +425,7 @@ public class Vehicle
             return;
         }
         
-        if(metersOffset > directions.getRoutes().get(0).getDistance())
+        if(metersOffset >= directions.getRoutes().get(0).getDistance())
         {
             // Set the position to the end of the route.
             int waypointCount = directions.getWaypoints().size();
@@ -435,7 +435,7 @@ public class Vehicle
             degLatitude = endLocation.get(1);
             degLongitude = endLocation.get(0);
             
-            this.metersOffset = metersOffset;
+            this.metersOffset = directions.getRoutes().get(0).getDistance();
             _determineDesiredSpeed();
             return;
         }
