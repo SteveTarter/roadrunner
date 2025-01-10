@@ -2,9 +2,9 @@ package com.tarterware.roadrunner;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.services.DirectionsService;
@@ -14,22 +14,22 @@ import com.tarterware.roadrunner.services.IsochroneService;
 @SpringBootTest
 class RoadrunnerApplicationTests
 {
-    @MockBean
+	@MockitoBean
     private DirectionsService directionsService;
     
-    @MockBean
+	@MockitoBean
     private GeocodingService geocodingService;
     
-    @MockBean
+	@MockitoBean
     private IsochroneService isochroneService;
     
-    @MockBean
+	@MockitoBean
     private SecurityConfig securityConfig;
 
-    @MockBean
+	@MockitoBean
     private SecurityFilterChain filterChain;
     
-    @MockBean
+	@MockitoBean
     private JwtDecoder jwtDecoder;
     
     @Test

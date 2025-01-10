@@ -23,7 +23,7 @@ public class SecurityConfig
     private String _jwtIssuerUri;
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
 			.cors(Customizer.withDefaults())
 			.csrf(csrf -> csrf.disable())
@@ -41,12 +41,12 @@ public class SecurityConfig
 	}
 
 	@Bean
-	public JwtDecoder jwtDecoder() {
+	JwtDecoder jwtDecoder() {
 		return NimbusJwtDecoder.withIssuerLocation(_jwtIssuerUri).build();
 	}
 	
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
             "http://localhost:3000",
