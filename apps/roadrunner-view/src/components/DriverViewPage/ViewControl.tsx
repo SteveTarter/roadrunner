@@ -65,16 +65,25 @@ export const ViewControl = (props: {
           onMouseDown={() => handleMouseDown('left')}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp} // Handle edge case where mouse leaves button
+          onTouchStart={() => handleMouseDown('left')}
+          onTouchEnd={handleMouseUp}
+          onTouchCancel={handleMouseUp}
         >
           <FontAwesomeIcon icon={ faArrowLeft } className="mr-3" />
         </button>
-        <button onClick={handleCenter}>
+        <button
+          onClick={handleCenter}
+          onTouchStart={handleCenter}
+        >
           <FontAwesomeIcon icon={ fa0 } className="mr-3" />
         </button>
         <button
           onMouseDown={() => handleMouseDown('right')}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onTouchStart={() => handleMouseDown('right')}
+          onTouchEnd={handleMouseUp}
+          onTouchCancel={handleMouseUp}
         >
           <FontAwesomeIcon icon={ faArrowRight } className="mr-3" />
         </button>
