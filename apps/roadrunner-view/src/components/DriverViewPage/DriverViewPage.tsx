@@ -36,7 +36,7 @@ export const DriverViewPage = () => {
   // Map style
   const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
-  const [mapStyle, setMapStyle] = useState(MAP_STYLE_STREET);
+  const [mapStyle, setMapStyle] = useState(MAP_STYLE_SATELLITE);
 
   const [count, setCount] = useState(0);
 
