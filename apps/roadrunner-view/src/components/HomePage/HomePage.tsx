@@ -9,6 +9,7 @@ import { VehicleDisplay } from '../../models/VehicleDisplay';
 import { VehicleState } from '../../models/VehicleState';
 import { MapWrapper } from '../Utils/MapWrapper';
 import { AppNavBar } from '../NavBar/AppNavBar';
+import { ManageMenu } from './ManageMenu';
 
 export const HomePage = () => {
   const { getAccessTokenSilently } = useAuth0();
@@ -267,7 +268,7 @@ export const HomePage = () => {
           onClick={(event) => onClick(event)}
           onZoom={(viewStateChangeEvent) => onZoom(viewStateChangeEvent)}
         >
-          <AppNavBar />
+          <AppNavBar additionalMenuItems={<ManageMenu />} />
           {(isDataLoaded && !isTransitioning) ?
             <>
               <ControlPanel
