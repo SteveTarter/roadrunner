@@ -93,66 +93,86 @@ export const CreateVehiclePanel = (props: {
   }
 
   return (
-    <Card style={{ width: '18rem', alignSelf: 'end', top: 60 }}>
-      <Card.Body>
-        <Card.Title className="text-center">Create Vehicle</Card.Title>
-        <>
-          <Form>
-            <AddressAutofill accessToken={mapboxToken}>
-              <FormLabel style={{ fontSize: "1.1rem" }}>Origin Address</FormLabel>
-              <Input
-                name="originAddress"
-                autoComplete="address-line1"
-                placeholder="Address" />
-              <Input
-                name="originApartment"
-                autoComplete="address-line2"
-                placeholder="Apartment" />
-              <Input
-                name="originCity"
-                autoComplete="address-level2"
-                placeholder="City" />
-              <Input
-                name="originState"
-                autoComplete="address-level1"
-                placeholder="State" />
-              <Input
-                name="originZip"
-                autoComplete="postal-code"
-                placeholder="ZIP" />
-            </AddressAutofill>
-            <AddressAutofill accessToken={mapboxToken}>
-              <div>
-                <FormLabel style={{ fontSize: "1.1rem" }}>Destination Address</FormLabel>
-                <Input
-                  name="destinationAddress"
-                  autoComplete="address-line1"
-                  placeholder="Address" />
-                <Input
-                  name="destinationApartment"
-                  autoComplete="address-line2"
-                  placeholder="Apartment" />
-                <Input
-                  name="destinationCity"
-                  autoComplete="address-level2"
-                  placeholder="City" />
-                <Input
-                  name="destinationState"
-                  autoComplete="address-level1"
-                  placeholder="State" />
-                <Input
-                  name="destinationZip"
-                  autoComplete="postal-code"
-                  placeholder="ZIP" />
-              </div>
-            </AddressAutofill>
-            <div style={{ marginTop: '10px' }}>
-              <Button onClick={cancelCreateVehicle} value="CancelCreateVehicle">Cancel</Button>
-              <Button onClick={createVehicle} value="EnterRoute">Create</Button>
-            </div>
-          </Form>
-        </>
-      </Card.Body>
-    </Card>
+<Card style={{ width: '20rem', alignSelf: 'end', top: 60 }}>
+  <Card.Body>
+    <Card.Title className="text-center">Create Vehicle</Card.Title>
+    <>
+      <Form>
+        <AddressAutofill accessToken={mapboxToken}>
+          <FormLabel style={{ fontSize: "1.1rem" }}>Origin Address</FormLabel>
+          <div>
+            <Input
+              name="originAddress"
+              autoComplete="address-line1"
+              placeholder="Address"
+              style={{ marginBottom: "10px", width: "100%" }} />
+            <Input
+              name="originApartment"
+              autoComplete="address-line2"
+              placeholder="Apartment"
+              style={{ marginBottom: "10px", width: "100%" }} />
+          </div>
+          <div className="d-flex justify-content-between">
+            <Input
+              name="originCity"
+              autoComplete="address-level2"
+              placeholder="City"
+              style={{ flex: 2, marginRight: "5px" }} />
+            <Input
+              name="originState"
+              autoComplete="address-level1"
+              placeholder="State"
+              style={{ flex: 1, marginRight: "5px" }} />
+            <Input
+              name="originZip"
+              autoComplete="postal-code"
+              placeholder="ZIP"
+              style={{ flex: 1 }} />
+          </div>
+        </AddressAutofill>
+        <AddressAutofill accessToken={mapboxToken}>
+          <FormLabel style={{ fontSize: "1.1rem", marginTop: "20px" }}>Destination Address</FormLabel>
+          <div>
+            <Input
+              name="destinationAddress"
+              autoComplete="address-line1"
+              placeholder="Address"
+              style={{ marginBottom: "10px", width: "100%" }} />
+            <Input
+              name="destinationApartment"
+              autoComplete="address-line2"
+              placeholder="Apartment"
+              style={{ marginBottom: "10px", width: "100%" }} />
+          </div>
+          <div className="d-flex justify-content-between">
+            <Input
+              name="destinationCity"
+              autoComplete="address-level2"
+              placeholder="City"
+              style={{ flex: 2, marginRight: "5px" }} />
+            <Input
+              name="destinationState"
+              autoComplete="address-level1"
+              placeholder="State"
+              style={{ flex: 1, marginRight: "5px" }} />
+            <Input
+              name="destinationZip"
+              autoComplete="postal-code"
+              placeholder="ZIP"
+              style={{ flex: 1 }} />
+          </div>
+        </AddressAutofill>
+        <div style={{ marginTop: '20px', display: "flex", justifyContent: "space-between" }}>
+          <Button onClick={cancelCreateVehicle} value="CancelCreateVehicle" variant="secondary">
+            Cancel
+          </Button>
+          <Button onClick={createVehicle} value="EnterRoute" variant="primary">
+            Create
+          </Button>
+        </div>
+      </Form>
+    </>
+  </Card.Body>
+</Card>
   );
 }
