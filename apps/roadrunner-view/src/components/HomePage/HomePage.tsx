@@ -3,13 +3,17 @@ import Map, { MapLayerMouseEvent, useMap } from "react-map-gl";
 import { useEffect, useState } from "react";
 import { SpinnerLoading } from "../Utils/SpinnerLoading"
 import { useAuth0 } from "@auth0/auth0-react";
-import { ControlPanel } from './ControlPanel';
 import { VehicleIcon } from './VehicleIcon';
 import { VehicleDisplay } from '../../models/VehicleDisplay';
 import { VehicleState } from '../../models/VehicleState';
 import { MapWrapper } from '../Utils/MapWrapper';
 import { AppNavBar } from '../NavBar/AppNavBar';
 import { ManageMenu } from './ManageMenu';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import { Button } from 'react-bootstrap';
+import { CreateVehiclePanel } from './CreateVehiclePanel';
 
 export const HomePage = () => {
   const { getAccessTokenSilently } = useAuth0();
@@ -24,13 +28,14 @@ export const HomePage = () => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isCreateVehicleActive, setIsCreateVehicleActive] = useState(false)
 
   const [vehicleStateList, setVehicleStateList] = useState<VehicleState[]>([]);
   const [vehicleDisplayMap, setVehicleDisplayMap] = useState<MapWrapper<string, VehicleDisplay>>();
 
   // Map styles
-  const MAP_STYLE_STREET = "mapbox://styles/mapbox/streets-v12";
-  const MAP_STYLE_SATELLITE = "mapbox://styles/mapbox/satellite-streets-v12";
+  const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
+  const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
   const [mapStyle, setMapStyle] = useState(MAP_STYLE_STREET);
 
   const [count, setCount] = useState(0);
@@ -236,6 +241,10 @@ export const HomePage = () => {
     console.log("onLoad()");
   }
 
+  function openCreateVehicle() {
+    setIsCreateVehicleActive(true);
+  }
+
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
@@ -250,6 +259,8 @@ export const HomePage = () => {
     return () => clearTimeout(timer);
     // eslint-disable-next-line
   }, [count]);
+
+  library.add(faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash);
 
   return (
     <>
@@ -268,16 +279,40 @@ export const HomePage = () => {
           onClick={(event) => onClick(event)}
           onZoom={(viewStateChangeEvent) => onZoom(viewStateChangeEvent)}
         >
-          <AppNavBar additionalMenuItems={<ManageMenu />} />
+          <AppNavBar additionalMenuItems={<ManageMenu openCreateVehicle={openCreateVehicle}/>} />
           {(isDataLoaded && !isTransitioning) ?
             <>
-              <ControlPanel
-                vehicleStateList={vehicleStateList}
-                hideAllRoutes={hideAllRoutes}
-                showAllRoutes={showAllRoutes}
-                fitAllOnScreen={fitAllOnScreen}
-                toggleMapStyle={toggleMapStyle}
+              {isCreateVehicleActive && (
+              <CreateVehiclePanel
+                setIsCreateVehicleActive={setIsCreateVehicleActive}
               />
+              )}
+              <div style={{ position: "fixed", top: 100, left: 10 }}>
+                <Button onClick={fitAllOnScreen}>
+                  <FontAwesomeIcon title="Fit All" icon={faUpRightAndDownLeftFromCenter} className="mr-3" />
+                </Button>
+              </div>
+              <div style={{ position: "fixed", top: 100, left: 60 }}>
+                <Button onClick={toggleMapStyle}>
+                  {(mapStyle === MAP_STYLE_STREET) ?
+                    <>
+                      <FontAwesomeIcon title="Satellte Display" icon={faSatellite} className="mr-3" />
+                    </>
+                    :
+                    <FontAwesomeIcon title="Map Display" icon={faMap} className="mr-3" />
+                  }
+                </Button>
+              </div>
+              <div style={{ position: "fixed", top: 100, left: 110 }}>
+                <Button onClick={showAllRoutes}>
+                      <FontAwesomeIcon title="Show All Routes" icon={faEye} className="mr-3" />
+                </Button>
+              </div>
+              <div style={{ position: "fixed", top: 100, left: 160 }}>
+                <Button onClick={hideAllRoutes}>
+                      <FontAwesomeIcon title="Hide All Routes" icon={faEyeSlash} className="mr-3" />
+                </Button>
+              </div>
               {vehicleStateList && (vehicleStateList.length > 0) && (
                 // eslint-disable-next-line
                 vehicleStateList.map((vehicleState) => {
