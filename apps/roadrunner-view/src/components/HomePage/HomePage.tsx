@@ -3,7 +3,6 @@ import Map, { MapLayerMouseEvent, useMap } from "react-map-gl";
 import { useEffect, useState } from "react";
 import { SpinnerLoading } from "../Utils/SpinnerLoading"
 import { useAuth0 } from "@auth0/auth0-react";
-import { ControlPanel } from './ControlPanel';
 import { VehicleIcon } from './VehicleIcon';
 import { VehicleDisplay } from '../../models/VehicleDisplay';
 import { VehicleState } from '../../models/VehicleState';
@@ -14,6 +13,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { Button } from 'react-bootstrap';
+import { CreateVehiclePanel } from './CreateVehiclePanel';
 
 export const HomePage = () => {
   const { getAccessTokenSilently } = useAuth0();
@@ -283,8 +283,7 @@ export const HomePage = () => {
           {(isDataLoaded && !isTransitioning) ?
             <>
               {isCreateVehicleActive && (
-              <ControlPanel
-                vehicleStateList={vehicleStateList}
+              <CreateVehiclePanel
                 setIsCreateVehicleActive={setIsCreateVehicleActive}
               />
               )}

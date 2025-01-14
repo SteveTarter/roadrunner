@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from "reactstrap";
 
 export const ManageMenu = (props: {
-  openCreateVehicle:any
+  openCreateVehicle: any
 }) => {
   const { getAccessTokenSilently } = useAuth0();
   const navigate = useNavigate();
@@ -86,30 +86,32 @@ export const ManageMenu = (props: {
   }
 
   return (
-    <UncontrolledDropdown nav inNavbar>
-      <DropdownToggle nav caret>
-        Manage
-      </DropdownToggle>
-      <DropdownMenu>
-        <DropdownItem
-          id="createVehicleBtn"
-          onClick={() => handleCreateVehicle()}
-        >
-          Create vehicle
-        </DropdownItem>
-        <DropdownItem
-          id="crissCrossBtn"
-          onClick={() => handleCreateCrissCross()}
-        >
-          Create criss-cross
-        </DropdownItem>
-        <DropdownItem
-          id="resetServerBtn"
-          onClick={() => handleResetServer()}
-        >
-          Reset server
-        </DropdownItem>
-      </DropdownMenu>
-    </UncontrolledDropdown>
+    <div className="d-flex justify-content-center align-items-center">
+      <UncontrolledDropdown nav inNavbar className="centered-dropdown">
+        <DropdownToggle nav caret style={{ fontSize: "1.1rem" }}>
+          Manage
+        </DropdownToggle>
+        <DropdownMenu>
+          <DropdownItem
+            id="createVehicleBtn"
+            onClick={() => handleCreateVehicle()}
+          >
+            Create vehicle
+          </DropdownItem>
+          <DropdownItem
+            id="crissCrossBtn"
+            onClick={() => handleCreateCrissCross()}
+          >
+            Create criss-cross
+          </DropdownItem>
+          <DropdownItem
+            id="resetServerBtn"
+            onClick={() => handleResetServer()}
+          >
+            Reset server
+          </DropdownItem>
+        </DropdownMenu>
+      </UncontrolledDropdown>
+    </div>
   )
 }

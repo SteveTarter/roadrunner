@@ -51,7 +51,7 @@ export const AppNavBar = ({ additionalMenuItems }: { additionalMenuItems?: React
           <NavbarToggler onClick={toggle} />
           <Collapse isOpen={isOpen} navbar>
             <Nav className="me-auto" navbar>
-              <NavItem>
+              <NavItem style={{ fontSize: "1.1rem" }}>
                 <NavLink
                   tag={RouterNavLink}
                   to="/"

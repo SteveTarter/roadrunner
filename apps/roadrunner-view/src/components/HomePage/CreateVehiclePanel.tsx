@@ -1,5 +1,4 @@
 import { Button, Card, Form, FormLabel } from "react-bootstrap";
-import { VehicleState } from "../../models/VehicleState";
 import { useEffect, useState } from "react";
 import { Input } from "reactstrap";
 import { useAuth0 } from "@auth0/auth0-react";
@@ -7,8 +6,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { AddressAutofill } from '@mapbox/search-js-react';
 import { useNavigate } from "react-router-dom";
 
-export const ControlPanel = (props: {
-  vehicleStateList: VehicleState[],
+export const CreateVehiclePanel = (props: {
   setIsCreateVehicleActive: any
 }) => {
   const { getAccessTokenSilently } = useAuth0();
@@ -94,22 +92,14 @@ export const ControlPanel = (props: {
     props.setIsCreateVehicleActive(false);
   }
 
-  let activeCount = 0;
-  props.vehicleStateList.forEach((vehicleState) => {
-    if (!vehicleState.positionLimited) {
-      ++activeCount;
-    }
-  })
-
   return (
     <Card style={{ width: '18rem', alignSelf: 'end', top: 60 }}>
       <Card.Body>
-        <Card.Title>Control Panel</Card.Title>
+        <Card.Title className="text-center">Create Vehicle</Card.Title>
         <>
-          <Card.Text>Vehicles: {activeCount} active / {props.vehicleStateList.length} total</Card.Text>
           <Form>
             <AddressAutofill accessToken={mapboxToken}>
-              <FormLabel>Origin Address</FormLabel>
+              <FormLabel style={{ fontSize: "1.1rem" }}>Origin Address</FormLabel>
               <Input
                 name="originAddress"
                 autoComplete="address-line1"
@@ -133,7 +123,7 @@ export const ControlPanel = (props: {
             </AddressAutofill>
             <AddressAutofill accessToken={mapboxToken}>
               <div>
-                <FormLabel>Destination Address</FormLabel>
+                <FormLabel style={{ fontSize: "1.1rem" }}>Destination Address</FormLabel>
                 <Input
                   name="destinationAddress"
                   autoComplete="address-line1"
