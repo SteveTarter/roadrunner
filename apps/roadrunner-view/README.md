@@ -14,15 +14,19 @@ There is also a Terraform project that provides Terraform scripts and instructio
 
 Below is an example of a "criss-cross" pattern of 15 vehicles centered around the Fort Worth convention center.  The vehicles are spaced apart by 24 degrees of bearing, at a distance of 10 kilometers from the convention center.  Each vehicle's route takes it to the opposite side of the city at 10 kilometers range.  Here's a view with the routes turned on for all vehicles:
 
-![Roadrunner Home Page example](./Resources/img/RoadrunnerViewer-2024-12-31-1.png)
+![Roadrunner Home Page example](./Resources/img/RoadrunnerViewer-2025-01-15-1.png)
 <br><br>
 
 Next, an example of the driver's view.  Mapbox has terrain, as well as some nice, built-in 3D models for all of the buildings in the OpenStreetMap DB.  Even better, they feature enhanced models for some landmark buildings.  The skyline of downtown Fort Worth, Texas is seen on the left side of this display:
 
-![Roadrunner Driver's View example](./Resources/img/RoadrunnerViewer-2024-12-31-2.png)
+![Roadrunner Driver's View example](./Resources/img/RoadrunnerViewer-2025-01-15-2.png)
 <br><br>
 
-I've posted a video to YouTube showing Roadrunner in action.  View it at: 
+A recent enhancement added a "look around" feature, allowing looking at buildings that are outside the straight ahead field of view:
+
+![Roadrunner Driver's View with offset example](./Resources/img/RoadrunnerViewer-2025-01-15-3.png)
+
+I've posted a video to YouTube showing a slightly earlier version of Roadrunner in action.  View it at: 
 [RoadRunner Demo (2025-01-02)](https://www.youtube.com/watch?v=KXWTssUFjS0)
 <br><br>
 
