@@ -29,6 +29,9 @@ class RoadrunnerApplicationTests
     
 	@MockitoBean
     private SecurityConfig securityConfig;
+    
+	@MockitoBean
+    private RedisConfig redisConfig;
 
 	@MockitoBean
     private LettuceConnectionFactory redisStandAloneConnectionFactory;
