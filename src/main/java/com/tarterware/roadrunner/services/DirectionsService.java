@@ -19,7 +19,7 @@ import com.tarterware.roadrunner.models.mapbox.Directions;
 public class DirectionsService
 {
     @Value("${mapbox.api.url}")
-    private String _restUrlBase;
+    private String _mapBoxApiUrl;
     
     @Value("${mapbox.api.key}")
     private String _mapBoxApiKey;
@@ -37,10 +37,12 @@ public class DirectionsService
 
     public Directions getDirections(List<Address> listAddresses)
     {                
-        StringBuilder sb = new StringBuilder(_restUrlBase);
+        Directions directions = null;
+
+        StringBuilder sb = new StringBuilder(_mapBoxApiUrl);
         
         // Add path separator if it is needed.
-        if( !_restUrlBase.endsWith("/"))
+        if( !_mapBoxApiUrl.endsWith("/"))
         {
             sb.append("/");
         }
@@ -67,29 +69,28 @@ public class DirectionsService
         sb.append("&overview=full");
         sb.append("&steps=true");
         
-        String cacheFileName = 
+        // Create the key name, removing the URL portion in front.
+        String directionsCacheKey = 
                 sb.toString()
-                .substring(_restUrlBase.length())
-                .replace("/","$")
-                .replace("&", "\\&")
-                .replace("$", "\\$")
-                .replace(";", "\\;");
+                .substring(_mapBoxApiUrl.length());
+
+        Directions redisDirections = (Directions) redisTemplate.opsForValue().get(directionsCacheKey);
         
-        // Add the MapBox API key, or the endpoint will tell us to frig off.
-        sb.append("&access_token=");
-        sb.append(_mapBoxApiKey);
-        
-        Directions directions = null;
-        Directions redisDirections = (Directions) redisTemplate.opsForValue().get(cacheFileName);
         if(redisDirections != null)
         {
-            logger.info("Direction via cache: " + cacheFileName);
+            logger.info("Direction via redis cache: " + directionsCacheKey);
             
             directions = redisDirections;
         }
         else
         {
+            // Log the URL used to get the Direction record, without token
             logger.info("Direction via REST: " + sb.toString());
+
+            // Now, add the MapBox API key, or the endpoint will tell us to frig off.
+            sb.append("&access_token=");
+            sb.append(_mapBoxApiKey);
+
             try
             {
                 ResponseEntity<Directions> respDirections =
@@ -103,7 +104,7 @@ public class DirectionsService
             }
             
             // Persist the newly read Object to the cache
-            redisTemplate.opsForValue().set(cacheFileName, directions);
+            redisTemplate.opsForValue().set(directionsCacheKey, directions);
         }
         
         return directions;
