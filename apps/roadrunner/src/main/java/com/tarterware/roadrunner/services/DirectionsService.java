@@ -1,18 +1,15 @@
 package com.tarterware.roadrunner.services;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.tarterware.roadrunner.models.Address;
 import com.tarterware.roadrunner.models.TripPlan;
@@ -31,10 +28,10 @@ public class DirectionsService
     RestTemplate restTemplate;
     
     @Autowired
-    GeocodingService geocodingService;
+    RedisTemplate<String, Object> redisTemplate;
     
-    @Value("${com.tarterware.data-dir}")
-    private String _tarterwareDataDir;
+    @Autowired
+    GeocodingService geocodingService;
     
     private static final Logger logger = LoggerFactory.getLogger(DirectionsService.class);
 
@@ -71,8 +68,6 @@ public class DirectionsService
         sb.append("&steps=true");
         
         String cacheFileName = 
-                _tarterwareDataDir +
-                File.separatorChar +
                 sb.toString()
                 .substring(_restUrlBase.length())
                 .replace("/","$")
@@ -85,20 +80,12 @@ public class DirectionsService
         sb.append(_mapBoxApiKey);
         
         Directions directions = null;
-        ObjectMapper objectMapper = new ObjectMapper();
-        File cacheFile = new File(cacheFileName);
-        if(cacheFile.exists())
+        Directions redisDirections = (Directions) redisTemplate.opsForValue().get(cacheFileName);
+        if(redisDirections != null)
         {
             logger.info("Direction via cache: " + cacheFileName);
             
-            try
-            {
-                directions = objectMapper.readValue(cacheFile, Directions.class);
-            }
-            catch(IOException ex)
-            {
-                logger.error("Unable to read Directions from " + cacheFileName, ex);
-            }
+            directions = redisDirections;
         }
         else
         {
@@ -116,14 +103,7 @@ public class DirectionsService
             }
             
             // Persist the newly read Object to the cache
-            try
-            {
-                objectMapper.writeValue(cacheFile, directions);
-            }
-            catch(IOException ex)
-            {
-                logger.error("Unable to write Directions to " + cacheFileName, ex);
-            }
+            redisTemplate.opsForValue().set(cacheFileName, directions);
         }
         
         return directions;

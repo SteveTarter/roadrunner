@@ -9,6 +9,38 @@ Vehicle creation, route specification, and status operations are all performed u
 
 Companion project of the Roadrunner Viewer
 
+## Application Properties Configuration
+
+The following variables need to be set in the `application.properties` file for the application to start:
+
+- **`spring.config.import`**  
+  Specifies external properties files to import. Optional file for sensitive configuration.  
+  Example: `optional:secrets.properties`
+
+- **`spring.data.rest.base-path`**  
+  Base path for REST API.  
+  Example: `/`
+
+- **`mapbox.api.url`**  
+  URL to the Mapbox API.  
+  Example: `https://api.mapbox.com/`
+
+- **`com.tarterware.data-dir`**  
+  Directory path for storing application data.  
+  Example: `/opt/tarterware-data`
+
+- **`spring.web.allow-cors`**  
+  Enables or disables Cross-Origin Resource Sharing (CORS).  
+  Example: `true`
+
+- **`management.endpoints.web.exposure.include`**  
+  Management endpoints exposed via HTTP.  
+  Example: `health,info`
+
+- **`com.tarterware.redis.host`**  
+  Host address of the Redis server.  
+  Example: `127.0.0.1`
+
 ------------------------------------------------------------------------------------------
 
 #### Create new vehicle
