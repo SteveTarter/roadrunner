@@ -1,7 +1,6 @@
 package com.tarterware.roadrunner;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -18,33 +17,33 @@ import com.tarterware.roadrunner.services.IsochroneService;
 @SpringBootTest
 class RoadrunnerApplicationTests
 {
-	@MockitoBean
+    @MockitoBean
     private DirectionsService directionsService;
-    
-	@MockitoBean
+
+    @MockitoBean
     private GeocodingService geocodingService;
-    
-	@MockitoBean
+
+    @MockitoBean
     private IsochroneService isochroneService;
-    
-	@MockitoBean
+
+    @MockitoBean
     private SecurityConfig securityConfig;
-    
-	@MockitoBean
+
+    @MockitoBean
     private RedisConfig redisConfig;
 
-	@MockitoBean
+    @MockitoBean
     private LettuceConnectionFactory redisStandAloneConnectionFactory;
 
-	@MockitoBean
-	private RedisTemplate<String, Object> redisTemplateStandAlone;
+    @MockitoBean
+    private RedisTemplate<String, Object> redisTemplateStandAlone;
 
-	@MockitoBean
+    @MockitoBean
     private SecurityFilterChain filterChain;
-    
-	@MockitoBean
+
+    @MockitoBean
     private JwtDecoder jwtDecoder;
-    
+
     @Test
     void contextLoads()
     {
