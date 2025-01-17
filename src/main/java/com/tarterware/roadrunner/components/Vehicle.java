@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Annotation;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.models.mapbox.RouteLeg;
@@ -34,11 +33,8 @@ import lombok.ToString;
  * <p>
  * The {@code Vehicle} class provides functionality to:
  * <ul>
- * <li>Set a trip plan and initialize route geometry.</li>
  * <li>Update the vehicle's position, speed, and bearing based on elapsed
  * time.</li>
- * <li>Handle transitions between UTM zones dynamically during route
- * traversal.</li>
  * <li>Log and manage the vehicle's movement along the route.</li>
  * </ul>
  * </p>
@@ -46,31 +42,10 @@ import lombok.ToString;
  * <p>
  * Features include:
  * <ul>
- * <li>Geospatial transformations between UTM and WGS84 coordinates.</li>
  * <li>Dynamic bearing adjustments based on route geometry.</li>
  * <li>Acceleration, deceleration, and turning constraints for realistic
  * movement simulation.</li>
- * <li>Management of route segment data for efficient spatial calculations.</li>
  * </ul>
- * </p>
- * 
- * <p>
- * Example usage:
- * 
- * <pre>
- *     DirectionsService directionsService = new DirectionsService();
- *     Vehicle vehicle = new Vehicle(directionsService);
- *     
- *     TripPlan tripPlan = new TripPlan(...); // Define a trip plan
- *     vehicle.setTripPlan(tripPlan);         // Set the trip plan for the vehicle
- *     
- *     vehicle.update();                      // Update the vehicle's state
- * </pre>
- * </p>
- * 
- * @see com.tarterware.roadrunner.models.TripPlan
- * @see com.tarterware.roadrunner.services.DirectionsService
- * @see com.tarterware.roadrunner.utilities.TopologyUtilities
  */
 @ToString
 @EqualsAndHashCode
@@ -81,10 +56,6 @@ public class Vehicle
     @Getter
     @JsonProperty
     UUID id;
-
-    // Represents the trip plan that this vehicle follows.
-    @Getter
-    TripPlan tripPlan;
 
     // Current offset along the route in meters.
     @Getter
@@ -104,10 +75,12 @@ public class Vehicle
 
     // Current latitude of the vehicle in degrees.
     @Getter
+    @JsonProperty
     double degLatitude;
 
     // Current longitude of the vehicle in degrees.
     @Getter
+    @JsonProperty
     double degLongitude;
 
     // The desired speed of the vehicle in meters per second.
