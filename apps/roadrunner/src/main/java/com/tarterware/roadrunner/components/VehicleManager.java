@@ -31,6 +31,23 @@ import com.tarterware.roadrunner.utilities.TopologyUtilities;
  * Manages a collection of Vehicles, their routes, and updates their positions
  * periodically. Vehicles are created based on trip plans and can have their
  * states updated periodically.
+ * 
+ * <p>
+ * The {@code VehicleManager} class provides functionality to:
+ * <ul>
+ * <li>Process a trip plan to initialize route geometry.</li>
+ * <li>Manage Vehicle state that is not serializable, such as LineString.
+ * <li>Handle transitions between UTM zones dynamically during route
+ * traversal.</li>
+ * </ul>
+ * </p>
+ * 
+ * <p>
+ * Features include:
+ * <ul>
+ * <li>Geospatial transformations between UTM and WGS84 coordinates.</li>
+ * <li>Management of route segment data for efficient spatial calculations.</li>
+ * </ul>
  */
 @Component
 public class VehicleManager
