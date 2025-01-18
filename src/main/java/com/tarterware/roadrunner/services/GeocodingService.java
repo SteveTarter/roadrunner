@@ -1,5 +1,7 @@
 package com.tarterware.roadrunner.services;
 
+import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -129,7 +131,7 @@ public class GeocodingService
             featureCollection = respFc.getBody();
 
             // Persist the newly read Object to the cache
-            redisTemplate.opsForValue().set(geocodingCacheKey, featureCollection);
+            redisTemplate.opsForValue().set(geocodingCacheKey, featureCollection, 5, TimeUnit.MINUTES);
         }
 
         if (featureCollection != null)

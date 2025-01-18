@@ -3,12 +3,15 @@ package com.tarterware.roadrunner.components;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -18,6 +21,7 @@ import org.locationtech.proj4j.CoordinateTransform;
 import org.locationtech.proj4j.ProjCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import com.tarterware.roadrunner.models.TripPlan;
@@ -52,11 +56,17 @@ import com.tarterware.roadrunner.utilities.TopologyUtilities;
 @Component
 public class VehicleManager
 {
+    // Template to use redis.
+    private RedisTemplate<String, Object> redisTemplate;
+
     // Update period in milliseconds.
     private long msPeriod = 100;
 
     // Timer to schedule periodic updates.
     private Timer timer;
+
+    // Set of Vehicle IDs.
+    private Set<UUID> vehicleIdSet = Collections.synchronizedSet(new HashSet<UUID>());
 
     // Map of Vehicles by ID.
     private Map<UUID, Vehicle> vehicleMap = Collections.synchronizedMap(new HashMap<UUID, Vehicle>());
@@ -77,12 +87,16 @@ public class VehicleManager
      * Constructor to initialize the VehicleManager with a DirectionsService.
      *
      * @param directionsService The service to retrieve directions for trip plans.
+     * @param redisTemplate     RedisTemplate for performing Redis operations, such
+     *                          as storing and retrieving data. Keys are Strings,
+     *                          and values are serialized Java objects..
      */
-    public VehicleManager(DirectionsService directionsService)
+    public VehicleManager(DirectionsService directionsService, RedisTemplate<String, Object> redisTemplate)
     {
         super();
 
         this.directionsService = directionsService;
+        this.redisTemplate = redisTemplate;
     }
 
     /**
@@ -92,7 +106,19 @@ public class VehicleManager
      */
     public Map<UUID, Vehicle> getVehicleMap()
     {
-        return vehicleMap;
+        // Create a Map of Vehicles to return
+        Map<UUID, Vehicle> vMap = new HashMap<UUID, Vehicle>();
+
+        synchronized (vehicleIdSet)
+        {
+            for (UUID vehicleID : vehicleIdSet)
+            {
+                Vehicle vehicle = getVehicle(vehicleID);
+                vMap.put(vehicleID, vehicle);
+            }
+        }
+
+        return vMap;
     }
 
     /**
@@ -103,7 +129,18 @@ public class VehicleManager
      */
     public Vehicle getVehicle(UUID uuid)
     {
-        return vehicleMap.get(uuid);
+        String key = "Vehicle:" + uuid.toString();
+
+        Vehicle vehicle = (Vehicle) redisTemplate.opsForValue().get(key);
+
+        return vehicle;
+    }
+
+    private void setVehicle(Vehicle vehicle)
+    {
+        String key = "Vehicle:" + vehicle.getId().toString();
+
+        redisTemplate.opsForValue().set(key, vehicle, 1, TimeUnit.MINUTES);
     }
 
     /**
@@ -119,7 +156,7 @@ public class VehicleManager
         Random random = new Random();
         long msDelay = (long) (msPeriod * random.nextDouble());
         logger.info("Starting VehicleManager with period of " + msPeriod + " ms and delay of " + msDelay + " ms.");
-        ;
+
         timer = new Timer("VehicleManager Timer");
         timer.schedule(new UpdateTask(), msDelay, msPeriod);
     }
@@ -185,9 +222,9 @@ public class VehicleManager
      * Creates a new Vehicle based on a TripPlan.
      *
      * @param tripPlan The TripPlan containing the route and stops for the Vehicle.
-     * @return The UUID of the created Vehicle.
+     * @return The created Vehicle.
      */
-    public UUID createVehicle(TripPlan tripPlan)
+    public Vehicle createVehicle(TripPlan tripPlan)
     {
         // Check for a valid trip plan.
         if (tripPlan == null)
@@ -278,12 +315,17 @@ public class VehicleManager
         lineSegmentData.setLengthIndexedLine(lengthIndexedLine);
         listLineSegmentData.add(lineSegmentData);
 
-        // Store the Vehicle and LineSegmentData in Maps.
-        vehicleMap.put(vehicle.getId(), vehicle);
+        // Store the Directions and LineSegmentData locally in Maps
         directionsMap.put(vehicle.getId(), directions);
         lineSegmentDataMap.put(vehicle.getId(), listLineSegmentData);
 
-        return vehicle.getId();
+        // Store the Vehicle.
+        setVehicle(vehicle);
+
+        // Finally, add it to the set of Vehicles.
+        vehicleIdSet.add(vehicle.getId());
+
+        return vehicle;
     }
 
     /**
@@ -316,12 +358,52 @@ public class VehicleManager
         @Override
         public void run()
         {
+            Set<UUID> deletionSet = new HashSet<UUID>();
+
             // Loop through each of the Vehicles and update them.
-            for (Vehicle vehicle : vehicleMap.values())
+            for (UUID vehicleId : vehicleIdSet)
             {
-                vehicle.setDirections(directionsMap.get(vehicle.getId()));
-                vehicle.setListLineSegmentData(lineSegmentDataMap.get(vehicle.getId()));
-                vehicle.update();
+                Vehicle vehicle = getVehicle(vehicleId);
+
+                // Retrieve Directions and LineSegmentData for this Vehicle.
+                vehicle.setDirections(getVehicleDirections(vehicleId));
+                vehicle.setListLineSegmentData(lineSegmentDataMap.get(vehicleId));
+
+                // Perform the update.
+                boolean updated = vehicle.update();
+
+                // If the vehicle didn't update, then it is finished. Add it to the deletion
+                // Set.
+                if (!updated)
+                {
+                    deletionSet.add(vehicleId);
+                }
+                setVehicle(vehicle);
+            }
+
+            // Remove any IDs in the deletionSet, if any.
+            for (UUID vehicleID : deletionSet)
+            {
+                vehicleIdSet.remove(vehicleID);
+                logger.info("Removing {} from active set of Vehicles.", vehicleID);
+            }
+
+            // Remove the Directions for deleted Vehicles from the directionsMap.
+            synchronized (directionsMap)
+            {
+                for (UUID vehicleID : deletionSet)
+                {
+                    directionsMap.remove(vehicleID);
+                }
+            }
+
+            // Remove the LineSegmentData for deleted Vehicles from the lineSegmentDataMap.
+            synchronized (lineSegmentDataMap)
+            {
+                for (UUID vehicleID : deletionSet)
+                {
+                    lineSegmentDataMap.remove(vehicleID);
+                }
             }
         }
     }
