@@ -24,21 +24,6 @@ resource "kubernetes_deployment" "roadrunner" {
       }
 
       spec {
-        # Ensures that a specific subdirectory exists on the mount point
-        # before the main application container starts.
-        init_container {
-          name  = "setup-dir"
-          image = "busybox:latest"
-          command = [
-            "sh", "-c", "mkdir -p /mnt/data/roadrunner-data && chmod 777 /mnt/data/roadrunner-data"
-          ]
-
-          volume_mount {
-            name       = "tarterware-data"
-            mount_path = "/mnt/data"
-          }
-        }
-
         container {
           name  = "roadrunner"
           image = "tarterware/roadrunner:latest"
@@ -48,15 +33,25 @@ resource "kubernetes_deployment" "roadrunner" {
             container_port = 8080
           }
 
+          env {
+            name = "REDIS_PASSWORD"
+            value_from {
+              secret_key_ref {
+                name = "${helm_release.redis.name}"
+                namespace = var.roadrunner_namespace
+                key = "redis"
+              }
+            }
+          }
+
+          args = [
+            "--com.tarterware.redis.password=${REDIS_PASSWORD}"
+          ]
+
           volume_mount {
             name       = "application-conf"
             mount_path = "/config/application.properties"
             sub_path   = "application.properties"
-          }
-
-          volume_mount {
-            name       = "tarterware-data"
-            mount_path = var.tarterware_data_dir
           }
 
           resources {
@@ -80,31 +75,6 @@ resource "kubernetes_deployment" "roadrunner" {
             items {
               key  = "application.properties"
               path = "application.properties"
-            }
-          }
-        }
-
-        # For Minikube: Uses host path for local storage.
-        dynamic "volume" {
-          for_each = terraform.workspace == "minikube" ? [1] : []
-          content {
-            name = "tarterware-data"
-
-            host_path {
-              path = var.tarterware_data_dir
-              type = "Directory"
-            }
-          }
-        }
-
-        # For EKS: Uses a Persistent Volume Claim (PVC) backed by EFS.
-        dynamic "volume" {
-          for_each = terraform.workspace == "eks" ? [1] : []
-          content {
-            name = "tarterware-data"
-
-            persistent_volume_claim {
-              claim_name = "roadrunner-files-efs-pvc"
             }
           }
         }
