@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.locationtech.jts.geom.Coordinate;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,16 +35,16 @@ public class VehicleController
     @PostMapping("/create-new")
     ResponseEntity<VehicleState> getNewVehicle(@RequestBody TripPlan tripPlan)
     {
-        UUID vehicleId = vehicleManager.createVehicle(tripPlan);
-        VehicleState vehicleState = createVehicleStateFor(vehicleId);
-        
-        if(vehicleManager.isRunning() == false)
+        Vehicle vehicle = vehicleManager.createVehicle(tripPlan);
+        VehicleState vehicleState = createVehicleStateFor(vehicle);
+
+        if (vehicleManager.isRunning() == false)
         {
             vehicleManager.startup();
         }
         return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
     }
-    
+
     @PostMapping("/create-crisscross")
     ResponseEntity<List<VehicleState>> createCrissCrossVehicles(@RequestBody CrissCrossPlan crissCrossPlan)
     {
@@ -53,110 +52,122 @@ public class VehicleController
 
         // Create a Coordinate representing the center point.
         Coordinate centerCoordinate = new Coordinate(crissCrossPlan.getDegLongitude(), crissCrossPlan.getDegLatitude());
-        
+
         // Determine the angular distance between the start points
         double degIncrement = 360.0 / crissCrossPlan.getVehicleCount();
         double degStartBearing = degIncrement / 2.0;
-        for(int i = 0;  i < crissCrossPlan.getVehicleCount();  ++i)
+        for (int i = 0; i < crissCrossPlan.getVehicleCount(); ++i)
         {
             double degEndBearing = degStartBearing + 180.0;
-            if(degEndBearing > 360.0)
+            if (degEndBearing > 360.0)
             {
                 degEndBearing -= 360.0;
             }
-            
-            Coordinate startCoordinate = TopologyUtilities.getCoordinateAtBearingAndRange(centerCoordinate, crissCrossPlan.getKmRadius(), degStartBearing);
-            Coordinate endCoordinate = TopologyUtilities.getCoordinateAtBearingAndRange(centerCoordinate, crissCrossPlan.getKmRadius(), degEndBearing);
-            
+
+            Coordinate startCoordinate = TopologyUtilities.getCoordinateAtBearingAndRange(centerCoordinate,
+                    crissCrossPlan.getKmRadius(), degStartBearing);
+            Coordinate endCoordinate = TopologyUtilities.getCoordinateAtBearingAndRange(centerCoordinate,
+                    crissCrossPlan.getKmRadius(), degEndBearing);
+
             Address startAddress = new Address();
             startAddress.setSource("NumericEntry");
             startAddress.setLatitude(startCoordinate.getY());
             startAddress.setLongitude(startCoordinate.getX());
-            
+
             Address endAddress = new Address();
             endAddress.setSource("NumericEntry");
             endAddress.setLatitude(endCoordinate.getY());
             endAddress.setLongitude(endCoordinate.getX());
-            
+
             TripPlan tripPlan = new TripPlan();
             List<Address> listStops = new ArrayList<Address>();
             listStops.add(startAddress);
             listStops.add(endAddress);
             tripPlan.setListStops(listStops);
-            
-            UUID vehicleId = vehicleManager.createVehicle(tripPlan);
-            VehicleState vehicleState = createVehicleStateFor(vehicleId);
-            
+
+            Vehicle vehicle = vehicleManager.createVehicle(tripPlan);
+            VehicleState vehicleState = createVehicleStateFor(vehicle);
+
             listVehicleStates.add(vehicleState);
-            
+
             degStartBearing += degIncrement;
         }
-        
-        if(vehicleManager.isRunning() == false)
+
+        if (vehicleManager.isRunning() == false)
         {
             vehicleManager.startup();
         }
-        
+
         return new ResponseEntity<List<VehicleState>>(listVehicleStates, HttpStatus.OK);
     }
-    
+
     @GetMapping("/get-vehicle-state/{vehicleId}")
     ResponseEntity<VehicleState> getVehicleStateFor(@PathVariable String vehicleId)
     {
         Vehicle vehicle = vehicleManager.getVehicle(UUID.fromString(vehicleId));
-        if(vehicle == null)
+        if (vehicle == null)
         {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         VehicleState vehicleState = createVehicleStateFor(vehicle.getId());
-        
+
         return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
     }
-    
+
     @GetMapping("/get-vehicle-directions/{vehicleId}")
     ResponseEntity<Directions> getVehicleDirectionsFor(@PathVariable String vehicleId)
     {
-        Vehicle vehicle = vehicleManager.getVehicle(UUID.fromString(vehicleId));
-        if(vehicle == null)
+        Directions directions = vehicleManager.getVehicleDirections(UUID.fromString(vehicleId));
+        if (directions == null)
         {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
-        
-        return new ResponseEntity<Directions>(vehicle.getDirections(), HttpStatus.OK);
+
+        return new ResponseEntity<Directions>(directions, HttpStatus.OK);
     }
-    
+
     @GetMapping("/get-all-vehicle-states")
     ResponseEntity<List<VehicleState>> getAllVehicleStates()
     {
         List<VehicleState> listVehicleStates = new ArrayList<VehicleState>();
         Map<UUID, Vehicle> vehicleMap = vehicleManager.getVehicleMap();
-        
-        for(Vehicle vehicle : vehicleMap.values())
+
+        for (Vehicle vehicle : vehicleMap.values())
         {
             VehicleState vehicleState = createVehicleStateFor(vehicle.getId());
             listVehicleStates.add(vehicleState);
         }
-        
+
         return new ResponseEntity<List<VehicleState>>(listVehicleStates, HttpStatus.OK);
     }
-    
+
     @GetMapping("/reset-server")
     ResponseEntity<List<VehicleState>> resetServer()
     {
-    	vehicleManager.shutdown();
-    	
-    	return new ResponseEntity<List<VehicleState>>(new ArrayList<VehicleState>(), HttpStatus.OK);
+        vehicleManager.shutdown();
+
+        return new ResponseEntity<List<VehicleState>>(new ArrayList<VehicleState>(), HttpStatus.OK);
     }
-    
+
     private VehicleState createVehicleStateFor(UUID vehicleId)
     {
         Vehicle vehicle = vehicleManager.getVehicle(vehicleId);
-        
-        if(vehicle == null)
+
+        if (vehicle == null)
         {
             throw new IllegalArgumentException("Unable to find vehicle with ID " + vehicleId);
         }
-        
+
+        return createVehicleStateFor(vehicle);
+    }
+
+    private VehicleState createVehicleStateFor(Vehicle vehicle)
+    {
+        if (vehicle == null)
+        {
+            throw new IllegalArgumentException("vehicle cannot be null!");
+        }
+
         VehicleState vehicleState = new VehicleState();
         vehicleState.setId(vehicle.getId());
         vehicleState.setDegLatitude(vehicle.getDegLatitude());
@@ -169,7 +180,7 @@ public class VehicleController
         vehicleState.setPositionValid(vehicle.isPositionValid());
         vehicleState.setDegBearing(vehicle.getDegBearing());
         vehicleState.setColorCode(vehicle.getColorCode());
-        
+
         return vehicleState;
     }
 }

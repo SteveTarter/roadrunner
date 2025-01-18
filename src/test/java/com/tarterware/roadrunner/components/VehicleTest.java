@@ -1,28 +1,51 @@
 package com.tarterware.roadrunner.components;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.io.IOException;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.services.DirectionsService;
 
 import utils.TestUtils;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+class VehicleTest
+{
+    @Mock
+    private RedisTemplate<String, Object> redisTemplate;
 
-import java.io.IOException;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-class VehicleTest {
+    @Mock
+    private ValueOperations<String, Object> valueOperations;
 
     private Vehicle vehicle;
+    private VehicleManager vehicleManager;
     private DirectionsService mockDirectionsService;
     private TripPlan mockTripPlan;
     private Directions mockDirections;
 
     @BeforeEach
-    void setup() throws IOException {
+    void setup() throws IOException
+    {
+        // Initialize mocks
+        MockitoAnnotations.openMocks(this);
+
+        // Mock behavior for RedisTemplate
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
         mockDirectionsService = mock(DirectionsService.class);
 
         mockTripPlan = mock(TripPlan.class);
@@ -33,37 +56,33 @@ class VehicleTest {
         // Stub the DirectionsService methods
         when(mockDirectionsService.getDirectionsForTripPlan(any())).thenReturn(mockDirections);
 
-        // Create the Vehicle instance
-        vehicle = new Vehicle(mockDirectionsService);
+        // Create the VehicleManager instance
+        vehicleManager = new VehicleManager(mockDirectionsService, redisTemplate);
+
+        vehicle = vehicleManager.createVehicle(mockTripPlan);
+        UUID vehicleId = vehicle.getId();
+        when(valueOperations.get("Vehicle:" + vehicleId)).thenReturn(vehicle);
+
+        // vehicle = vehicleManager.getVehicle(vehicleId);
+        vehicle.setDirections(vehicleManager.getVehicleDirections(vehicleId));
+        vehicle.setListLineSegmentData(vehicleManager.getLlineSegmentData(vehicleId));
     }
 
     @Test
-    void testSetTripPlan_validTripPlan() {
-        // Test setting a trip plan
-        vehicle.setTripPlan(mockTripPlan);
-        assertNotNull(vehicle.getTripPlan(), "Trip plan should be set.");
-        assertEquals(0.0, vehicle.getMetersOffset(), "Vehicle offset should be initialized to 0.");
-    }
-
-    @Test
-    void testSetTripPlan_nullTripPlan() {
-        assertThrows(IllegalArgumentException.class, () -> vehicle.setTripPlan(null),
-                "Setting a null trip plan should throw an exception.");
-    }
-
-    @Test
-    void testUpdate_reachesEndOfRoute() {
-        vehicle.setTripPlan(mockTripPlan);
-
+    void testUpdate_reachesEndOfRoute()
+    {
         // Simulate updates that move the vehicle to the end of the route
         double routeDistance = mockDirections.getRoutes().get(0).getDistance();
-        vehicle.setMetersOffset(routeDistance);
+        vehicle.updateMetersOffset(routeDistance);
 
-        try {
-			Thread.sleep(100);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
+        try
+        {
+            Thread.sleep(100);
+        }
+        catch (InterruptedException e)
+        {
+            e.printStackTrace();
+        }
 
         vehicle.update();
 
@@ -72,26 +91,27 @@ class VehicleTest {
     }
 
     @Test
-    void testBearingAdjustment() {
-        vehicle.setTripPlan(mockTripPlan);
-
+    void testBearingAdjustment()
+    {
         // Simulate a bearing adjustment
         double initialBearing = vehicle.getDegBearing();
-        vehicle.setMetersOffset(100.0); // Move slightly along the route
+        vehicle.updateMetersOffset(100.0); // Move slightly along the route
         vehicle.update();
 
         assertNotEquals(initialBearing, vehicle.getDegBearing(), "Bearing should be adjusted during update.");
     }
 
     @Test
-    void testSpeedAdjustment() {
-        vehicle.setTripPlan(mockTripPlan);
+    void testSpeedAdjustment()
+    {
+        vehicle.updateMetersOffset(0.0);
 
-        vehicle.setMetersOffset(0.0);
-
-        try {
+        try
+        {
             Thread.sleep(100);
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e)
+        {
             e.printStackTrace();
         }
 
