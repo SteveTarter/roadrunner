@@ -12,6 +12,10 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
@@ -21,6 +25,11 @@ import utils.TestUtils;
 
 class VehicleTest
 {
+    @Mock
+    private RedisTemplate<String, Object> redisTemplate;
+
+    @Mock
+    private ValueOperations<String, Object> valueOperations;
 
     private Vehicle vehicle;
     private VehicleManager vehicleManager;
@@ -31,6 +40,12 @@ class VehicleTest
     @BeforeEach
     void setup() throws IOException
     {
+        // Initialize mocks
+        MockitoAnnotations.openMocks(this);
+
+        // Mock behavior for RedisTemplate
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
         mockDirectionsService = mock(DirectionsService.class);
 
         mockTripPlan = mock(TripPlan.class);
@@ -42,10 +57,13 @@ class VehicleTest
         when(mockDirectionsService.getDirectionsForTripPlan(any())).thenReturn(mockDirections);
 
         // Create the VehicleManager instance
-        vehicleManager = new VehicleManager(mockDirectionsService);
+        vehicleManager = new VehicleManager(mockDirectionsService, redisTemplate);
 
-        UUID vehicleId = vehicleManager.createVehicle(mockTripPlan);
-        vehicle = vehicleManager.getVehicle(vehicleId);
+        vehicle = vehicleManager.createVehicle(mockTripPlan);
+        UUID vehicleId = vehicle.getId();
+        when(valueOperations.get("Vehicle:" + vehicleId)).thenReturn(vehicle);
+
+        // vehicle = vehicleManager.getVehicle(vehicleId);
         vehicle.setDirections(vehicleManager.getVehicleDirections(vehicleId));
         vehicle.setListLineSegmentData(vehicleManager.getLlineSegmentData(vehicleId));
     }
@@ -55,7 +73,7 @@ class VehicleTest
     {
         // Simulate updates that move the vehicle to the end of the route
         double routeDistance = mockDirections.getRoutes().get(0).getDistance();
-        vehicle.setMetersOffset(routeDistance);
+        vehicle.updateMetersOffset(routeDistance);
 
         try
         {
@@ -77,7 +95,7 @@ class VehicleTest
     {
         // Simulate a bearing adjustment
         double initialBearing = vehicle.getDegBearing();
-        vehicle.setMetersOffset(100.0); // Move slightly along the route
+        vehicle.updateMetersOffset(100.0); // Move slightly along the route
         vehicle.update();
 
         assertNotEquals(initialBearing, vehicle.getDegBearing(), "Bearing should be adjusted during update.");
@@ -86,7 +104,7 @@ class VehicleTest
     @Test
     void testSpeedAdjustment()
     {
-        vehicle.setMetersOffset(0.0);
+        vehicle.updateMetersOffset(0.0);
 
         try
         {

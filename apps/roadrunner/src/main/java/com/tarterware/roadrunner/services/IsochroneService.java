@@ -1,5 +1,7 @@
 package com.tarterware.roadrunner.services;
 
+import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -126,7 +128,7 @@ public class IsochroneService
             isochrone = respIsochrome.getBody();
 
             // Persist the newly read Object to the cache
-            redisTemplate.opsForValue().set(isochroneCacheKey, isochrone);
+            redisTemplate.opsForValue().set(isochroneCacheKey, isochrone, 5, TimeUnit.MINUTES);
         }
 
         return isochrone;

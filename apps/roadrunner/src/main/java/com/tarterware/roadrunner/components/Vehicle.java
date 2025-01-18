@@ -120,11 +120,7 @@ public class Vehicle
 
     // Timestamp of the last position update calculation.
     @JsonProperty
-    Instant lastCalculationInstant;
-
-    // Last geodetic point in projected coordinates, used for bearing calculations.
-    @JsonProperty
-    private ProjCoordinate lastProjGeoPoint;
+    long lastCalculationEpochMillis;
 
     @Setter
     private Directions directions;
@@ -163,7 +159,7 @@ public class Vehicle
         // Default turning rate (degrees per second).
         this.degsPerSecondTurn = 120.0;
 
-        lastCalculationInstant = Instant.now();
+        lastCalculationEpochMillis = Instant.now().toEpochMilli();
 
         // Generate a random pastel color for the vehicle's visual representation.
         Random random = new Random();
@@ -210,7 +206,7 @@ public class Vehicle
      *                     vehicle.setMetersOffset(500.0); // Move the vehicle to 500 meters along the route.
      *                     </pre>
      */
-    public void setMetersOffset(double metersOffset)
+    public void updateMetersOffset(double metersOffset)
     {
         if (metersOffset == 0.0)
         {
@@ -294,12 +290,11 @@ public class Vehicle
         ProjCoordinate projGeoPoint = new ProjCoordinate();
         activeLineSegmentData.getUtmToWgs84Coordinatetransformer().transform(projUtmPoint, projGeoPoint);
 
-        if ((lastProjGeoPoint != null)
-                && !((projGeoPoint.x == lastProjGeoPoint.x) && (projGeoPoint.y == lastProjGeoPoint.y)))
+        if (!((projGeoPoint.x == degLongitude) && (projGeoPoint.y == degLongitude)))
         {
+            ProjCoordinate lastProjGeoPoint = new ProjCoordinate(degLongitude, degLatitude);
             degBearingDesired = _getBearingBetween(lastProjGeoPoint, projGeoPoint);
         }
-        lastProjGeoPoint = projGeoPoint;
 
         positionLimited = false;
         positionValid = true;
@@ -349,8 +344,9 @@ public class Vehicle
      * @see #setMetersOffset(double)
      * @see #shortestAngleDifference(double, double)
      */
-    public void update()
+    public boolean update()
     {
+        boolean updated = false;
         Instant now = Instant.now();
 
         // Don't bother to calculate an updated position if at the end of the trip.
@@ -366,7 +362,7 @@ public class Vehicle
         {
             // If the vehicle speed isn't at the desired speed yet, determine
             // if it needs to go faster or slower, and adjust speed accordingly.
-            long msElapsed = now.toEpochMilli() - lastCalculationInstant.toEpochMilli();
+            long msElapsed = now.toEpochMilli() - lastCalculationEpochMillis;
             if (metersPerSecond != metersPerSecondDesired)
             {
                 if (metersPerSecond < metersPerSecondDesired)
@@ -391,7 +387,7 @@ public class Vehicle
 
             // Determine how far the vehicle should have traveled in the elapsed time.
             double metersTraveled = (msElapsed / 1000.0) * metersPerSecond;
-            setMetersOffset(metersOffset + metersTraveled);
+            updateMetersOffset(metersOffset + metersTraveled);
 
             // If the vehicle bearing isn't at the desired bearing, adjust
             // the bearing with a rate limiter.
@@ -408,9 +404,12 @@ public class Vehicle
                 degBearing += Math.signum(degAngleDiff) * Math.min(Math.abs(degAngleDiff), degMaxTurn);
                 degBearing = normalize(degBearing);
             }
+
+            lastCalculationEpochMillis = now.toEpochMilli();
+            updated = true;
         }
 
-        lastCalculationInstant = now;
+        return updated;
     }
 
     private double _getBearingBetween(ProjCoordinate projGeoPoint1, ProjCoordinate projGeoPoint2)

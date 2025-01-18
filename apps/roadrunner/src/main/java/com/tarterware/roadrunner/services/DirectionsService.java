@@ -1,6 +1,7 @@
 package com.tarterware.roadrunner.services;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,30 +49,10 @@ public class DirectionsService
             sb.append("/");
         }
 
-        // Add start of GeoCoding endpoint
-        sb.append("directions/v5/mapbox/driving/");
-
-        for (Address address : listAddresses)
-        {
-            sb.append(address.getLongitude());
-            sb.append(",");
-            sb.append(address.getLatitude());
-            sb.append(";");
-        }
-
-        // Remove the last comma that was added as a part of the address components
-        sb.deleteCharAt(sb.length() - 1);
-
-        // Tell the API that we want to match address features
-        sb.append("?alternatives=false");
-        sb.append("&annotations=speed,distance");
-        sb.append("&geometries=geojson");
-        sb.append("&language=en");
-        sb.append("&overview=full");
-        sb.append("&steps=true");
-
-        // Create the key name, removing the URL portion in front.
-        String directionsCacheKey = sb.toString().substring(_mapBoxApiUrl.length());
+        // The key used for caching the Directions is a subset of the URL.
+        // Calling "getCacheKey()" builds the next part of the URL for us.
+        String directionsCacheKey = getCacheKey(listAddresses);
+        sb.append(directionsCacheKey);
 
         Directions redisDirections = (Directions) redisTemplate.opsForValue().get(directionsCacheKey);
 
@@ -105,7 +86,7 @@ public class DirectionsService
             }
 
             // Persist the newly read Object to the cache
-            redisTemplate.opsForValue().set(directionsCacheKey, directions);
+            redisTemplate.opsForValue().set(directionsCacheKey, directions, 5, TimeUnit.MINUTES);
         }
 
         return directions;
@@ -138,5 +119,53 @@ public class DirectionsService
         Directions directions = getDirections(tripPlan.getListStops());
 
         return directions;
+    }
+
+    public String getCacheKey(List<Address> listAddresses)
+    {
+        // Begin with start of GeoCoding endpoint
+        StringBuilder sb = new StringBuilder("directions/v5/mapbox/driving/");
+
+        for (Address address : listAddresses)
+        {
+            sb.append(address.getLongitude());
+            sb.append(",");
+            sb.append(address.getLatitude());
+            sb.append(";");
+        }
+
+        // Remove the last comma that was added as a part of the address components
+        sb.deleteCharAt(sb.length() - 1);
+
+        // Tell the API that we want to match address features
+        sb.append("?alternatives=false");
+        sb.append("&annotations=speed,distance");
+        sb.append("&geometries=geojson");
+        sb.append("&language=en");
+        sb.append("&overview=full");
+        sb.append("&steps=true");
+
+        // This subset of the path constitutes the key name.
+        String directionsCacheKey = sb.toString();
+
+        return directionsCacheKey;
+    }
+
+    public String getCacheKey(TripPlan tripPlan)
+    {
+        // Check to see a valid TripPlan has been provided before proceeding.
+        if (tripPlan == null)
+        {
+            throw new IllegalArgumentException("tripPlan cannot be null!");
+        }
+
+        if ((tripPlan.getListStops() == null) || (tripPlan.getListStops().size() < 2))
+        {
+            throw new IllegalArgumentException("There must be at least 2 stops in tripPlan!");
+        }
+
+        // Pass the stops list to the List of Addresses method.
+        String directionsCacheKey = getCacheKey(tripPlan.getListStops());
+        return directionsCacheKey;
     }
 }

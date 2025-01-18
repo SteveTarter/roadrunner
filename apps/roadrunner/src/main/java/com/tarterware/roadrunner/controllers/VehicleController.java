@@ -35,8 +35,8 @@ public class VehicleController
     @PostMapping("/create-new")
     ResponseEntity<VehicleState> getNewVehicle(@RequestBody TripPlan tripPlan)
     {
-        UUID vehicleId = vehicleManager.createVehicle(tripPlan);
-        VehicleState vehicleState = createVehicleStateFor(vehicleId);
+        Vehicle vehicle = vehicleManager.createVehicle(tripPlan);
+        VehicleState vehicleState = createVehicleStateFor(vehicle);
 
         if (vehicleManager.isRunning() == false)
         {
@@ -85,8 +85,8 @@ public class VehicleController
             listStops.add(endAddress);
             tripPlan.setListStops(listStops);
 
-            UUID vehicleId = vehicleManager.createVehicle(tripPlan);
-            VehicleState vehicleState = createVehicleStateFor(vehicleId);
+            Vehicle vehicle = vehicleManager.createVehicle(tripPlan);
+            VehicleState vehicleState = createVehicleStateFor(vehicle);
 
             listVehicleStates.add(vehicleState);
 
@@ -156,6 +156,16 @@ public class VehicleController
         if (vehicle == null)
         {
             throw new IllegalArgumentException("Unable to find vehicle with ID " + vehicleId);
+        }
+
+        return createVehicleStateFor(vehicle);
+    }
+
+    private VehicleState createVehicleStateFor(Vehicle vehicle)
+    {
+        if (vehicle == null)
+        {
+            throw new IllegalArgumentException("vehicle cannot be null!");
         }
 
         VehicleState vehicleState = new VehicleState();

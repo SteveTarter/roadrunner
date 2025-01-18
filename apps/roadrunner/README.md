@@ -25,14 +25,6 @@ The following variables need to be set in the `application.properties` file for 
   URL to the Mapbox API.  
   Example: `https://api.mapbox.com/`
 
-- **`com.tarterware.data-dir`**  
-  Directory path for storing application data.  
-  Example: `/opt/tarterware-data`
-
-- **`spring.web.allow-cors`**  
-  Enables or disables Cross-Origin Resource Sharing (CORS).  
-  Example: `true`
-
 - **`management.endpoints.web.exposure.include`**  
   Management endpoints exposed via HTTP.  
   Example: `health,info`
