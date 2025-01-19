@@ -52,16 +52,22 @@ resource "kubernetes_namespace" "roadrunner_namespace" {
   }
 }
 
+module "redis" {
+  source = "./modules/redis"
+
+# This module sets up a Redis instance to share datas between Roadrunner instances.
+
+  roadrunner_namespace           = var.roadrunner_namespace
+}
+
 module "roadrunner" {
   source = "./modules/roadrunner"
 
   # This module sets up the core infrastructure for the Roadrunner application, including networking, IAM roles, and Kubernetes resources.
 
-  region                         = var.region
   cluster_name                   = var.cluster_name
   roadrunner_namespace           = var.roadrunner_namespace
   mapbox_api_key                 = var.mapbox_api_key
-  tarterware_data_dir            = var.tarterware_data_dir
   spring_mail_username           = var.spring_mail_username
   spring_mail_password           = var.spring_mail_password
   auth0_api_client_id            = var.auth0_api_client_id
@@ -71,8 +77,9 @@ module "roadrunner" {
   auth0_api_audience             = var.auth0_api_audience
   auth0_api_rest_url_base        = var.auth0_api_rest_url_base
   tarterware_cert_arn            = var.tarterware_cert_arn
-  eks_vpc_name                   = var.eks_vpc_name
-  efs_sg_name                    = var.efs_sg_name
+  redis_host                     = module.redis.redis_host
+
+  depends_on = [module.redis]
 }
 
 module "roadrunner_view" {
@@ -93,4 +100,3 @@ module "roadrunner_view" {
 
   depends_on = [module.roadrunner]
 }
-

@@ -37,15 +37,14 @@ resource "kubernetes_deployment" "roadrunner" {
             name = "REDIS_PASSWORD"
             value_from {
               secret_key_ref {
-                name = "${helm_release.redis.name}"
-                namespace = var.roadrunner_namespace
-                key = "redis"
+                name = "redis"
+                key = "redis-password"
               }
             }
           }
 
           args = [
-            "--com.tarterware.redis.password=${REDIS_PASSWORD}"
+            "--com.tarterware.redis.password=$(REDIS_PASSWORD)"
           ]
 
           volume_mount {
