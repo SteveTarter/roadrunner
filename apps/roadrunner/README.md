@@ -33,6 +33,27 @@ The following variables need to be set in the `application.properties` file for 
   Host address of the Redis server.  
   Example: `127.0.0.1`
 
+- **`spring.profiles.active`**
+  Active Spring profile.  Should be 'eks' for AWS builds.
+  Example: `eks`
+
+## 'Secret' Properties Configuration
+
+The following variables should be set in a 'secrets.properties' file that is peer to the application properties.  Note that this is not in the repo by design.
+
+- **`mapbox.api.key`**
+  API key for the MapBox mapping provider
+  Example: `pk.bleggity-blah`
+
+- **`spring.security.oauth2.resourceserver.jwt.issuer-uri`**
+  OAuth2 JWT issuer
+  Example: `https://dev-PROJECTID.us.auth0.com/`
+
+- **`com.tarterware.redis.password`**
+  Password to access redis outside AWS
+  Example: `nunyabiznezazzole`
+
+
 ------------------------------------------------------------------------------------------
 
 #### Create new vehicle
