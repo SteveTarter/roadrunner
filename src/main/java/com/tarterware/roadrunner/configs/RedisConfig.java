@@ -12,7 +12,7 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
-@Profile("!aws") // Dev and minikube use a stock redis stack, while aws uses memorydb
+@Profile("!eks") // Dev and minikube use a stock redis stack, while eks uses memorydb
 public class RedisConfig
 {
     @Value("${com.tarterware.redis.host}")

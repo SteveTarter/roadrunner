@@ -16,7 +16,7 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
-@Profile("aws") // Only use in the "aws" profile
+@Profile("eks") // Only use in the "eks" profile
 public class RedisAwsConfig
 {
     @Value("${com.tarterware.redis.host}")
