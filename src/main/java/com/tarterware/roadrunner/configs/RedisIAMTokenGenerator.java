@@ -6,7 +6,6 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.auth.signer.params.Aws4SignerParams;
-import software.amazon.awssdk.core.SdkSystemSetting;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.regions.Region;
@@ -15,7 +14,9 @@ public class RedisIAMTokenGenerator
 {
 
     private static final String SERVICE_NAME = "memorydb"; // Service name for MemoryDB
-    private static final String REGION = System.getenv(SdkSystemSetting.AWS_REGION.environmentVariable());
+    // FIXME - Replace the hard-coded region below with a call to the Query the
+    // Instance Metadata Service
+    private static final String REGION = "us-east-1"; // Hard-coded region
 
     public String generateIAMAuthToken(String host, int port)
     {
