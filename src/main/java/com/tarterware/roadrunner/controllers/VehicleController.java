@@ -48,6 +48,11 @@ public class VehicleController
     @PostMapping("/create-crisscross")
     ResponseEntity<List<VehicleState>> createCrissCrossVehicles(@RequestBody CrissCrossPlan crissCrossPlan)
     {
+        if (vehicleManager.isRunning() == false)
+        {
+            vehicleManager.startup();
+        }
+
         List<VehicleState> listVehicleStates = new ArrayList<VehicleState>();
 
         // Create a Coordinate representing the center point.
@@ -91,11 +96,6 @@ public class VehicleController
             listVehicleStates.add(vehicleState);
 
             degStartBearing += degIncrement;
-        }
-
-        if (vehicleManager.isRunning() == false)
-        {
-            vehicleManager.startup();
         }
 
         return new ResponseEntity<List<VehicleState>>(listVehicleStates, HttpStatus.OK);
