@@ -33,19 +33,24 @@ resource "kubernetes_deployment" "roadrunner" {
             container_port = 8080
           }
 
-          env {
+          # Redis password is only needed on minikube; eks uses IAM
+          dynamic "env" {
+            for_each = terraform.workspace == "minikube" ? [1] : []
+            content {
             name = "REDIS_PASSWORD"
-            value_from {
-              secret_key_ref {
-                name = "redis"
-                key = "redis-password"
+              value_from {
+                secret_key_ref {
+                  name = "redis"
+                  key = "redis-password"
+                }
               }
             }
           }
 
-          args = [
+          # Dynamic args
+          args = terraform.workspace == "minikube" ? [
             "--com.tarterware.redis.password=$(REDIS_PASSWORD)"
-          ]
+          ] : []
 
           volume_mount {
             name       = "application-conf"
