@@ -131,7 +131,7 @@ public class GeocodingService
             featureCollection = respFc.getBody();
 
             // Persist the newly read Object to the cache
-            redisTemplate.opsForValue().set(geocodingCacheKey, featureCollection, 5, TimeUnit.MINUTES);
+            redisTemplate.opsForValue().set(geocodingCacheKey, featureCollection, 100, TimeUnit.HOURS);
         }
 
         if (featureCollection != null)
