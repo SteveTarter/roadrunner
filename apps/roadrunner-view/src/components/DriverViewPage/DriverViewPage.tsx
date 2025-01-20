@@ -99,12 +99,14 @@ export const DriverViewPage = () => {
         .catch(error => {
           console.log(`Error caught during fetch in fetchVehicleState: ${error.message}`);
           setIsDataLoaded(false);
+          gotoHomePage();
           return <></>;
         });
     }
     catch (error: any) {
       console.log(`Error caught in fetchVehicleState: ${error.message}`);
       setIsDataLoaded(false);
+      gotoHomePage();
     }
   }
 
