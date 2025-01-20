@@ -3,12 +3,6 @@ variable "cluster_name" {
   type        = string
 }
 
-variable "region" {
-  description = "The AWS region where resources will be deployed."
-  type        = string
-  default     = "us-east-1"
-}
-
 variable "kubeconfig_path" {
   description = "The path to the kubeconfig file used for Kubernetes cluster access."
   type        = string
@@ -105,24 +99,8 @@ variable "roadrunner_view_auth0_client_secret" {
   type        = string
 }
 
-variable "tarterware_data_dir" {
-  description = "The directory path where Tarterware application data is stored."
-  sensitive   = true
-  type        = string
-}
-
 variable "tarterware_cert_arn" {
   description = "The ARN of the SSL/TLS certificate for securing communication with Tarterware services."
-  type        = string
-}
-
-variable "eks_vpc_name" {
-  description = "The name of the VPC where the EKS cluster is deployed."
-  type        = string
-}
-
-variable "efs_sg_name" {
-  description = "The name of the security group associated with the EFS file system."
   type        = string
 }
 
@@ -132,3 +110,8 @@ variable "tarterware_api_audience" {
   type        = string
 }
 
+variable "aws_memorydb_host" {
+  description = "AWS MemoryDB host (redis replacement, AWS only)"
+  sensitive   = false
+  type        = string
+}

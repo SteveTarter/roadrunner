@@ -3,12 +3,6 @@ variable "cluster_name" {
   type        = string
 }
 
-variable "region" {
-  description = "The AWS region where resources will be deployed."
-  type        = string
-  default     = "us-east-1"
-}
-
 variable "roadrunner_namespace" {
   description = "The Kubernetes namespace where the Roadrunner application resources will be deployed."
   type = string
@@ -69,23 +63,13 @@ variable "auth0_api_rest_url_base" {
   type        = string
 }
 
-variable "tarterware_data_dir" {
-  description = "The directory path where Tarterware application data is stored."
-  sensitive   = true
-  type        = string
-}
-
 variable "tarterware_cert_arn" {
   description = "The ARN of the SSL/TLS certificate for securing communication with Tarterware services."
   type        = string
 }
 
-variable "eks_vpc_name" {
-  description = "The name of the VPC where the EKS cluster is deployed."
+variable "redis_host" {
+  description = "The hostname of the Redis service"
   type        = string
 }
 
-variable "efs_sg_name" {
-  description = "The name of the security group associated with the EFS file system."
-  type        = string
-}

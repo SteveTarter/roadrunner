@@ -52,16 +52,34 @@ resource "kubernetes_namespace" "roadrunner_namespace" {
   }
 }
 
+# Install redis only on minikube.  MemoryDB will be used on EKS.  For now, that's hand-generated.
+module "redis" {
+  source = "./modules/redis"
+  count  = terraform.workspace == "minikube" ? 1 : 0
+
+# This module sets up a Redis instance to share datas between Roadrunner instances.
+
+  roadrunner_namespace           = var.roadrunner_namespace
+}
+
+# Conditional null_resource for dependency
+resource "null_resource" "redis_ready" {
+  count = terraform.workspace == "minikube" ? 1 : 0
+}
+
+# Determine the redis host based on the workspace.
+locals {
+  redis_host = terraform.workspace == "minikube" && length(module.redis) > 0 ? module.redis[0].redis_host : var.aws_memorydb_host
+}
+
 module "roadrunner" {
   source = "./modules/roadrunner"
 
   # This module sets up the core infrastructure for the Roadrunner application, including networking, IAM roles, and Kubernetes resources.
 
-  region                         = var.region
   cluster_name                   = var.cluster_name
   roadrunner_namespace           = var.roadrunner_namespace
   mapbox_api_key                 = var.mapbox_api_key
-  tarterware_data_dir            = var.tarterware_data_dir
   spring_mail_username           = var.spring_mail_username
   spring_mail_password           = var.spring_mail_password
   auth0_api_client_id            = var.auth0_api_client_id
@@ -71,8 +89,9 @@ module "roadrunner" {
   auth0_api_audience             = var.auth0_api_audience
   auth0_api_rest_url_base        = var.auth0_api_rest_url_base
   tarterware_cert_arn            = var.tarterware_cert_arn
-  eks_vpc_name                   = var.eks_vpc_name
-  efs_sg_name                    = var.efs_sg_name
+  redis_host                     = local.redis_host
+
+  depends_on = [null_resource.redis_ready]
 }
 
 module "roadrunner_view" {
@@ -93,4 +112,3 @@ module "roadrunner_view" {
 
   depends_on = [module.roadrunner]
 }
-
