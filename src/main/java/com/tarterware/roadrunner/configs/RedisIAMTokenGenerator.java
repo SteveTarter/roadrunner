@@ -1,7 +1,6 @@
 package com.tarterware.roadrunner.configs;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -18,32 +17,33 @@ public class RedisIAMTokenGenerator
     private static final String SERVICE_NAME = "memorydb"; // Service name for MemoryDB
     private static final String REGION = System.getenv(SdkSystemSetting.AWS_REGION.environmentVariable());
 
-    public String generateIAMAuthToken(String host, int port) throws URISyntaxException
+    public String generateIAMAuthToken(String host, int port)
     {
-        AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
+        try
+        {
+            AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
+            Aws4Signer signer = Aws4Signer.create();
 
-        // Build the Redis URI
-        URI redisUri = new URI(String.format("redis://%s:%d", host, port));
+            // Construct a URI with http:// to satisfy the AWS SDK
+            URI signingUri = new URI(String.format("http://%s:%d", host, port));
 
-        // Create the unsigned HTTP request (dummy GET request)
-        SdkHttpFullRequest unsignedRequest = SdkHttpFullRequest.builder().method(SdkHttpMethod.GET).uri(redisUri)
-                .putHeader("host", redisUri.getHost()).build();
+            // Create an unsigned HTTP GET request
+            SdkHttpFullRequest unsignedRequest = SdkHttpFullRequest.builder().method(SdkHttpMethod.GET).uri(signingUri)
+                    .putHeader("host", signingUri.getHost()).build();
 
-        // Create the Aws4Signer
-        Aws4Signer signer = Aws4Signer.create();
+            // Configure the signing parameters
+            Aws4SignerParams signerParams = Aws4SignerParams.builder()
+                    .awsCredentials(credentialsProvider.resolveCredentials()).signingName(SERVICE_NAME)
+                    .signingRegion(Region.of(REGION)).build();
 
-        // Set up the signing parameters
-        Aws4SignerParams signerParams = Aws4SignerParams.builder()
-                .awsCredentials(credentialsProvider.resolveCredentials()).signingName(SERVICE_NAME) // MemoryDB uses
-                                                                                                    // "memorydb"
-                .signingRegion(Region.of(REGION)) // Use the AWS region
-                .build();
-
-        // Sign the request
-        SdkHttpFullRequest signedRequest = signer.sign(unsignedRequest, signerParams);
-
-        // The IAM token is in the "Authorization" header
-        return signedRequest.firstMatchingHeader("Authorization")
-                .orElseThrow(() -> new RuntimeException("Unable to generate IAM token for Redis"));
+            // Sign the request and extract the IAM token
+            SdkHttpFullRequest signedRequest = signer.sign(unsignedRequest, signerParams);
+            return signedRequest.firstMatchingHeader("Authorization")
+                    .orElseThrow(() -> new RuntimeException("Unable to generate IAM token"));
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Error generating IAM token for Redis", e);
+        }
     }
 }
