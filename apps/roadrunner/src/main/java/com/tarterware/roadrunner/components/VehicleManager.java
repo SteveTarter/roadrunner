@@ -68,9 +68,6 @@ public class VehicleManager
     // Set of Vehicle IDs.
     private Set<UUID> vehicleIdSet = Collections.synchronizedSet(new HashSet<UUID>());
 
-    // Map of Vehicles by ID.
-    private Map<UUID, Vehicle> vehicleMap = Collections.synchronizedMap(new HashMap<UUID, Vehicle>());
-
     // Map of Directions by Vehicle ID.
     private Map<UUID, Directions> directionsMap = Collections.synchronizedMap(new HashMap<UUID, Directions>());
 
@@ -174,7 +171,10 @@ public class VehicleManager
         timer.cancel();
         timer = null;
 
-        vehicleMap.clear();
+        synchronized (vehicleIdSet)
+        {
+            vehicleIdSet.clear();
+        }
     }
 
     /**
@@ -323,7 +323,10 @@ public class VehicleManager
         setVehicle(vehicle);
 
         // Finally, add it to the set of Vehicles.
-        vehicleIdSet.add(vehicle.getId());
+        synchronized (vehicleIdSet)
+        {
+            vehicleIdSet.add(vehicle.getId());
+        }
 
         return vehicle;
     }
@@ -361,31 +364,37 @@ public class VehicleManager
             Set<UUID> deletionSet = new HashSet<UUID>();
 
             // Loop through each of the Vehicles and update them.
-            for (UUID vehicleId : vehicleIdSet)
+            synchronized (vehicleIdSet)
             {
-                Vehicle vehicle = getVehicle(vehicleId);
-
-                // Retrieve Directions and LineSegmentData for this Vehicle.
-                vehicle.setDirections(getVehicleDirections(vehicleId));
-                vehicle.setListLineSegmentData(lineSegmentDataMap.get(vehicleId));
-
-                // Perform the update.
-                boolean updated = vehicle.update();
-
-                // If the vehicle didn't update, then it is finished. Add it to the deletion
-                // Set.
-                if (!updated)
+                for (UUID vehicleId : vehicleIdSet)
                 {
-                    deletionSet.add(vehicleId);
+                    Vehicle vehicle = getVehicle(vehicleId);
+
+                    // Retrieve Directions and LineSegmentData for this Vehicle.
+                    vehicle.setDirections(getVehicleDirections(vehicleId));
+                    vehicle.setListLineSegmentData(lineSegmentDataMap.get(vehicleId));
+
+                    // Perform the update.
+                    boolean updated = vehicle.update();
+
+                    // If the vehicle didn't update, then it is finished. Add it to the deletion
+                    // Set.
+                    if (!updated)
+                    {
+                        deletionSet.add(vehicleId);
+                    }
+                    setVehicle(vehicle);
                 }
-                setVehicle(vehicle);
             }
 
             // Remove any IDs in the deletionSet, if any.
-            for (UUID vehicleID : deletionSet)
+            synchronized (vehicleIdSet)
             {
-                vehicleIdSet.remove(vehicleID);
-                logger.info("Removing {} from active set of Vehicles.", vehicleID);
+                for (UUID vehicleID : deletionSet)
+                {
+                    vehicleIdSet.remove(vehicleID);
+                    logger.info("Removing {} from active set of Vehicles.", vehicleID);
+                }
             }
 
             // Remove the Directions for deleted Vehicles from the directionsMap.
