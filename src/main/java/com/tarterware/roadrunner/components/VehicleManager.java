@@ -140,7 +140,7 @@ public class VehicleManager
     {
         String key = "Vehicle:" + vehicle.getId().toString();
 
-        redisTemplate.opsForValue().set(key, vehicle, 1, TimeUnit.MINUTES);
+        redisTemplate.opsForValue().set(key, vehicle, 1, TimeUnit.HOURS);
     }
 
     /**

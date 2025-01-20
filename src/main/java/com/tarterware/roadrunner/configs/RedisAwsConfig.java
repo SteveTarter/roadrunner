@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -16,7 +15,7 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
-@Profile("aws") // Only use in the "aws" profile
+@Profile("eks") // Only use in the "eks" profile
 public class RedisAwsConfig
 {
     @Value("${com.tarterware.redis.host}")
@@ -26,7 +25,7 @@ public class RedisAwsConfig
     private int _redisPort;
 
     @Bean
-    RedisConnectionFactory redisStandAloneConnectionFactory() throws Exception
+    LettuceConnectionFactory redisStandAloneConnectionFactory() throws Exception
     {
         // Generate the IAM token
         RedisIAMTokenGenerator tokenGenerator = new RedisIAMTokenGenerator();
