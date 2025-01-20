@@ -128,7 +128,7 @@ public class IsochroneService
             isochrone = respIsochrome.getBody();
 
             // Persist the newly read Object to the cache
-            redisTemplate.opsForValue().set(isochroneCacheKey, isochrone, 5, TimeUnit.MINUTES);
+            redisTemplate.opsForValue().set(isochroneCacheKey, isochrone, 1, TimeUnit.HOURS);
         }
 
         return isochrone;

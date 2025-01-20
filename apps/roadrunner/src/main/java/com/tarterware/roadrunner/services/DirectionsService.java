@@ -86,7 +86,7 @@ public class DirectionsService
             }
 
             // Persist the newly read Object to the cache
-            redisTemplate.opsForValue().set(directionsCacheKey, directions, 5, TimeUnit.MINUTES);
+            redisTemplate.opsForValue().set(directionsCacheKey, directions, 100, TimeUnit.HOURS);
         }
 
         return directions;
