@@ -15,24 +15,26 @@ public class VehicleState
     UUID id;
 
     double metersOffset;
-    
+
     boolean positionLimited;
-    
+
     boolean positionValid;
-    
+
     double degLatitude;
-    
+
     double degLongitude;
-    
+
     double metersPerSecondDesired;
-    
+
     double metersPerSecond;
-    
+
     double mssAcceleration;
-    
+
     double degBearingDesired;
-    
+
     double degBearing;
-    
+
     String colorCode;
+
+    String managerHost;
 }
