@@ -181,6 +181,8 @@ public class VehicleController
         vehicleState.setDegBearing(vehicle.getDegBearing());
         vehicleState.setColorCode(vehicle.getColorCode());
         vehicleState.setManagerHost(vehicle.getManagerHost());
+        vehicleState.setMsEpochLastRun(vehicle.getLastCalculationEpochMillis());
+        vehicleState.setNsLastExec(vehicle.getLastNsExecutionTime());
 
         return vehicleState;
     }

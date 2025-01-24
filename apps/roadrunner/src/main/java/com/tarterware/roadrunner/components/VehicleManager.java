@@ -15,6 +15,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -35,6 +36,8 @@ import com.tarterware.roadrunner.models.mapbox.RouteLeg;
 import com.tarterware.roadrunner.models.mapbox.RouteStep;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
+
+import io.micrometer.core.instrument.MeterRegistry;
 
 /**
  * Manages a collection of Vehicles, their routes, and updates their positions
@@ -83,6 +86,11 @@ public class VehicleManager
     // Service to retrieve directions for trip plans
     private DirectionsService directionsService;
 
+    // Thread-safe implementation of Number used to access the latestExecutionTime.
+    private final AtomicReference<Double> msLatestExecutionTime = new AtomicReference<>(0.0);
+
+    private static final String METRICS_ENDPOINT = "roadrunner.latest.execution.time.milliseconds";
+
     private static final String VEHICLE_PREFIX = "Vehicle:";
 
     private static final String ACTIVE_VEHICLE_REGISTRY = "ActiveVehicleRegistry";
@@ -101,12 +109,19 @@ public class VehicleManager
      *                          as storing and retrieving data. Keys are Strings,
      *                          and values are serialized Java objects..
      */
-    public VehicleManager(DirectionsService directionsService, RedisTemplate<String, Object> redisTemplate)
+    public VehicleManager(DirectionsService directionsService, RedisTemplate<String, Object> redisTemplate,
+            MeterRegistry meterRegistry)
     {
         super();
 
         this.directionsService = directionsService;
         this.redisTemplate = redisTemplate;
+
+        // Register a gauge to expose the latest execution time.
+        meterRegistry.gauge(METRICS_ENDPOINT, msLatestExecutionTime, AtomicReference::get);
+
+        // Try to determine the hostname of the machine that is running this instance of
+        // Spring Boot. If unable to do so, set it to "UNKNOWN".
         try
         {
             InetAddress inetAddress = InetAddress.getLocalHost();
@@ -439,19 +454,22 @@ public class VehicleManager
         @Override
         public void run()
         {
-            Set<UUID> deletionSet = new HashSet<UUID>();
+            long nsManagerStartTime = System.nanoTime();
+            long msManagerStartTime = Instant.now().toEpochMilli();
 
-            long currentTime = Instant.now().toEpochMilli();
+            Set<UUID> deletionSet = new HashSet<UUID>();
 
             // Fetch and claim ready vehicles.We are looking for Vehicles that were
             // process msPeriod milliseconds ago or earlier.
             Set<ZSetOperations.TypedTuple<Object>> readyVehicles = redisTemplate.opsForZSet()
-                    .rangeByScoreWithScores(VEHICLE_QUEUE, 0, currentTime - msPeriod);
+                    .rangeByScoreWithScores(VEHICLE_QUEUE, 0, msManagerStartTime - msPeriod);
 
             if (readyVehicles != null)
             {
                 for (ZSetOperations.TypedTuple<Object> tuple : readyVehicles)
                 {
+                    long nsVehicleStartTime = System.nanoTime();
+
                     UUID vehicleId = UUID.fromString((String) tuple.getValue());
 
                     // Atomically remove from queue
@@ -469,6 +487,8 @@ public class VehicleManager
                     // If the vehicle updated, then send the state to redis.
                     if (updated)
                     {
+                        long nsVehicleEndTime = System.nanoTime();
+                        vehicle.setLastNsExecutionTime(nsVehicleEndTime - nsVehicleStartTime);
                         setVehicle(vehicle);
                     }
                     else
@@ -502,6 +522,13 @@ public class VehicleManager
                     lineSegmentDataMap.remove(vehicleID);
                 }
             }
+
+            // Calculate the execution time, and convert it to milliseconds
+            long nsManagerEndTime = System.nanoTime();
+            double msExecutionTime = (nsManagerEndTime - nsManagerStartTime) / 1_000_000.0;
+
+            // Update the gauge with the latest execution time
+            msLatestExecutionTime.set(msExecutionTime);
         }
     }
 }
