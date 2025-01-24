@@ -1,5 +1,8 @@
 package com.tarterware.roadrunner.components;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,6 +15,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -22,6 +26,7 @@ import org.locationtech.proj4j.ProjCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Component;
 
 import com.tarterware.roadrunner.models.TripPlan;
@@ -65,8 +70,8 @@ public class VehicleManager
     // Timer to schedule periodic updates.
     private Timer timer;
 
-    // Set of Vehicle IDs.
-    private Set<UUID> vehicleIdSet = Collections.synchronizedSet(new HashSet<UUID>());
+    // Hostname where this manager is running
+    private String hostName;
 
     // Map of Directions by Vehicle ID.
     private Map<UUID, Directions> directionsMap = Collections.synchronizedMap(new HashMap<UUID, Directions>());
@@ -77,6 +82,14 @@ public class VehicleManager
 
     // Service to retrieve directions for trip plans
     private DirectionsService directionsService;
+
+    private static final String VEHICLE_PREFIX = "Vehicle:";
+
+    private static final String ACTIVE_VEHICLE_REGISTRY = "ActiveVehicleRegistry";
+
+    private static final String VEHICLE_QUEUE = "VehicleQueue";
+
+    private static final String TRIP_PLAN_PREFIX = "TripPlan:";
 
     private static final Logger logger = LoggerFactory.getLogger(VehicleManager.class);
 
@@ -94,6 +107,16 @@ public class VehicleManager
 
         this.directionsService = directionsService;
         this.redisTemplate = redisTemplate;
+        try
+        {
+            InetAddress inetAddress = InetAddress.getLocalHost();
+            this.hostName = inetAddress.getHostName();
+        }
+        catch (UnknownHostException e)
+        {
+            logger.error("Unable to determine hostName!  Setting manager host to UNKNOWN");
+            this.hostName = "UNKNOWN";
+        }
     }
 
     /**
@@ -103,15 +126,36 @@ public class VehicleManager
      */
     public Map<UUID, Vehicle> getVehicleMap()
     {
+        if (!isRunning())
+        {
+            startup();
+        }
+
         // Create a Map of Vehicles to return
         Map<UUID, Vehicle> vMap = new HashMap<UUID, Vehicle>();
 
-        synchronized (vehicleIdSet)
+        // FIXME - This needs to change to paginating the results by using the start and
+        // end parameters.
+        Set<Object> objectList = redisTemplate.opsForSet().members(ACTIVE_VEHICLE_REGISTRY);
+        Set<UUID> vehicleIdSet = objectList.stream().map(obj -> UUID.fromString(obj.toString()))
+                .collect(Collectors.toSet());
+
+        for (UUID vehicleID : vehicleIdSet)
         {
-            for (UUID vehicleID : vehicleIdSet)
+            Vehicle vehicle = getVehicle(vehicleID);
+            if (vehicle != null)
             {
-                Vehicle vehicle = getVehicle(vehicleID);
                 vMap.put(vehicleID, vehicle);
+            }
+            else
+            {
+                logger.warn("Vehicle ID {} no longer exists.  Removing from queue.", vehicleID);
+
+                // Atomically remove the Vehicle ID from queue
+                redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, vehicleID);
+
+                // Remove the vehicle ID from the Vehicle Set
+                redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, vehicleID);
             }
         }
 
@@ -126,7 +170,7 @@ public class VehicleManager
      */
     public Vehicle getVehicle(UUID uuid)
     {
-        String key = "Vehicle:" + uuid.toString();
+        String key = VEHICLE_PREFIX + uuid.toString();
 
         Vehicle vehicle = (Vehicle) redisTemplate.opsForValue().get(key);
 
@@ -135,9 +179,15 @@ public class VehicleManager
 
     private void setVehicle(Vehicle vehicle)
     {
-        String key = "Vehicle:" + vehicle.getId().toString();
+        String key = VEHICLE_PREFIX + vehicle.getId().toString();
+
+        // Add a marker that this manager calculated the vehicle state.
+        vehicle.setManagerHost(hostName);
 
         redisTemplate.opsForValue().set(key, vehicle, 1, TimeUnit.HOURS);
+
+        // Add it to the set of Vehicles to be updated.
+        redisTemplate.opsForZSet().add(VEHICLE_QUEUE, vehicle.getId().toString(), vehicle.lastCalculationEpochMillis);
     }
 
     /**
@@ -170,11 +220,6 @@ public class VehicleManager
 
         timer.cancel();
         timer = null;
-
-        synchronized (vehicleIdSet)
-        {
-            vehicleIdSet.clear();
-        }
     }
 
     /**
@@ -233,6 +278,31 @@ public class VehicleManager
         }
 
         Vehicle vehicle = new Vehicle();
+
+        // Put the TripPlan out there so that other VehicleManagers can create the
+        // Directions and LineSegmentData needed to drive a Vehicle.
+        String key = TRIP_PLAN_PREFIX + vehicle.getId();
+        redisTemplate.opsForValue().set(key, tripPlan, 100, TimeUnit.HOURS);
+
+        processTripPlanData(vehicle.getId(), tripPlan);
+
+        // Store the Vehicle.
+        setVehicle(vehicle);
+
+        // Add the vehicle to the Active Vehicle Registry
+        redisTemplate.opsForSet().add(ACTIVE_VEHICLE_REGISTRY, vehicle.getId().toString());
+
+        return vehicle;
+    }
+
+    public void processTripPlanData(UUID vehicleId, TripPlan tripPlan)
+    {
+        // Check for a valid trip plan.
+        if (tripPlan == null)
+        {
+            throw new IllegalArgumentException("TripPlan cannot be null!");
+        }
+
         double metersOffset = 0.0;
         List<Coordinate> utmCoordList = new ArrayList<Coordinate>();
         List<LineSegmentData> listLineSegmentData = new ArrayList<>();
@@ -316,19 +386,8 @@ public class VehicleManager
         listLineSegmentData.add(lineSegmentData);
 
         // Store the Directions and LineSegmentData locally in Maps
-        directionsMap.put(vehicle.getId(), directions);
-        lineSegmentDataMap.put(vehicle.getId(), listLineSegmentData);
-
-        // Store the Vehicle.
-        setVehicle(vehicle);
-
-        // Finally, add it to the set of Vehicles.
-        synchronized (vehicleIdSet)
-        {
-            vehicleIdSet.add(vehicle.getId());
-        }
-
-        return vehicle;
+        directionsMap.put(vehicleId, directions);
+        lineSegmentDataMap.put(vehicleId, listLineSegmentData);
     }
 
     /**
@@ -339,7 +398,26 @@ public class VehicleManager
      */
     public Directions getVehicleDirections(UUID vehicleId)
     {
-        return directionsMap.get(vehicleId);
+        Directions directions = directionsMap.get(vehicleId);
+
+        // If the Directions are null, then retrieve the TripPlan for this
+        // Vehicle, and generate the Directions and LineSegmentData.
+        if (directions == null)
+        {
+            String key = TRIP_PLAN_PREFIX + vehicleId;
+            TripPlan tripPlan = (TripPlan) redisTemplate.opsForValue().get(key);
+
+            processTripPlanData(vehicleId, tripPlan);
+
+            directions = directionsMap.get(vehicleId);
+
+            if (directions == null)
+            {
+                throw new IllegalStateException("Unable to recreate Directions for Vehicle ID" + vehicleId);
+            }
+        }
+
+        return directions;
     }
 
     /**
@@ -363,11 +441,22 @@ public class VehicleManager
         {
             Set<UUID> deletionSet = new HashSet<UUID>();
 
-            // Loop through each of the Vehicles and update them.
-            synchronized (vehicleIdSet)
+            long currentTime = Instant.now().toEpochMilli();
+
+            // Fetch and claim ready vehicles.We are looking for Vehicles that were
+            // process msPeriod milliseconds ago or earlier.
+            Set<ZSetOperations.TypedTuple<Object>> readyVehicles = redisTemplate.opsForZSet()
+                    .rangeByScoreWithScores(VEHICLE_QUEUE, 0, currentTime - msPeriod);
+
+            if (readyVehicles != null)
             {
-                for (UUID vehicleId : vehicleIdSet)
+                for (ZSetOperations.TypedTuple<Object> tuple : readyVehicles)
                 {
+                    UUID vehicleId = UUID.fromString((String) tuple.getValue());
+
+                    // Atomically remove from queue
+                    redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, vehicleId.toString());
+
                     Vehicle vehicle = getVehicle(vehicleId);
 
                     // Retrieve Directions and LineSegmentData for this Vehicle.
@@ -377,24 +466,23 @@ public class VehicleManager
                     // Perform the update.
                     boolean updated = vehicle.update();
 
-                    // If the vehicle didn't update, then it is finished. Add it to the deletion
-                    // Set.
-                    if (!updated)
+                    // If the vehicle updated, then send the state to redis.
+                    if (updated)
                     {
+                        setVehicle(vehicle);
+                    }
+                    else
+                    {
+                        // Add this vehicle to the remove list so that the derived data can be deleted.
                         deletionSet.add(vehicleId);
                     }
-                    setVehicle(vehicle);
                 }
             }
 
-            // Remove any IDs in the deletionSet, if any.
-            synchronized (vehicleIdSet)
+            // Remove the deleted Vehicle IDs from the Active Vehicle Registry.
+            for (UUID vehicleID : deletionSet)
             {
-                for (UUID vehicleID : deletionSet)
-                {
-                    vehicleIdSet.remove(vehicleID);
-                    logger.info("Removing {} from active set of Vehicles.", vehicleID);
-                }
+                redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, vehicleID.toString());
             }
 
             // Remove the Directions for deleted Vehicles from the directionsMap.
