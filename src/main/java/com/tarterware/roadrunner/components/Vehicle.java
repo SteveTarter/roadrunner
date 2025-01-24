@@ -122,6 +122,11 @@ public class Vehicle
     @JsonProperty
     long lastCalculationEpochMillis;
 
+    // Hostname of the manager that last calculated the Vehicle position.
+    @Getter
+    @Setter
+    String managerHost;
+
     @Setter
     private Directions directions;
 

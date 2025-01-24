@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -15,7 +17,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.ZSetOperations;
 
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
@@ -31,6 +35,12 @@ class VehicleTest
     @Mock
     private ValueOperations<String, Object> valueOperations;
 
+    @Mock
+    private SetOperations<String, Object> setOperations;
+
+    @Mock
+    private ZSetOperations<String, Object> zSetOperations;
+
     private Vehicle vehicle;
     private VehicleManager vehicleManager;
     private DirectionsService mockDirectionsService;
@@ -45,6 +55,14 @@ class VehicleTest
 
         // Mock behavior for RedisTemplate
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        // Mock ZSet behavior
+        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        when(zSetOperations.add(anyString(), any(), anyDouble())).thenReturn(true);
+
+        // Mock Set behavior
+        when(redisTemplate.opsForSet()).thenReturn(setOperations);
+        when(setOperations.add(anyString(), any())).thenReturn(1L);
 
         mockDirectionsService = mock(DirectionsService.class);
 

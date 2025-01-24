@@ -180,6 +180,7 @@ public class VehicleController
         vehicleState.setPositionValid(vehicle.isPositionValid());
         vehicleState.setDegBearing(vehicle.getDegBearing());
         vehicleState.setColorCode(vehicle.getColorCode());
+        vehicleState.setManagerHost(vehicle.getManagerHost());
 
         return vehicleState;
     }
