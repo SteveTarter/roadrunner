@@ -25,6 +25,7 @@ import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.services.DirectionsService;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import utils.TestUtils;
 
 class VehicleTest
@@ -40,6 +41,9 @@ class VehicleTest
 
     @Mock
     private ZSetOperations<String, Object> zSetOperations;
+
+    @Mock
+    private MeterRegistry meterRegistry;
 
     private Vehicle vehicle;
     private VehicleManager vehicleManager;
@@ -75,7 +79,7 @@ class VehicleTest
         when(mockDirectionsService.getDirectionsForTripPlan(any())).thenReturn(mockDirections);
 
         // Create the VehicleManager instance
-        vehicleManager = new VehicleManager(mockDirectionsService, redisTemplate);
+        vehicleManager = new VehicleManager(mockDirectionsService, redisTemplate, meterRegistry);
 
         vehicle = vehicleManager.createVehicle(mockTripPlan);
         UUID vehicleId = vehicle.getId();
