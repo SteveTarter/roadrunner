@@ -13,7 +13,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
@@ -34,9 +33,6 @@ class RoadrunnerApplicationTests
 
     @MockitoBean
     private SecurityConfig securityConfig;
-
-    @MockitoBean
-    private RedisConfig redisConfig;
 
     @MockitoBean
     private LettuceConnectionFactory redisStandAloneConnectionFactory;
