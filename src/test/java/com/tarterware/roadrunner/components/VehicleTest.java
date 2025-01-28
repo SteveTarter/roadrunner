@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.DefaultTypedTuple;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -27,14 +28,20 @@ import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.services.DirectionsService;
+import com.tarterware.roadrunner.services.GeocodingService;
+import com.tarterware.roadrunner.services.IsochroneService;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import utils.TestUtils;
 
 @SpringBootTest
@@ -42,10 +49,28 @@ import utils.TestUtils;
 class VehicleTest
 {
     @MockitoBean
-    private RedisTemplate<String, Object> redisTemplate;
+    private DirectionsService directionsService;
+
+    @MockitoBean
+    private GeocodingService geocodingService;
+
+    @MockitoBean
+    private IsochroneService isochroneService;
+
+    @MockitoBean
+    private SecurityConfig securityConfig;
 
     @MockitoBean
     private LettuceConnectionFactory redisStandAloneConnectionFactory;
+
+    @MockitoBean
+    private SecurityFilterChain filterChain;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private RedisTemplate<String, Object> redisTemplate;
 
     @MockitoBean
     private DirectionsService mockDirectionsService;
@@ -59,15 +84,18 @@ class VehicleTest
     @Mock
     private ZSetOperations<String, Object> zSetOperations;
 
-    @Autowired
     private MeterRegistry meterRegistry;
 
-    @Autowired
     private VehicleManager vehicleManager;
 
     private Vehicle vehicle;
+
     private TripPlan mockTripPlan;
+
     private Directions mockDirections;
+
+    @Autowired
+    private Environment environment;
 
     @BeforeEach
     void setup() throws IOException
@@ -90,6 +118,10 @@ class VehicleTest
         mockDirections = TestUtils.loadMockDirections("src/test/resources/test_directions.json");
 
         when(mockDirectionsService.getDirectionsForTripPlan(any())).thenReturn(mockDirections);
+
+        meterRegistry = new SimpleMeterRegistry();
+
+        vehicleManager = new VehicleManager(directionsService, redisTemplate, meterRegistry, environment);
 
         // Create the vehicle
         vehicle = vehicleManager.createVehicle(mockTripPlan);
