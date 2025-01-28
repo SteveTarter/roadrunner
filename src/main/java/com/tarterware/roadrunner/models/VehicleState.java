@@ -37,4 +37,8 @@ public class VehicleState
     String colorCode;
 
     String managerHost;
+
+    long msEpochLastRun;
+
+    long nsLastExec;
 }
