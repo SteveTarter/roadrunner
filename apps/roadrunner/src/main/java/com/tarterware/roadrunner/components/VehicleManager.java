@@ -4,6 +4,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,6 +27,7 @@ import org.locationtech.proj4j.CoordinateTransform;
 import org.locationtech.proj4j.ProjCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Component;
@@ -89,15 +91,15 @@ public class VehicleManager
     // Thread-safe implementation of Number used to access the latestExecutionTime.
     private final AtomicReference<Double> msLatestExecutionTime = new AtomicReference<>(0.0);
 
-    private static final String METRICS_ENDPOINT = "roadrunner.latest.execution.time.milliseconds";
+    public static final String METRICS_ENDPOINT = "roadrunner.latest.execution.time.milliseconds";
 
-    private static final String VEHICLE_PREFIX = "Vehicle:";
+    public static final String VEHICLE_PREFIX = "Vehicle:";
 
-    private static final String ACTIVE_VEHICLE_REGISTRY = "ActiveVehicleRegistry";
+    public static final String ACTIVE_VEHICLE_REGISTRY = "ActiveVehicleRegistry";
 
-    private static final String VEHICLE_QUEUE = "VehicleQueue";
+    public static final String VEHICLE_QUEUE = "VehicleQueue";
 
-    private static final String TRIP_PLAN_PREFIX = "TripPlan:";
+    public static final String TRIP_PLAN_PREFIX = "TripPlan:";
 
     private static final Logger logger = LoggerFactory.getLogger(VehicleManager.class);
 
@@ -107,10 +109,13 @@ public class VehicleManager
      * @param directionsService The service to retrieve directions for trip plans.
      * @param redisTemplate     RedisTemplate for performing Redis operations, such
      *                          as storing and retrieving data. Keys are Strings,
-     *                          and values are serialized Java objects..
+     *                          and values are serialized Java objects.
+     * @param meterRegistry     Creates and manages application's set of meters.
+     * @param environment       Interface representing the environment in which the
+     *                          current application is running.
      */
     public VehicleManager(DirectionsService directionsService, RedisTemplate<String, Object> redisTemplate,
-            MeterRegistry meterRegistry)
+            MeterRegistry meterRegistry, Environment environment)
     {
         super();
 
@@ -132,6 +137,15 @@ public class VehicleManager
             logger.error("Unable to determine hostName!  Setting manager host to UNKNOWN");
             this.hostName = "UNKNOWN";
         }
+
+        // Check for "test" profile
+        if (Arrays.asList(environment.getActiveProfiles()).contains("test"))
+        {
+            logger.info("Running in test mode. Skipping startup.");
+            return;
+        }
+
+        startup();
     }
 
     /**
