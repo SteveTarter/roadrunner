@@ -10,28 +10,70 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.DefaultTypedTuple;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.services.DirectionsService;
+import com.tarterware.roadrunner.services.GeocodingService;
+import com.tarterware.roadrunner.services.IsochroneService;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import utils.TestUtils;
 
+@SpringBootTest
+@ActiveProfiles("test")
 class VehicleTest
 {
-    @Mock
+    @MockitoBean
+    private DirectionsService directionsService;
+
+    @MockitoBean
+    private GeocodingService geocodingService;
+
+    @MockitoBean
+    private IsochroneService isochroneService;
+
+    @MockitoBean
+    private SecurityConfig securityConfig;
+
+    @MockitoBean
+    private LettuceConnectionFactory redisStandAloneConnectionFactory;
+
+    @MockitoBean
+    private SecurityFilterChain filterChain;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
+    @MockitoBean
     private RedisTemplate<String, Object> redisTemplate;
+
+    @MockitoBean
+    private DirectionsService mockDirectionsService;
 
     @Mock
     private ValueOperations<String, Object> valueOperations;
@@ -42,14 +84,18 @@ class VehicleTest
     @Mock
     private ZSetOperations<String, Object> zSetOperations;
 
-    @Mock
     private MeterRegistry meterRegistry;
 
-    private Vehicle vehicle;
     private VehicleManager vehicleManager;
-    private DirectionsService mockDirectionsService;
+
+    private Vehicle vehicle;
+
     private TripPlan mockTripPlan;
+
     private Directions mockDirections;
+
+    @Autowired
+    private Environment environment;
 
     @BeforeEach
     void setup() throws IOException
@@ -57,35 +103,37 @@ class VehicleTest
         // Initialize mocks
         MockitoAnnotations.openMocks(this);
 
-        // Mock behavior for RedisTemplate
+        // Mock RedisTemplate behavior
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-
-        // Mock ZSet behavior
+        when(redisTemplate.opsForSet()).thenReturn(setOperations);
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
         when(zSetOperations.add(anyString(), any(), anyDouble())).thenReturn(true);
 
-        // Mock Set behavior
-        when(redisTemplate.opsForSet()).thenReturn(setOperations);
-        when(setOperations.add(anyString(), any())).thenReturn(1L);
+        // Stub "ready" vehicles
+        Set<TypedTuple<Object>> tuple = new HashSet<>();
+        when(zSetOperations.rangeByScoreWithScores(any(), anyDouble(), anyDouble())).thenReturn(tuple);
 
-        mockDirectionsService = mock(DirectionsService.class);
-
+        // Mock DirectionsService
         mockTripPlan = mock(TripPlan.class);
-
-        // Load mock Directions from the file
         mockDirections = TestUtils.loadMockDirections("src/test/resources/test_directions.json");
 
-        // Stub the DirectionsService methods
         when(mockDirectionsService.getDirectionsForTripPlan(any())).thenReturn(mockDirections);
 
-        // Create the VehicleManager instance
-        vehicleManager = new VehicleManager(mockDirectionsService, redisTemplate, meterRegistry);
+        meterRegistry = new SimpleMeterRegistry();
 
+        vehicleManager = new VehicleManager(directionsService, redisTemplate, meterRegistry, environment);
+
+        // Create the vehicle
         vehicle = vehicleManager.createVehicle(mockTripPlan);
-        UUID vehicleId = vehicle.getId();
-        when(valueOperations.get("Vehicle:" + vehicleId)).thenReturn(vehicle);
 
-        // vehicle = vehicleManager.getVehicle(vehicleId);
+        // Ensure Redis returns the vehicle when asked by ID
+        UUID vehicleId = vehicle.getId();
+        when(valueOperations.get(VehicleManager.VEHICLE_PREFIX + vehicleId)).thenReturn(vehicle);
+
+        // Stub "ready" vehicle IDs in Redis
+        tuple.add(new DefaultTypedTuple<>(vehicleId.toString(), 1000.0));
+        when(zSetOperations.rangeByScoreWithScores(any(), anyDouble(), anyDouble())).thenReturn(tuple);
+
         vehicle.setDirections(vehicleManager.getVehicleDirections(vehicleId));
         vehicle.setListLineSegmentData(vehicleManager.getLlineSegmentData(vehicleId));
     }
@@ -99,7 +147,7 @@ class VehicleTest
 
         try
         {
-            Thread.sleep(100);
+            Thread.sleep(500);
         }
         catch (InterruptedException e)
         {
@@ -130,7 +178,7 @@ class VehicleTest
 
         try
         {
-            Thread.sleep(100);
+            Thread.sleep(500);
         }
         catch (InterruptedException e)
         {
