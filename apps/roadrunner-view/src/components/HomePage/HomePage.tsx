@@ -30,7 +30,9 @@ export const HomePage = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isCreateVehicleActive, setIsCreateVehicleActive] = useState(false)
 
+  const [pageNumber, setPageNumber] = useState(0);
   const [vehicleStateList, setVehicleStateList] = useState<VehicleState[]>([]);
+  const [vehicleStateMap, setVehicleStateMap] = useState<MapWrapper<string, VehicleState>>();
   const [vehicleDisplayMap, setVehicleDisplayMap] = useState<MapWrapper<string, VehicleDisplay>>();
 
   // Map styles
@@ -73,6 +75,26 @@ export const HomePage = () => {
     setVehicleDisplayMap(new MapWrapper<string, VehicleDisplay>());
   }, [vehicleDisplayMap]);
 
+  useEffect(() => {
+    if (vehicleStateMap) {
+      return;
+    }
+
+    setVehicleStateMap(new MapWrapper<string, VehicleState>());
+  }, [vehicleStateMap]);
+
+  interface ApiResponse {
+    _embedded: {
+      vehicleStates: VehicleState[];
+    }
+    page: {
+      size: number,
+      totalElements: number,
+      totalPages: number,
+      number: number
+    }
+  }
+
   function fetchVehicleStateList() {
     if (!token || token.length === 0) {
       return;
@@ -80,11 +102,24 @@ export const HomePage = () => {
     if (!isMapLoaded) {
       return;
     }
+    if (!vehicleStateMap) {
+      return;
+    }
+    if (!vehicleDisplayMap) {
+      return;
+    }
+
+    // Remove Vehicles from the Map that haven't been updated in 2 minutes
+    const msEpochTimeoutTime = new Date().getTime() - (120 * 1000);
+    vehicleStateMap.filter(state => state.msEpochLastRun > msEpochTimeoutTime);
 
     try {
       // Get the latest VehicleStates
       const restUrlBase = process.env.REACT_APP_ROADRUNNER_REST_URL_BASE!;
-      const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-all-vehicle-states`;
+
+      // Add page and pageSize parameters to the query string
+      const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-all-vehicle-states?page=${pageNumber}`;
+
       fetch(getStatesUrl, {
         method: 'get',
         headers: {
@@ -92,16 +127,26 @@ export const HomePage = () => {
         }
       })
         .then(async response => response.json())
-        .then(data => {
-          setVehicleStateList(data);
+        .then((data: ApiResponse) => {
+          // Type the data as an ApiResponse
+          let newPageNumber = pageNumber + 1;
+          if (newPageNumber >= data.page.totalPages) {
+            newPageNumber = 0
+          }
+          setPageNumber(newPageNumber);
           setIsDataLoaded(true);
-          data.map((vehicleState: VehicleState) => {
-            if (!vehicleDisplayMap?.get(vehicleState.id)) {
-              let vehicleDisplay = new VehicleDisplay(vehicleSize, false, false);
-              vehicleDisplayMap?.set(vehicleState.id, vehicleDisplay);
-            }
-            return vehicleState;
-          })
+
+          if (data._embedded) {
+            const vehicleStates = data._embedded.vehicleStates;
+            vehicleStates.forEach((vehicleState: VehicleState) => {
+              vehicleStateMap.set(vehicleState.id, vehicleState);
+              if (!vehicleDisplayMap.get(vehicleState.id)) {
+                let vehicleDisplay = new VehicleDisplay(vehicleSize, false, false);
+                vehicleDisplayMap.set(vehicleState.id, vehicleDisplay);
+              }
+            });
+            setVehicleStateList(Array.from(vehicleStateMap.values()));
+          }
         })
         .catch(error => {
           console.log(`Error caught during fetch in fetchVehicleStateList: ${error.message}`);
@@ -116,7 +161,7 @@ export const HomePage = () => {
   }
 
   function hideAllRoutes() {
-    vehicleStateList.forEach((vehicleState) => {
+    vehicleStateMap?.forEach((vehicleState: VehicleState) => {
       let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
       if (vehicleDisplay) {
         vehicleDisplay.routeVisible = false;
@@ -125,7 +170,7 @@ export const HomePage = () => {
   }
 
   function showAllRoutes() {
-    vehicleStateList.forEach((vehicleState) => {
+    vehicleStateMap?.forEach((vehicleState: VehicleState) => {
       let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
       if (vehicleDisplay) {
         vehicleDisplay.routeVisible = true;
@@ -138,7 +183,11 @@ export const HomePage = () => {
       return;
     }
 
-    if (vehicleStateList.length === 0) {
+    if (!vehicleStateMap) {
+      return;
+    }
+
+    if (vehicleStateMap.size() === 0) {
       return;
     }
 
@@ -146,7 +195,7 @@ export const HomePage = () => {
     let minLatitude = 360.0;
     let maxLongitude = -360.0;
     let maxLatitude = -360.0;
-    vehicleStateList.forEach((vehicleState) => {
+    vehicleStateMap.forEach((vehicleState: VehicleState) => {
       if (vehicleState.degLatitude < minLatitude) {
         minLatitude = vehicleState.degLatitude;
       }
@@ -214,7 +263,7 @@ export const HomePage = () => {
     console.log("onClick()");
     let bestVehicle: VehicleDisplay | undefined = {} as VehicleDisplay;
     let bestDistance = 100;
-    vehicleStateList.forEach((vehicleState) => {
+    vehicleStateMap?.forEach((vehicleState: VehicleState) => {
       let point = homePageMap?.project({ lng: vehicleState.degLongitude, lat: vehicleState.degLatitude });
 
       // Calculate the distance of the click from the vehicle
@@ -279,13 +328,13 @@ export const HomePage = () => {
           onClick={(event) => onClick(event)}
           onZoom={(viewStateChangeEvent) => onZoom(viewStateChangeEvent)}
         >
-          <AppNavBar additionalMenuItems={<ManageMenu openCreateVehicle={openCreateVehicle}/>} />
-          {(isDataLoaded && !isTransitioning) ?
+          <AppNavBar additionalMenuItems={<ManageMenu openCreateVehicle={openCreateVehicle} />} />
+          {(isDataLoaded && vehicleDisplayMap && vehicleStateList && !isTransitioning) ?
             <>
               {isCreateVehicleActive && (
-              <CreateVehiclePanel
-                setIsCreateVehicleActive={setIsCreateVehicleActive}
-              />
+                <CreateVehiclePanel
+                  setIsCreateVehicleActive={setIsCreateVehicleActive}
+                />
               )}
               <div style={{ position: "fixed", top: 100, left: 10 }}>
                 <Button onClick={fitAllOnScreen}>
@@ -305,12 +354,12 @@ export const HomePage = () => {
               </div>
               <div style={{ position: "fixed", top: 100, left: 110 }}>
                 <Button onClick={showAllRoutes}>
-                      <FontAwesomeIcon title="Show All Routes" icon={faEye} className="mr-3" />
+                  <FontAwesomeIcon title="Show All Routes" icon={faEye} className="mr-3" />
                 </Button>
               </div>
               <div style={{ position: "fixed", top: 100, left: 160 }}>
                 <Button onClick={hideAllRoutes}>
-                      <FontAwesomeIcon title="Hide All Routes" icon={faEyeSlash} className="mr-3" />
+                  <FontAwesomeIcon title="Hide All Routes" icon={faEyeSlash} className="mr-3" />
                 </Button>
               </div>
               {vehicleStateList && (vehicleStateList.length > 0) && (
