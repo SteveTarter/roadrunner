@@ -28,6 +28,8 @@ export const DriverViewPage = () => {
 
   const [vehicleState, setVehicleState] = useState<VehicleState>();
 
+  const [managerHost, setManagerHost] = useState("");
+
   // Driver view offset from straight ahead
   const [degViewOffset, setDegViewOffset] = useState(0);
 
@@ -88,6 +90,18 @@ export const DriverViewPage = () => {
         .then(data => {
           setVehicleState(data);
           setIsDataLoaded(true);
+
+          // Set the manager host, shortening it if from a kubernetes pod.
+          const host = data.managerHost;
+          if (host.includes('-')) {
+            // Extract the part after the last dash
+            const lastDashIndex = host.lastIndexOf('-');
+            setManagerHost(host.substring(lastDashIndex + 1));
+          } else {
+            // Use the whole string
+            setManagerHost(host);
+          }
+
           let degViewBearing = data.degBearing + degViewOffset
           driverViewPageMap?.setBearing(degViewBearing);
           let mRange = 20.0 * window.innerHeight / 932.0;
@@ -210,17 +224,17 @@ export const DriverViewPage = () => {
           >
             <div style={{ position: "fixed", top: 10, left: 10 }}>
               <Button onClick={gotoHomePage}>
-                <FontAwesomeIcon icon={ faHome } className="mr-3" />
+                <FontAwesomeIcon icon={faHome} className="mr-3" />
               </Button>
             </div>
             <div style={{ position: "fixed", top: 10, left: 60 }}>
               <Button onClick={toggleMapStyle}>
                 {(mapStyle === MAP_STYLE_STREET) ?
                   <>
-                    <FontAwesomeIcon title="Satellte Display" icon={ faSatellite } className="mr-3" />
+                    <FontAwesomeIcon title="Satellte Display" icon={faSatellite} className="mr-3" />
                   </>
                   :
-                  <FontAwesomeIcon title="Map Display" icon={ faMap } className="mr-3" />
+                  <FontAwesomeIcon title="Map Display" icon={faMap} className="mr-3" />
                 }
               </Button>
             </div>
@@ -230,13 +244,16 @@ export const DriverViewPage = () => {
                 <Card.Body>
                   <ViewControl degViewOffset={degViewOffset} setDegViewOffset={setDegViewOffset} />
                   <Card.Text style={{ fontSize: '1.1rem' }}>
-                    <br/>
+                    <br />
                     {`${(Math.round(MPS_TO_MPH * vehicleState.metersPerSecond * 10) / 10)
                       .toFixed(1)
                       .padStart(4, ' ')}`} MPH<br />
                     {`${(Math.round(vehicleState.degBearing * 10) / 10)
                       .toFixed(1)
-                      .padStart(5, ' ')}`}&deg;
+                      .padStart(5, ' ')}`}&deg;<br />
+                    Host: {managerHost}<br />
+                    {(vehicleState.nsLastExec / 1000000.0)
+                      .toFixed(3)} ms<br />
                   </Card.Text>
                 </Card.Body>
               </Card>
