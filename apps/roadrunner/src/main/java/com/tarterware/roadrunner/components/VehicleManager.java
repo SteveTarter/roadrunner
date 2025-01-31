@@ -17,7 +17,6 @@ import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -28,7 +27,9 @@ import org.locationtech.proj4j.ProjCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Component;
 
@@ -149,11 +150,23 @@ public class VehicleManager
     }
 
     /**
+     * Gets the count of all Vehicles.
+     *
+     * @return The number of active Vehicles.
+     */
+    public int getVehicleCount()
+    {
+        return redisTemplate.opsForSet().size(ACTIVE_VEHICLE_REGISTRY).intValue();
+    }
+
+    /**
      * Gets the map of all Vehicles.
      *
+     * @param page     page number to retrieve.
+     * @param pageSize number of Vehicles in each page.
      * @return A synchronized map of Vehicles by their UUIDs.
      */
-    public Map<UUID, Vehicle> getVehicleMap()
+    public Map<UUID, Vehicle> getVehicleMap(int page, int pageSize)
     {
         if (!isRunning())
         {
@@ -163,28 +176,34 @@ public class VehicleManager
         // Create a Map of Vehicles to return
         Map<UUID, Vehicle> vMap = new HashMap<UUID, Vehicle>();
 
-        // FIXME - This needs to change to paginating the results by using the start and
-        // end parameters.
-        Set<Object> objectList = redisTemplate.opsForSet().members(ACTIVE_VEHICLE_REGISTRY);
-        Set<UUID> vehicleIdSet = objectList.stream().map(obj -> UUID.fromString(obj.toString()))
-                .collect(Collectors.toSet());
+        // Use SSCAN to iterate over the elements of the set
+        ScanOptions scanOptions = ScanOptions.scanOptions().count(pageSize).build();
+        Cursor<Object> cursor = redisTemplate.opsForSet().scan(ACTIVE_VEHICLE_REGISTRY, scanOptions);
 
-        for (UUID vehicleID : vehicleIdSet)
+        // Skip over records until we get to the target window.
+        int recordsToSkip = page * pageSize;
+        while ((recordsToSkip > 0) && cursor.hasNext())
         {
-            Vehicle vehicle = getVehicle(vehicleID);
+            cursor.next();
+            --recordsToSkip;
+        }
+
+        // Now, loop through the cursor, filling up to "pageSize" elements.
+        int recordsToFill = pageSize;
+        while ((recordsToFill > 0) && cursor.hasNext())
+        {
+            String vehicleId = cursor.next().toString();
+            Vehicle vehicle = getVehicle(UUID.fromString(vehicleId));
             if (vehicle != null)
             {
-                vMap.put(vehicleID, vehicle);
+                --recordsToFill;
+                vMap.put(UUID.fromString(vehicleId), vehicle);
             }
             else
             {
-                logger.warn("Vehicle ID {} no longer exists.  Removing from queue.", vehicleID);
-
-                // Atomically remove the Vehicle ID from queue
-                redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, vehicleID);
-
-                // Remove the vehicle ID from the Vehicle Set
-                redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, vehicleID);
+                logger.info("Vehicle ID {} no longer exists. Removing from queue.", vehicleId);
+                redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, vehicleId);
+                redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, vehicleId);
             }
         }
 
