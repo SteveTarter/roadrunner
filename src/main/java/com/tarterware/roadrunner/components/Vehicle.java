@@ -367,7 +367,7 @@ public class Vehicle
             if (metersPerSecond > 0.0)
             {
                 metersPerSecond = 0.0;
-                logger.info("Vehicle " + id + " has arrived at its destination");
+                logger.debug("Vehicle " + id + " has arrived at its destination");
             }
         }
         else
@@ -383,7 +383,7 @@ public class Vehicle
                     if (metersPerSecond > metersPerSecondDesired)
                     {
                         metersPerSecond = metersPerSecondDesired;
-                        logger.info("Vehicle " + id + " accelerated to " + metersPerSecond + " meters per second.");
+                        logger.debug("Vehicle " + id + " accelerated to " + metersPerSecond + " meters per second.");
                     }
                 }
                 else
@@ -392,7 +392,7 @@ public class Vehicle
                     if (metersPerSecond < metersPerSecondDesired)
                     {
                         metersPerSecond = metersPerSecondDesired;
-                        logger.info("Vehicle " + id + " slowed to " + metersPerSecond + " meters per second.");
+                        logger.debug("Vehicle " + id + " slowed to " + metersPerSecond + " meters per second.");
                     }
                 }
             }
