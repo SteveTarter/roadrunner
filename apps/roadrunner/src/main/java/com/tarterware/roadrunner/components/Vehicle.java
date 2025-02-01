@@ -220,7 +220,7 @@ public class Vehicle
      */
     public void updateMetersOffset(double metersOffset)
     {
-        if (metersOffset == 0.0)
+        if (metersOffset <= 0.0)
         {
             // Set the position to the start of the route.
             List<Double> startLocation = directions.getWaypoints().get(0).getLocation();
@@ -229,52 +229,24 @@ public class Vehicle
             degLatitude = startLocation.get(1);
             degLongitude = startLocation.get(0);
 
-            this.metersOffset = metersOffset;
+            this.metersOffset = 0.0;
             _determineDesiredSpeed();
             return;
         }
-        if (metersOffset == directions.getRoutes().get(0).getDistance())
-        {
-            // Set the position to the end of the route.
-            positionLimited = false;
-            positionValid = true;
-            int waypointCount = directions.getWaypoints().size();
-            List<Double> endLocation = directions.getWaypoints().get(waypointCount - 1).getLocation();
-            degLatitude = endLocation.get(1);
-            degLongitude = endLocation.get(0);
-
-            this.metersOffset = metersOffset;
-            _determineDesiredSpeed();
-            return;
-        }
-
-        // Now, check if the requested offset is within the route.
-        if (metersOffset < 0.0)
-        {
-            // Set the position to the start of the route.
-            List<Double> startLocation = directions.getWaypoints().get(0).getLocation();
-            positionLimited = true;
-            positionValid = false;
-            degLatitude = startLocation.get(1);
-            degLongitude = startLocation.get(0);
-
-            this.metersOffset = metersOffset;
-            _determineDesiredSpeed();
-            return;
-        }
-
         if (metersOffset >= directions.getRoutes().get(0).getDistance())
         {
             // Set the position to the end of the route.
             int waypointCount = directions.getWaypoints().size();
             List<Double> endLocation = directions.getWaypoints().get(waypointCount - 1).getLocation();
             positionLimited = true;
-            positionValid = false;
+            positionValid = true;
             degLatitude = endLocation.get(1);
             degLongitude = endLocation.get(0);
 
             this.metersOffset = directions.getRoutes().get(0).getDistance();
-            _determineDesiredSpeed();
+            metersPerSecondDesired = 0.0;
+            metersPerSecond = 0.0;
+            logger.info("Vehicle " + id + " has arrived at its destination");
             return;
         }
 
@@ -362,15 +334,7 @@ public class Vehicle
         Instant now = Instant.now();
 
         // Don't bother to calculate an updated position if at the end of the trip.
-        if (positionLimited && (metersOffset > 0))
-        {
-            if (metersPerSecond > 0.0)
-            {
-                metersPerSecond = 0.0;
-                logger.debug("Vehicle " + id + " has arrived at its destination");
-            }
-        }
-        else
+        if (!positionLimited)
         {
             // If the vehicle speed isn't at the desired speed yet, determine
             // if it needs to go faster or slower, and adjust speed accordingly.
