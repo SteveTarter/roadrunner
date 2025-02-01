@@ -92,6 +92,8 @@ public class VehicleManager
     // Thread-safe implementation of Number used to access the latestExecutionTime.
     private final AtomicReference<Double> msLatestExecutionTime = new AtomicReference<>(0.0);
 
+    public static final int SECS_VEHICLE_TIMEOUT = 30;
+
     public static final String METRICS_ENDPOINT = "roadrunner.latest.execution.time.milliseconds";
 
     public static final String VEHICLE_PREFIX = "Vehicle:";
@@ -340,6 +342,8 @@ public class VehicleManager
         // Add the vehicle to the Active Vehicle Registry
         redisTemplate.opsForSet().add(ACTIVE_VEHICLE_REGISTRY, vehicle.getId().toString());
 
+        logger.info("Created vehicle ID " + vehicle.getId());
+
         return vehicle;
     }
 
@@ -489,6 +493,7 @@ public class VehicleManager
         {
             long nsManagerStartTime = System.nanoTime();
             long msManagerStartTime = Instant.now().toEpochMilli();
+            long msEpochTimeoutTime = msManagerStartTime - (1000 * SECS_VEHICLE_TIMEOUT);
 
             Set<UUID> deletionSet = new HashSet<UUID>();
 
@@ -526,8 +531,18 @@ public class VehicleManager
                     }
                     else
                     {
-                        // Add this vehicle to the remove list so that the derived data can be deleted.
-                        deletionSet.add(vehicleId);
+                        // If this vehicle hasn't been updated in SECS_VEHICLE_TIMEOUT seconds, then add
+                        // it to the deletion list
+                        if (vehicle.getLastCalculationEpochMillis() < msEpochTimeoutTime)
+                        {
+                            // Add this vehicle to the remove list so that the derived data can be deleted.
+                            deletionSet.add(vehicleId);
+                            logger.info("Deleting vehicle ID " + vehicle.getId());
+                        }
+                        else
+                        {
+                            setVehicle(vehicle);
+                        }
                     }
                 }
             }
@@ -554,6 +569,13 @@ public class VehicleManager
                 {
                     lineSegmentDataMap.remove(vehicleID);
                 }
+            }
+
+            // Remove the deleted Vehicle IDs from the active Vehicles.
+            for (UUID vehicleID : deletionSet)
+            {
+                String key = VEHICLE_PREFIX + vehicleID.toString();
+                redisTemplate.opsForValue().getAndDelete(key);
             }
 
             // Calculate the execution time, and convert it to milliseconds
