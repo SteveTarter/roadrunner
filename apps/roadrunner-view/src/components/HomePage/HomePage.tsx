@@ -51,6 +51,9 @@ export const HomePage = () => {
   // Millisecond duration between frame redraws
   const MS_FRAME_TIME = 500;
 
+  // Vehicle timeout in seconds
+  const SECS_VEHICLE_TIMEOUT = 30;
+
   useEffect(() => {
     if (token) {
       return;
@@ -109,9 +112,9 @@ export const HomePage = () => {
       return;
     }
 
-    // Remove Vehicles from the Map that haven't been updated in 2 minutes
-    const msEpochTimeoutTime = new Date().getTime() - (120 * 1000);
-    vehicleStateMap.filter(state => state.msEpochLastRun > msEpochTimeoutTime);
+    // Remove Vehicles from the Map that haven't been updated in SECS_VEHICLE_TIMEOUT seconds
+    const msEpochTimeoutTime = new Date().getTime() - (SECS_VEHICLE_TIMEOUT * 1000);
+    const vMap = vehicleStateMap.filter(state => state.msEpochLastRun > msEpochTimeoutTime);
 
     try {
       // Get the latest VehicleStates
@@ -139,14 +142,15 @@ export const HomePage = () => {
           if (data._embedded) {
             const vehicleStates = data._embedded.vehicleStates;
             vehicleStates.forEach((vehicleState: VehicleState) => {
-              vehicleStateMap.set(vehicleState.id, vehicleState);
+              vMap.set(vehicleState.id, vehicleState);
               if (!vehicleDisplayMap.get(vehicleState.id)) {
                 let vehicleDisplay = new VehicleDisplay(vehicleSize, false, false);
                 vehicleDisplayMap.set(vehicleState.id, vehicleDisplay);
               }
             });
-            setVehicleStateList(Array.from(vehicleStateMap.values()));
           }
+          setVehicleStateMap(vMap);
+          setVehicleStateList(Array.from(vMap.values()));
         })
         .catch(error => {
           console.log(`Error caught during fetch in fetchVehicleStateList: ${error.message}`);
