@@ -34,6 +34,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.tarterware.roadrunner.configs.NoOpSchedulerConfig;
+import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
@@ -60,6 +61,9 @@ class VehicleTest
 
     @MockitoBean
     private SecurityConfig securityConfig;
+
+    @MockitoBean
+    private RedisConfig redisConfig;
 
     @MockitoBean
     private LettuceConnectionFactory redisStandAloneConnectionFactory;
