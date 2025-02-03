@@ -44,21 +44,12 @@ public class VehicleController
         Vehicle vehicle = vehicleManager.createVehicle(tripPlan);
         VehicleState vehicleState = createVehicleStateFor(vehicle);
 
-        if (vehicleManager.isRunning() == false)
-        {
-            vehicleManager.startup();
-        }
         return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
     }
 
     @PostMapping("/create-crisscross")
     ResponseEntity<List<VehicleState>> createCrissCrossVehicles(@RequestBody CrissCrossPlan crissCrossPlan)
     {
-        if (vehicleManager.isRunning() == false)
-        {
-            vehicleManager.startup();
-        }
-
         List<VehicleState> listVehicleStates = new ArrayList<VehicleState>();
 
         // Create a Coordinate representing the center point.
@@ -155,7 +146,9 @@ public class VehicleController
     @GetMapping("/reset-server")
     ResponseEntity<List<VehicleState>> resetServer()
     {
-        vehicleManager.shutdown();
+        // TODO -
+        // Add routine that deletes all redis resources?
+        // vehicleManager.shutdown();
 
         return new ResponseEntity<List<VehicleState>>(new ArrayList<VehicleState>(), HttpStatus.OK);
     }
