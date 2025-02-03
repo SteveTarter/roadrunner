@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.DefaultTypedTuple;
@@ -30,9 +31,10 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import com.tarterware.roadrunner.configs.NoOpSchedulerConfig;
+import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
@@ -45,7 +47,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import utils.TestUtils;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@Import(NoOpSchedulerConfig.class)
 class VehicleTest
 {
     @MockitoBean
@@ -59,6 +61,9 @@ class VehicleTest
 
     @MockitoBean
     private SecurityConfig securityConfig;
+
+    @MockitoBean
+    private RedisConfig redisConfig;
 
     @MockitoBean
     private LettuceConnectionFactory redisStandAloneConnectionFactory;
