@@ -1,6 +1,6 @@
 import './HomePage.css';
-import Map, { MapLayerMouseEvent, useMap } from "react-map-gl";
-import { useEffect, useState } from "react";
+import Map, { useMap } from "react-map-gl";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { SpinnerLoading } from "../Utils/SpinnerLoading"
 import { useAuth0 } from "@auth0/auth0-react";
 import { VehicleIcon } from './VehicleIcon';
@@ -10,7 +10,6 @@ import { MapWrapper } from '../Utils/MapWrapper';
 import { AppNavBar } from '../NavBar/AppNavBar';
 import { ManageMenu } from './ManageMenu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { library } from '@fortawesome/fontawesome-svg-core';
 import { faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { Button } from 'react-bootstrap';
 import { CreateVehiclePanel } from './CreateVehiclePanel';
@@ -21,26 +20,22 @@ export const HomePage = () => {
   const { homePageMap } = useMap();
 
   const [token, setToken] = useState("");
-
   const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN!;
-
   const [vehicleSize, setVehicleSize] = useState(5);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isCreateVehicleActive, setIsCreateVehicleActive] = useState(false)
-
   const [pageNumber, setPageNumber] = useState(0);
-  const [vehicleStateList, setVehicleStateList] = useState<VehicleState[]>([]);
-  const [vehicleStateMap, setVehicleStateMap] = useState<MapWrapper<string, VehicleState>>();
-  const [vehicleDisplayMap, setVehicleDisplayMap] = useState<MapWrapper<string, VehicleDisplay>>();
+  const [vehicleStateMapVersion, setVehicleStateMapVersion] = useState(0);
+
+  const vehicleStateMapRef = useRef(new MapWrapper<string, VehicleState>());
+  const vehicleDisplayMapRef = useRef(new MapWrapper<string, VehicleDisplay>());
 
   // Map styles
   const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
   const [mapStyle, setMapStyle] = useState(MAP_STYLE_STREET);
-
-  const [count, setCount] = useState(0);
 
   // Vehicle dimensions controls - maybe move to configurables?
   const MIN_SIZE = 5.0;   // Smallest vehicle size
@@ -49,42 +44,25 @@ export const HomePage = () => {
   const MAX_ZOOM = 22.0;    // Zoom level at which vehicle size sticks at maximum
 
   // Millisecond duration between frame redraws
-  const MS_FRAME_TIME = 500;
+  const MS_FRAME_TIME = 100;
 
   // Vehicle timeout in seconds
   const SECS_VEHICLE_TIMEOUT = 30;
 
   useEffect(() => {
-    if (token) {
-      return;
+    if (!token) {
+      const audience = process.env.REACT_APP_AUTH0_AUDIENCE;
+      getAccessTokenSilently({ authorizationParams: { audience } })
+        .then(setToken)
+        .catch(error => console.error("Error fetching token:", error));
     }
-
-    const audience = process.env.REACT_APP_AUTH0_AUDIENCE;
-    getAccessTokenSilently({
-      authorizationParams: {
-        audience: audience,
-      }
-    })
-      .then(async token => {
-        setToken(token);
-      });
   }, [token, getAccessTokenSilently]);
 
-  useEffect(() => {
-    if (vehicleDisplayMap) {
-      return;
-    }
-
-    setVehicleDisplayMap(new MapWrapper<string, VehicleDisplay>());
-  }, [vehicleDisplayMap]);
-
-  useEffect(() => {
-    if (vehicleStateMap) {
-      return;
-    }
-
-    setVehicleStateMap(new MapWrapper<string, VehicleState>());
-  }, [vehicleStateMap]);
+  // Memoize vehicle state list derived from the ref
+  const vehicleStateList = useMemo(() => {
+    return Array.from(vehicleStateMapRef.current.values());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicleStateMapVersion]);
 
   interface ApiResponse {
     _embedded: {
@@ -98,120 +76,89 @@ export const HomePage = () => {
     }
   }
 
-  function fetchVehicleStateList() {
-    if (!token || token.length === 0) {
-      return;
-    }
-    if (!isMapLoaded) {
-      return;
-    }
-    if (!vehicleStateMap) {
-      return;
-    }
-    if (!vehicleDisplayMap) {
-      return;
-    }
+  const fetchVehicleStateList = useCallback(() => {
+    if (!token || !isMapLoaded) return;
+
 
     // Remove Vehicles from the Map that haven't been updated in SECS_VEHICLE_TIMEOUT seconds
-    const msEpochTimeoutTime = new Date().getTime() - (SECS_VEHICLE_TIMEOUT * 1000);
-    const vMap = vehicleStateMap.filter(state => state.msEpochLastRun > msEpochTimeoutTime);
+    const msEpochTimeoutTime = Date.now() - (SECS_VEHICLE_TIMEOUT * 1000);
+    vehicleStateMapRef.current = vehicleStateMapRef.current.filter(
+      state => state.msEpochLastRun > msEpochTimeoutTime
+    );
 
-    try {
-      // Get the latest VehicleStates
-      const restUrlBase = process.env.REACT_APP_ROADRUNNER_REST_URL_BASE!;
+    // Get the latest VehicleStates
+    const restUrlBase = process.env.REACT_APP_ROADRUNNER_REST_URL_BASE!;
 
-      // Add page and pageSize parameters to the query string
-      const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-all-vehicle-states?page=${pageNumber}`;
+    // Add page and pageSize parameters to the query string
+    const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-all-vehicle-states?page=${pageNumber}`;
 
-      fetch(getStatesUrl, {
-        method: 'get',
-        headers: {
-          Authorization: `Bearer ${token}`,
+    fetch(getStatesUrl, {
+      method: 'get',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(response => response.json())
+      .then((data: ApiResponse) => {
+        // Type the data as an ApiResponse
+        let newPageNumber = pageNumber + 1;
+        if (newPageNumber >= data.page.totalPages) {
+          newPageNumber = 0
         }
+        setPageNumber(newPageNumber);
+        setIsDataLoaded(true);
+
+        if (data._embedded) {
+          data._embedded.vehicleStates.forEach((vehicleState: VehicleState) => {
+            vehicleStateMapRef.current.set(vehicleState.id, vehicleState);
+            if (!vehicleDisplayMapRef.current.get(vehicleState.id)) {
+              const vehicleDisplay = new VehicleDisplay(vehicleSize, false, false);
+              vehicleDisplayMapRef.current.set(vehicleState.id, vehicleDisplay);
+            }
+          });
+        }
+        setVehicleStateMapVersion(v => v + 1);
       })
-        .then(async response => response.json())
-        .then((data: ApiResponse) => {
-          // Type the data as an ApiResponse
-          let newPageNumber = pageNumber + 1;
-          if (newPageNumber >= data.page.totalPages) {
-            newPageNumber = 0
-          }
-          setPageNumber(newPageNumber);
-          setIsDataLoaded(true);
+      .catch(error => {
+        console.log(`Error caught during fetch in fetchVehicleStateList: ${error.message}`);
+        setIsDataLoaded(false);
+      });
+  }, [token, isMapLoaded, pageNumber, vehicleSize]);
 
-          if (data._embedded) {
-            const vehicleStates = data._embedded.vehicleStates;
-            vehicleStates.forEach((vehicleState: VehicleState) => {
-              vMap.set(vehicleState.id, vehicleState);
-              if (!vehicleDisplayMap.get(vehicleState.id)) {
-                let vehicleDisplay = new VehicleDisplay(vehicleSize, false, false);
-                vehicleDisplayMap.set(vehicleState.id, vehicleDisplay);
-              }
-            });
-          }
-          setVehicleStateMap(vMap);
-          setVehicleStateList(Array.from(vMap.values()));
-        })
-        .catch(error => {
-          console.log(`Error caught during fetch in fetchVehicleStateList: ${error.message}`);
-          setIsDataLoaded(false);
-          return <></>;
-        });
-    }
-    catch (error: any) {
-      console.log(`Error caught in fetchVehicleStateList: ${error.message}`);
-      setIsDataLoaded(false);
-    }
-  }
+  useEffect(() => {
+    if (!isMapLoaded) return;
+    const interval = setInterval(fetchVehicleStateList, MS_FRAME_TIME);
+    return () => clearInterval(interval);
+  }, [fetchVehicleStateList, isMapLoaded]);
 
-  function hideAllRoutes() {
-    vehicleStateMap?.forEach((vehicleState: VehicleState) => {
-      let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
+  const hideAllRoutes = useCallback(() => {
+    vehicleStateMapRef.current.forEach((vehicleState: VehicleState) => {
+      let vehicleDisplay = vehicleDisplayMapRef.current.get(vehicleState.id);
       if (vehicleDisplay) {
         vehicleDisplay.routeVisible = false;
       }
     })
-  }
+  }, []);
 
-  function showAllRoutes() {
-    vehicleStateMap?.forEach((vehicleState: VehicleState) => {
-      let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
+  const showAllRoutes = useCallback(() => {
+    vehicleStateMapRef.current.forEach((vehicleState: VehicleState) => {
+      const vehicleDisplay = vehicleDisplayMapRef.current.get(vehicleState.id);
       if (vehicleDisplay) {
         vehicleDisplay.routeVisible = true;
       }
     })
-  }
+  }, []);
 
-  function fitAllOnScreen() {
-    if (!isDataLoaded) {
-      return;
-    }
-
-    if (!vehicleStateMap) {
-      return;
-    }
-
-    if (vehicleStateMap.size() === 0) {
-      return;
-    }
+  const fitAllOnScreen = useCallback(() => {
+    if (!isDataLoaded || vehicleStateMapRef.current.size() === 0) return;
 
     let minLongitude = 360.0;
     let minLatitude = 360.0;
     let maxLongitude = -360.0;
     let maxLatitude = -360.0;
-    vehicleStateMap.forEach((vehicleState: VehicleState) => {
-      if (vehicleState.degLatitude < minLatitude) {
-        minLatitude = vehicleState.degLatitude;
-      }
-      if (vehicleState.degLongitude < minLongitude) {
-        minLongitude = vehicleState.degLongitude;
-      }
-      if (vehicleState.degLatitude > maxLatitude) {
-        maxLatitude = vehicleState.degLatitude;
-      }
-      if (vehicleState.degLongitude > maxLongitude) {
-        maxLongitude = vehicleState.degLongitude;
-      }
+    vehicleStateMapRef.current.forEach((vehicleState: VehicleState) => {
+      minLatitude = Math.min(minLatitude, vehicleState.degLatitude);
+      minLongitude = Math.min(minLongitude, vehicleState.degLongitude);
+      maxLatitude = Math.max(maxLatitude, vehicleState.degLatitude);
+      maxLongitude = Math.max(maxLongitude, vehicleState.degLongitude);
     })
 
     // Expand size by 5% each way;
@@ -223,11 +170,10 @@ export const HomePage = () => {
     maxLatitude += (0.05 * deltaLatitude);
 
     homePageMap?.fitBounds([[minLongitude, minLatitude], [maxLongitude, maxLatitude]]);
-  }
+  }, [isDataLoaded, homePageMap]);
 
-  function toggleMapStyle() {
+  const toggleMapStyle = useCallback(() => {
     setIsTransitioning(true);
-    // console.log("Transition started");
     if (mapStyle === MAP_STYLE_STREET) {
       setMapStyle(MAP_STYLE_SATELLITE);
       homePageMap?.getMap().setFog({});
@@ -235,51 +181,39 @@ export const HomePage = () => {
     else {
       setMapStyle(MAP_STYLE_STREET);
     }
-    setTimeout(() => {
-      // console.log("Transition ended");
-      setIsTransitioning(false);
-    }, 500);
-  }
+    setTimeout(() => setIsTransitioning(false), 500);
+  }, [mapStyle, homePageMap]);
 
-  function onZoom(viewStateChangeEvent: { viewState: any; }) {
-    // console.log("onZoom()");
-    let viewState = viewStateChangeEvent.viewState;
-    let currentZoom = viewState.zoom;
+  const onZoom = useCallback((viewState: any) => {
+    const currentZoom = viewState.zoom;
     let size = MIN_SIZE;
-    if (currentZoom < MIN_ZOOM) {
-      size = MIN_SIZE;
+    if (currentZoom >= MIN_ZOOM && currentZoom <= MAX_ZOOM) {
+      size = (MAX_SIZE * Math.pow((2.0 / 3.0), (MAX_ZOOM - currentZoom)));
     }
     else if (currentZoom > MAX_ZOOM) {
       size = MAX_SIZE;
     }
-    else {
-      size = (MAX_SIZE * Math.pow((2.0 / 3.0), (MAX_ZOOM - currentZoom)));
-    }
-
-    if (size < 0) {
-      size = MIN_SIZE;
-    }
-
+    if (size < 0) size = MIN_SIZE;
     setVehicleSize(size);
-  }
+  }, []);
 
-  function onClick(event: MapLayerMouseEvent) {
+  const onClick = useCallback((event: any) => {
     console.log("onClick()");
     let bestVehicle: VehicleDisplay | undefined = {} as VehicleDisplay;
     let bestDistance = 100;
-    vehicleStateMap?.forEach((vehicleState: VehicleState) => {
-      let point = homePageMap?.project({ lng: vehicleState.degLongitude, lat: vehicleState.degLatitude });
+    vehicleStateMapRef.current.forEach((vehicleState: VehicleState) => {
+      const point = homePageMap?.project({ lng: vehicleState.degLongitude, lat: vehicleState.degLatitude });
 
       // Calculate the distance of the click from the vehicle
       if (point) {
-        let xDelta = point.x - event.point.x;
-        let yDelta = point.y - event.point.y;
-        let distance = Math.sqrt(xDelta * xDelta + yDelta * yDelta);
+        let dx = point.x - event.point.x;
+        let dy = point.y - event.point.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
 
         // If the distance is less than 50, then toggle visibility
         if (distance < bestDistance) {
           bestDistance = distance;
-          bestVehicle = vehicleDisplayMap?.get(vehicleState.id);
+          bestVehicle = vehicleDisplayMapRef.current.get(vehicleState.id);
         }
       }
     })
@@ -287,33 +221,16 @@ export const HomePage = () => {
       bestVehicle.routeVisible = !bestVehicle.routeVisible;
       bestVehicle.popupVisible = !bestVehicle.popupVisible;
     }
-  }
+  }, [homePageMap]);
 
-  function onLoad() {
+  const onLoad = useCallback(() => {
     setIsMapLoaded(true);
-    console.log("onLoad()");
-  }
+    console.log("Map loaded");
+  }, []);
 
-  function openCreateVehicle() {
+  const openCreateVehicle = useCallback(() => {
     setIsCreateVehicleActive(true);
-  }
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      try {
-        fetchVehicleStateList();
-        setCount(count + 1);  // Update count to trigger effect again
-      }
-      catch (error: any) {
-        console.log(`Error caught in fetchVehicleStateList: ${error.message}`);
-        setIsDataLoaded(false);
-      }
-    }, MS_FRAME_TIME)
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line
-  }, [count]);
-
-  library.add(faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash);
+  }, []);
 
   return (
     <>
@@ -333,7 +250,7 @@ export const HomePage = () => {
           onZoom={(viewStateChangeEvent) => onZoom(viewStateChangeEvent)}
         >
           <AppNavBar additionalMenuItems={<ManageMenu openCreateVehicle={openCreateVehicle} />} />
-          {(isDataLoaded && vehicleDisplayMap && vehicleStateList && !isTransitioning) ?
+          {(isDataLoaded && !isTransitioning) ?
             <>
               {isCreateVehicleActive && (
                 <CreateVehiclePanel
@@ -366,19 +283,20 @@ export const HomePage = () => {
                   <FontAwesomeIcon title="Hide All Routes" icon={faEyeSlash} className="mr-3" />
                 </Button>
               </div>
-              {vehicleStateList && (vehicleStateList.length > 0) && (
-                // eslint-disable-next-line
-                vehicleStateList.map((vehicleState) => {
-                  let vehicleDisplay = vehicleDisplayMap?.get(vehicleState.id);
-                  if (vehicleDisplay) {
-                    vehicleDisplay.size = vehicleSize;
-                    return <VehicleIcon
+              {vehicleStateList.map((vehicleState) => {
+                const vehicleDisplay = vehicleDisplayMapRef.current.get(vehicleState.id);
+                if (vehicleDisplay) {
+                  vehicleDisplay.size = vehicleSize;
+                  return (
+                    <VehicleIcon
                       key={vehicleState.id}
                       vehicleState={vehicleState}
-                      vehicleDisplay={vehicleDisplay} />
-                  }
-                })
-              )}
+                      vehicleDisplay={vehicleDisplay}
+                    />
+                  );
+                }
+                return null;
+              })}
             </>
             :
             <div>

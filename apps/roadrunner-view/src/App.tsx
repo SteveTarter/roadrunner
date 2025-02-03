@@ -8,6 +8,10 @@ import { SpinnerLoading } from './components/Utils/SpinnerLoading';
 import { AuthenticationGuard } from './AuthenticationGuard';
 import { ProfilePage } from './components/ProfilePage/ProfilePage';
 import { DriverViewPage } from './components/DriverViewPage/DriverViewPage';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+
+library.add(faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash);
 
 export const App = () => {
   const { isLoading } = useAuth0();
