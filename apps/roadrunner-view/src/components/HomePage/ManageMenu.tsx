@@ -50,8 +50,7 @@ export const ManageMenu = (props: {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log("Success:", data);
+      await response.json();
     } catch (error) {
       console.error("Error creating criss-cross:", error);
       alert("Failed to create criss-cross.");

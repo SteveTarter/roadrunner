@@ -7,40 +7,30 @@ import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Button, Card } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { library } from '@fortawesome/fontawesome-svg-core';
 import { faSatellite, faHome, faMap } from '@fortawesome/free-solid-svg-icons';
 import { ViewControl } from './ViewControl';
 
 export const DriverViewPage = () => {
   // Get the Vehicle ID from the URL in the window
   const vehicleId = (window.location.pathname).split('/')[2];
-
   const { getAccessTokenSilently } = useAuth0();
-
-  const [token, setToken] = useState("");
-
+  const navigate = useNavigate();
   const { driverViewPageMap } = useMap();
-
   const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN!;
 
+  const [token, setToken] = useState("");
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-
   const [vehicleState, setVehicleState] = useState<VehicleState>();
-
   const [managerHost, setManagerHost] = useState("");
 
   // Driver view offset from straight ahead
   const [degViewOffset, setDegViewOffset] = useState(0);
 
-  const navigate = useNavigate();
-
   // Map style
   const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
   const [mapStyle, setMapStyle] = useState(MAP_STYLE_SATELLITE);
-
-  const [count, setCount] = useState(0);
 
   // Conversion from meters per second to miles per hour.
   const MPS_TO_MPH = 2.236936;
@@ -52,128 +42,95 @@ export const DriverViewPage = () => {
   const MS_LOAD_DELAY_TIME = 500;
 
   useEffect(() => {
-    if (token) {
-      return;
+    if (!token) {
+      const audience = process.env.REACT_APP_AUTH0_AUDIENCE;
+      getAccessTokenSilently({ authorizationParams: { audience } })
+        .then(setToken)
+        .catch(error => console.error("Error fetching token:", error));
     }
-
-    const audience = process.env.REACT_APP_AUTH0_AUDIENCE;
-    getAccessTokenSilently({
-      authorizationParams: {
-        audience: audience,
-      }
-    })
-      .then(async token => {
-        setToken(token);
-      });
   }, [token, getAccessTokenSilently]);
 
-  function gotoHomePage() {
+  const gotoHomePage = useCallback(() => {
     navigate('/home');
-  }
+  }, [navigate]);
 
-  function fetchVehicleState() {
-    if (!token || token.length === 0) {
-      return;
-    }
-
-    try {
-      // Get the latest VehicleState
-      const restUrlBase = process.env.REACT_APP_ROADRUNNER_REST_URL_BASE!;
-      const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-vehicle-state/${vehicleId}`;
-      fetch(getStatesUrl, {
-        method: 'get',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        }
-      })
-        .then(async response => response.json())
-        .then(data => {
-          setVehicleState(data);
-          setIsDataLoaded(true);
-
-          // Set the manager host, shortening it if from a kubernetes pod.
-          const host = data.managerHost;
-          if (host.includes('-')) {
-            // Extract the part after the last dash
-            const lastDashIndex = host.lastIndexOf('-');
-            setManagerHost(host.substring(lastDashIndex + 1));
-          } else {
-            // Use the whole string
-            setManagerHost(host);
-          }
-
-          let degViewBearing = data.degBearing + degViewOffset
-          driverViewPageMap?.setBearing(degViewBearing);
-          let mRange = 20.0 * window.innerHeight / 932.0;
-          let shiftedPoint = getCoordinateAtBearingAndRange(data.degLatitude, data.degLongitude, degViewBearing, mRange);
-          driverViewPageMap?.setCenter(shiftedPoint);
-
-          return data;
-        })
-        .catch(error => {
-          console.log(`Error caught during fetch in fetchVehicleState: ${error.message}`);
-          setIsDataLoaded(false);
-          gotoHomePage();
-          return <></>;
-        });
-    }
-    catch (error: any) {
-      console.log(`Error caught in fetchVehicleState: ${error.message}`);
-      setIsDataLoaded(false);
-      gotoHomePage();
-    }
-  }
-
-  function getCoordinateAtBearingAndRange(degLatitude: number, degLongitude: number, degBearing: number, mRange: number) {
+  const getCoordinateAtBearingAndRange = useCallback((degLatitude: number, degLongitude: number, degBearing: number, mRange: number) => {
     const KM_EARTH_RADIUS = 6378.14;
 
-    let radLatitude = degLatitude / 180.0 * Math.PI;
-    let radLongitude = degLongitude / 180.0 * Math.PI;
-    let radBearing = degBearing / 180.0 * Math.PI;
-    let kmRange = mRange / 1000.0;
+    const radLatitude = degLatitude / 180.0 * Math.PI;
+    const radLongitude = degLongitude / 180.0 * Math.PI;
+    const radBearing = degBearing / 180.0 * Math.PI;
+    const kmRange = mRange / 1000.0;
 
-    let radLatitudeDest = Math.asin(Math.sin(radLatitude) * Math.cos(kmRange / KM_EARTH_RADIUS) + Math.cos(radLatitude) * Math.sin(kmRange / KM_EARTH_RADIUS) * Math.cos(radBearing));
-    let radLongitudeDest = radLongitude + Math.atan2(Math.sin(radBearing) * Math.sin(kmRange / KM_EARTH_RADIUS) * Math.cos(radLatitude), Math.cos(kmRange / KM_EARTH_RADIUS) - Math.sin(radLatitude) * Math.sin(radLatitude));
-    let degLatitudeDest = radLatitudeDest / Math.PI * 180.0;
-    let degLongitudeDest = radLongitudeDest / Math.PI * 180.0;
+    const radLatitudeDest = Math.asin(
+      Math.sin(radLatitude) * Math.cos(kmRange / KM_EARTH_RADIUS) +
+      Math.cos(radLatitude) * Math.sin(kmRange / KM_EARTH_RADIUS) * Math.cos(radBearing)
+    );
+    const radLongitudeDest = radLongitude + Math.atan2(
+      Math.sin(radBearing) * Math.sin(kmRange / KM_EARTH_RADIUS) * Math.cos(radLatitude),
+      Math.cos(kmRange / KM_EARTH_RADIUS) - Math.sin(radLatitude) * Math.sin(radLatitude)
+    );
+    const degLatitudeDest = radLatitudeDest / Math.PI * 180.0;
+    const degLongitudeDest = radLongitudeDest / Math.PI * 180.0;
 
     return { lng: degLongitudeDest, lat: degLatitudeDest };
-  }
+  }, []);
 
-  function toggleMapStyle() {
-    setIsTransitioning(true);
-    // console.log("Transition started");
-    if (mapStyle === MAP_STYLE_STREET) {
-      setMapStyle(MAP_STYLE_SATELLITE);
-    }
-    else {
-      setMapStyle(MAP_STYLE_STREET);
-    }
-    setTimeout(() => {
-      // console.log("Transition ended");
-      setIsTransitioning(false);
-    }, 500);
-  }
+  const updateMapView = useCallback((data: VehicleState) => {
+    const degViewBearing = data.degBearing + degViewOffset;
+    driverViewPageMap?.setBearing(degViewBearing);
+    const mRange = 20.0 * window.innerHeight / 932.0;
+    const shiftedPoint = getCoordinateAtBearingAndRange(data.degLatitude, data.degLongitude, degViewBearing, mRange);
+    driverViewPageMap?.setCenter(shiftedPoint);
+  }, [degViewOffset, driverViewPageMap, getCoordinateAtBearingAndRange]);
+
+  const fetchVehicleState = useCallback(() => {
+    if (!token) return;
+
+    // Get the latest VehicleState
+    const restUrlBase = process.env.REACT_APP_ROADRUNNER_REST_URL_BASE!;
+    const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-vehicle-state/${vehicleId}`;
+    fetch(getStatesUrl, {
+      method: 'get',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(response => response.json())
+      .then((data: VehicleState) => {
+        setVehicleState(data);
+        setIsDataLoaded(true);
+
+        // Set the manager host, shortening it if from a kubernetes pod.
+        const host: string = data.managerHost;
+        const lastDashIndex = host.lastIndexOf('-');
+        setManagerHost(lastDashIndex >= 0 ? host.substring(lastDashIndex + 1) : host);
+
+        updateMapView(data);
+      })
+      .catch(error => {
+        console.error(`Error during fetchVehicleState: ${error.message}`);
+        setIsDataLoaded(false);
+        gotoHomePage();
+      });
+  }, [token, vehicleId, gotoHomePage, updateMapView]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      try {
-        fetchVehicleState();
-        setCount(count + 1);  // Update count to trigger effect again
-      }
-      catch (error: any) {
-        console.log(`Error caught in fetchVehicleState: ${error.message}`);
-        setIsDataLoaded(false);
-      }
-    }, MS_FRAME_TIME)
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line
-  }, [count]);
+    const intervalId = setInterval(() => {
+      fetchVehicleState();
+    }, MS_FRAME_TIME);
+    return () => clearInterval(intervalId);
+  }, [fetchVehicleState]);
+
+  const toggleMapStyle = useCallback(() => {
+    setIsTransitioning(true);
+    setMapStyle(prevStyle => (prevStyle === MAP_STYLE_STREET ? MAP_STYLE_SATELLITE : MAP_STYLE_STREET));
+    setTimeout(() => setIsTransitioning(false), 500);
+  }, []);
 
   const onMapLoad = useCallback(() => {
     const timer = setTimeout(() => {
       console.log("onMapLoad()");
-      const layers = driverViewPageMap?.getStyle()?.layers;
+      const map = driverViewPageMap?.getMap();
+      const layers = map?.getStyle()?.layers;
       if (layers) {
         for (const layer of layers) {
           if (layer.type === 'symbol' && layer.layout && layer.layout['text-field']) {
@@ -182,7 +139,7 @@ export const DriverViewPage = () => {
         }
       }
 
-      driverViewPageMap?.getMap().setFog({
+      map?.setFog({
         range: [19, 20],
         'horizon-blend': 0.3,
         color: 'white',
@@ -191,23 +148,20 @@ export const DriverViewPage = () => {
         'star-intensity': 0.0
       });
 
-      driverViewPageMap?.getMap().addSource('mapbox-dem', {
+      map?.addSource('mapbox-dem', {
         type: 'raster-dem',
         url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
         tileSize: 512,
         maxzoom: 14
       });
-      driverViewPageMap?.getMap().setTerrain({ source: 'mapbox-dem', exaggeration: 1.0 });
+      map?.setTerrain({ source: 'mapbox-dem', exaggeration: 1.0 });
     }, MS_LOAD_DELAY_TIME);
     return () => clearTimeout(timer);
   }, [driverViewPageMap]);
 
-  library.add(faHome, faSatellite, faMap);
-
   return (
     <div className="body row scroll-y">
-      {(isDataLoaded && !isTransitioning && vehicleState) ?
-        <>
+      {(isDataLoaded && !isTransitioning && vehicleState) ? (
           <Map
             id="driverViewPageMap"
             mapStyle={mapStyle}
@@ -260,12 +214,9 @@ export const DriverViewPage = () => {
             </div>
             <FullscreenControl />
           </Map>
-        </>
-        :
-        <div>
+      ) : (
           <SpinnerLoading />
-        </div>
-      }
+      )}
     </div>
   )
 
