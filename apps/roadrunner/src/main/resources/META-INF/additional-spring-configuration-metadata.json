@@ -23,5 +23,10 @@
     "name": "com.tarterware.redis.port",
     "type": "java.lang.String",
     "description": "A description for 'com.tarterware.redis.port'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.update-period",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.update-period'"
   }
 ]}

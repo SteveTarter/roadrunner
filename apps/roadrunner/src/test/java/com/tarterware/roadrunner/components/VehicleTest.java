@@ -140,7 +140,7 @@ class VehicleTest
         when(zSetOperations.rangeByScoreWithScores(any(), anyDouble(), anyDouble())).thenReturn(tuple);
 
         vehicle.setDirections(vehicleManager.getVehicleDirections(vehicleId));
-        vehicle.setListLineSegmentData(vehicleManager.getLlineSegmentData(vehicleId));
+        vehicle.setListLineSegmentData(vehicleManager.getLineSegmentData(vehicleId));
     }
 
     @Test
