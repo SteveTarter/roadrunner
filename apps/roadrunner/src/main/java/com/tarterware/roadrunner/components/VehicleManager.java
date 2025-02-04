@@ -15,6 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -24,6 +26,7 @@ import org.locationtech.proj4j.CoordinateTransform;
 import org.locationtech.proj4j.ProjCoordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.convert.DurationStyle;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.Cursor;
@@ -41,6 +44,7 @@ import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 
 /**
  * Manages a collection of Vehicles, their routes, and updates their positions
@@ -70,9 +74,8 @@ public class VehicleManager
     // Template to use redis.
     private RedisTemplate<String, Object> redisTemplate;
 
-    // TODO - wire this up to an applications-property (not working atm)
-    // @Value("${com.tarterware.roadrunner.updateperiod}")
-    private String msPeriodString = "100";
+    @Value("${com.tarterware.roadrunner.update-period}")
+    private String msPeriodString;
 
     // Update period in milliseconds.
     private long msPeriod;
@@ -127,7 +130,11 @@ public class VehicleManager
 
         // Register a gauge to expose the latest execution time.
         meterRegistry.gauge(METRICS_ENDPOINT, msLatestExecutionTime, AtomicReference::get);
+    }
 
+    @PostConstruct
+    public void init()
+    {
         // Try to determine the hostname of the machine that is running this instance of
         // Spring Boot. If unable to do so, set it to "UNKNOWN".
         try
@@ -144,6 +151,8 @@ public class VehicleManager
         // the string
         Duration duration = DurationStyle.detect(msPeriodString).parse(msPeriodString);
         msPeriod = duration.toMillis();
+
+        logger.info("Starting VehicleManager with a period of {} milliseconds.", msPeriod);
     }
 
     /**
@@ -182,22 +191,39 @@ public class VehicleManager
 
         // Now, loop through the cursor, filling up to "pageSize" elements.
         int recordsToFill = pageSize;
+        List<String> vehicleIds = new ArrayList<>();
         while ((recordsToFill > 0) && cursor.hasNext())
         {
             String vehicleId = cursor.next().toString();
-            Vehicle vehicle = getVehicle(UUID.fromString(vehicleId));
-            if (vehicle != null)
+            vehicleIds.add(vehicleId);
+            recordsToFill--;
+        }
+        List<Object> vehicleObjects = redisTemplate.opsForValue()
+                .multiGet(vehicleIds.stream().map(id -> getVehicleKey(id)).collect(Collectors.toList()));
+
+        // Iterate over the list of keys using the same index as in vehicleObjects.
+        IntStream.range(0, vehicleIds.size()).forEach(i ->
+        {
+            Object obj = vehicleObjects.get(i);
+            // Extract the vehicle ID from the key (assuming the key is "Vehicle:" + id)
+            String id = vehicleIds.get(i);
+
+            if (obj == null)
             {
-                --recordsToFill;
-                vMap.put(UUID.fromString(vehicleId), vehicle);
+                // If the vehicle is null, perform redis cleanup.
+                logger.info("Vehicle ID {} no longer exists. Removing from queue.", id);
+                redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, id);
+                redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, id);
             }
             else
             {
-                logger.info("Vehicle ID {} no longer exists. Removing from queue.", vehicleId);
-                redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, vehicleId);
-                redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, vehicleId);
+                Vehicle vehicle = (Vehicle) obj;
+                if (vehicle.getId() != null)
+                {
+                    vMap.put(vehicle.getId(), vehicle);
+                }
             }
-        }
+        });
 
         return vMap;
     }
@@ -373,9 +399,11 @@ public class VehicleManager
         // Vehicle, and generate the Directions and LineSegmentData.
         if (directions == null)
         {
+            // The TripPlan was stored to Redis when the Vehicle was created, Go get it.
             String key = TRIP_PLAN_PREFIX + vehicleId;
             TripPlan tripPlan = (TripPlan) redisTemplate.opsForValue().get(key);
 
+            // Translate the TripPlan into data structures
             processTripPlanData(vehicleId, tripPlan);
 
             directions = directionsMap.get(vehicleId);
@@ -395,17 +423,22 @@ public class VehicleManager
      * @param vehicleId The UUID of the Vehicle.
      * @return A list of LineSegmentData objects.
      */
-    public List<LineSegmentData> getLlineSegmentData(UUID vehicleId)
+    public List<LineSegmentData> getLineSegmentData(UUID vehicleId)
     {
         return lineSegmentDataMap.get(vehicleId);
     }
 
     private String getVehicleKey(UUID vehicleId)
     {
-        return VEHICLE_PREFIX + vehicleId.toString();
+        return getVehicleKey(vehicleId.toString());
     }
 
-    @Scheduled(fixedRateString = "100")
+    private String getVehicleKey(String vehicleId)
+    {
+        return VEHICLE_PREFIX + vehicleId;
+    }
+
+    @Scheduled(fixedRateString = "${com.tarterware.roadrunner.update-period}")
     public void updateVehicles()
     {
         long nsManagerStartTime = System.nanoTime();
@@ -446,8 +479,14 @@ public class VehicleManager
         long nsVehicleStartTime = System.nanoTime();
         UUID vehicleId = UUID.fromString((String) tuple.getValue());
 
-        // Atomically remove from the queue
-        redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, vehicleId.toString());
+        // Attempt to atomically remove the vehicle from the queue
+        Long removed = redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, vehicleId.toString());
+        if (removed == null || removed == 0)
+        {
+            // If removal was not successful, assume another instance has claimed it; skip
+            // processing.
+            return;
+        }
 
         Vehicle vehicle = getVehicle(vehicleId);
         if (vehicle != null)
@@ -480,10 +519,7 @@ public class VehicleManager
     private void cleanupDeletedVehicles(Set<UUID> deletionSet)
     {
         // Remove from Active Vehicle Registry
-        for (UUID vehicleID : deletionSet)
-        {
-            redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, vehicleID.toString());
-        }
+        redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, deletionSet);
 
         // Remove from directionsMap and lineSegmentDataMap (assuming thread-safe maps
         // or appropriate synchronization)
