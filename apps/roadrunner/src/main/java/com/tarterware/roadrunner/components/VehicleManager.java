@@ -13,9 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -99,13 +97,13 @@ public class VehicleManager
 
     public static final String METRICS_ENDPOINT = "roadrunner.latest.execution.time.milliseconds";
 
-    public static final String VEHICLE_PREFIX = "Vehicle:";
+    public static final String VEHICLE_KEY = "Vehicle";
 
     public static final String ACTIVE_VEHICLE_REGISTRY = "ActiveVehicleRegistry";
 
     public static final String VEHICLE_QUEUE = "VehicleQueue";
 
-    public static final String TRIP_PLAN_PREFIX = "TripPlan:";
+    public static final String TRIP_PLAN_KEY = "TripPlan";
 
     private static final Logger logger = LoggerFactory.getLogger(VehicleManager.class);
 
@@ -191,22 +189,21 @@ public class VehicleManager
 
         // Now, loop through the cursor, filling up to "pageSize" elements.
         int recordsToFill = pageSize;
-        List<String> vehicleIds = new ArrayList<>();
+        List<Object> vehicleIds = new ArrayList<>();
         while ((recordsToFill > 0) && cursor.hasNext())
         {
             String vehicleId = cursor.next().toString();
             vehicleIds.add(vehicleId);
             recordsToFill--;
         }
-        List<Object> vehicleObjects = redisTemplate.opsForValue()
-                .multiGet(vehicleIds.stream().map(id -> getVehicleKey(id)).collect(Collectors.toList()));
+        List<Object> vehicleObjects = redisTemplate.opsForHash().multiGet(VEHICLE_KEY, vehicleIds);
 
         // Iterate over the list of keys using the same index as in vehicleObjects.
         IntStream.range(0, vehicleIds.size()).forEach(i ->
         {
             Object obj = vehicleObjects.get(i);
             // Extract the vehicle ID from the key (assuming the key is "Vehicle:" + id)
-            String id = vehicleIds.get(i);
+            String id = (String) vehicleIds.get(i);
 
             if (obj == null)
             {
@@ -236,24 +233,24 @@ public class VehicleManager
      */
     public Vehicle getVehicle(UUID uuid)
     {
-        String key = getVehicleKey(uuid);
+        String hashKey = uuid.toString();
 
-        Vehicle vehicle = (Vehicle) redisTemplate.opsForValue().get(key);
+        Vehicle vehicle = (Vehicle) redisTemplate.opsForHash().get(VEHICLE_KEY, hashKey);
 
         return vehicle;
     }
 
     private void setVehicle(Vehicle vehicle)
     {
-        String key = getVehicleKey(vehicle.getId());
+        String hashKey = vehicle.getId().toString();
 
         // Add a marker that this manager calculated the vehicle state.
         vehicle.setManagerHost(hostName);
 
-        redisTemplate.opsForValue().set(key, vehicle, 1, TimeUnit.HOURS);
+        redisTemplate.opsForHash().put(VEHICLE_KEY, hashKey, vehicle);
 
         // Add it to the set of Vehicles to be updated.
-        redisTemplate.opsForZSet().add(VEHICLE_QUEUE, vehicle.getId().toString(), vehicle.lastCalculationEpochMillis);
+        redisTemplate.opsForZSet().add(VEHICLE_QUEUE, hashKey, vehicle.lastCalculationEpochMillis);
     }
 
     /**
@@ -274,8 +271,8 @@ public class VehicleManager
 
         // Put the TripPlan out there so that other VehicleManagers can create the
         // Directions and LineSegmentData needed to drive a Vehicle.
-        String key = TRIP_PLAN_PREFIX + vehicle.getId();
-        redisTemplate.opsForValue().set(key, tripPlan, 100, TimeUnit.HOURS);
+        String hashKey = vehicle.getId().toString();
+        redisTemplate.opsForHash().put(TRIP_PLAN_KEY, hashKey, tripPlan);
 
         processTripPlanData(vehicle.getId(), tripPlan);
 
@@ -400,8 +397,8 @@ public class VehicleManager
         if (directions == null)
         {
             // The TripPlan was stored to Redis when the Vehicle was created, Go get it.
-            String key = TRIP_PLAN_PREFIX + vehicleId;
-            TripPlan tripPlan = (TripPlan) redisTemplate.opsForValue().get(key);
+            String hashKey = vehicleId.toString();
+            TripPlan tripPlan = (TripPlan) redisTemplate.opsForHash().get(TRIP_PLAN_KEY, hashKey);
 
             // Translate the TripPlan into data structures
             processTripPlanData(vehicleId, tripPlan);
@@ -426,16 +423,6 @@ public class VehicleManager
     public List<LineSegmentData> getLineSegmentData(UUID vehicleId)
     {
         return lineSegmentDataMap.get(vehicleId);
-    }
-
-    private String getVehicleKey(UUID vehicleId)
-    {
-        return getVehicleKey(vehicleId.toString());
-    }
-
-    private String getVehicleKey(String vehicleId)
-    {
-        return VEHICLE_PREFIX + vehicleId;
     }
 
     @Scheduled(fixedRateString = "${com.tarterware.roadrunner.update-period}")
@@ -532,8 +519,10 @@ public class VehicleManager
         // Remove the vehicle states from Redis
         deletionSet.forEach(vehicleID ->
         {
-            String key = getVehicleKey(vehicleID);
-            redisTemplate.opsForValue().getAndDelete(key);
+            String hashKey = vehicleID.toString();
+            redisTemplate.opsForHash().delete(VEHICLE_KEY, hashKey);
+            redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, hashKey);
+            redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, hashKey);
         });
     }
 }

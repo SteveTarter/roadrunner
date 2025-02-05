@@ -24,9 +24,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.DefaultTypedTuple;
+import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SetOperations;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -81,7 +81,7 @@ class VehicleTest
     private DirectionsService mockDirectionsService;
 
     @Mock
-    private ValueOperations<String, Object> valueOperations;
+    private HashOperations<String, Object, Object> hashOperations;
 
     @Mock
     private SetOperations<String, Object> setOperations;
@@ -109,7 +109,7 @@ class VehicleTest
         MockitoAnnotations.openMocks(this);
 
         // Mock RedisTemplate behavior
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForHash()).thenReturn(hashOperations);
         when(redisTemplate.opsForSet()).thenReturn(setOperations);
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
         when(zSetOperations.add(anyString(), any(), anyDouble())).thenReturn(true);
@@ -133,7 +133,7 @@ class VehicleTest
 
         // Ensure Redis returns the vehicle when asked by ID
         UUID vehicleId = vehicle.getId();
-        when(valueOperations.get(VehicleManager.VEHICLE_PREFIX + vehicleId)).thenReturn(vehicle);
+        when(hashOperations.get(VehicleManager.VEHICLE_KEY, vehicleId.toString())).thenReturn(vehicle);
 
         // Stub "ready" vehicle IDs in Redis
         tuple.add(new DefaultTypedTuple<>(vehicleId.toString(), 1000.0));
