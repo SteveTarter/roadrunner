@@ -15,8 +15,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -29,10 +27,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.convert.DurationStyle;
 import org.springframework.core.env.Environment;
+import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -189,7 +189,7 @@ public class VehicleManager
             --recordsToSkip;
         }
 
-        // Now, loop through the cursor, filling up to "pageSize" elements.
+        // Now, loop through the cursor, filling up to "pageSize" vehicleId elements.
         int recordsToFill = pageSize;
         List<String> vehicleIds = new ArrayList<>();
         while ((recordsToFill > 0) && cursor.hasNext())
@@ -198,32 +198,44 @@ public class VehicleManager
             vehicleIds.add(vehicleId);
             recordsToFill--;
         }
-        List<Object> vehicleObjects = redisTemplate.opsForValue()
-                .multiGet(vehicleIds.stream().map(id -> getVehicleKey(id)).collect(Collectors.toList()));
 
-        // Iterate over the list of keys using the same index as in vehicleObjects.
-        IntStream.range(0, vehicleIds.size()).forEach(i ->
+        // Execute the pipeline to get all vehicle objects individually.
+        List<Object> vehicleObjects = redisTemplate.executePipelined((RedisConnection connection) ->
         {
+            // Use the same serializer that your RedisTemplate is configured with.
+            StringRedisSerializer serializer = new StringRedisSerializer();
+            for (String vehicleId : vehicleIds)
+            {
+                byte[] rawVehicleId = serializer.serialize(getVehicleKey(vehicleId));
+                // Issue a GET command for each key.
+                connection.stringCommands().get(rawVehicleId);
+            }
+            // Returning null tells RedisTemplate to collect the results.
+            return null;
+        });
+
+        for (int i = 0; i < vehicleIds.size(); ++i)
+        {
+            String vehicleId = vehicleIds.get(i);
             Object obj = vehicleObjects.get(i);
-            // Extract the vehicle ID from the key (assuming the key is "Vehicle:" + id)
-            String id = vehicleIds.get(i);
 
             if (obj == null)
             {
                 // If the vehicle is null, perform redis cleanup.
-                logger.info("Vehicle ID {} no longer exists. Removing from queue.", id);
-                redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, id);
-                redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, id);
+                logger.info("Vehicle ID {} no longer exists. Removing from queue.", vehicleId);
+                redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, vehicleId);
+                redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, vehicleId);
             }
             else
             {
                 Vehicle vehicle = (Vehicle) obj;
-                if (vehicle.getId() != null)
+                if ((vehicle != null) && (vehicle.getId() != null))
                 {
                     vMap.put(vehicle.getId(), vehicle);
                 }
             }
-        });
+        }
+        ;
 
         return vMap;
     }
