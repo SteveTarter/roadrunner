@@ -187,7 +187,7 @@ public class VehicleManager
             --recordsToSkip;
         }
 
-        // Now, loop through the cursor, filling up to "pageSize" elements.
+        // Now, loop through the cursor, filling up to "pageSize" vehicleId elements.
         int recordsToFill = pageSize;
         List<Object> vehicleIds = new ArrayList<>();
         while ((recordsToFill > 0) && cursor.hasNext())
