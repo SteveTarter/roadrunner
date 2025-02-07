@@ -66,6 +66,11 @@ terraform workspace new eks
 terraform workspace new minikube
 ```
 
+## Kubernetes Architecture Diagram
+The following diagram was created using [KubeDiagrams](https://github.com/philippemerle/KubeDiagrams.git).  It shows the Roadrunner application deployed to Minikube.  The bulk of the system described in these Terraform files is shown in the left half of the diagram; the right side of the diagram represents the Redis installation :
+
+![Roadrunner Kubernetes Architecture Diagram](./Resources/img/roadrunner_k8_minikube-20250207.png)
+
 ## Certificates for Minikube
 Refer to `create-cert-authority.txt` and `create-roadrunner-certs.txt` for generating certificates. These instructions were developed for Ubuntu. Windows users may need to run the scripts in an Ubuntu environment. The certificate authority (CA) must be installed in your browser for proper TLS validation.
 
