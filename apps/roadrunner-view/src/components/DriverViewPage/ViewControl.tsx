@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { library } from '@fortawesome/fontawesome-svg-core';
 import { faArrowLeft, faArrowRight, fa0 } from '@fortawesome/free-solid-svg-icons';
 
 const MS_FRAME_TIME = 50; // Interval for adjusting view (e.g., 50ms)
@@ -55,8 +54,6 @@ export const ViewControl = (props: {
   const handleCenter = () => {
     props.setDegViewOffset(0); // Reset to center
   };
-
-    library.add(faArrowLeft, faArrowRight, fa0);
 
   return (
     <div>

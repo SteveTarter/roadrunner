@@ -1,0 +1,10 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999; /* Ensure it stays above the map and dropdown */
+}
+.navbar .dropdown-menu {
+  z-index: 9999; /* so the dropdown is also above the map */
+}
