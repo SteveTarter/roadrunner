@@ -525,4 +525,45 @@ public class VehicleManager
             redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, hashKey);
         });
     }
+
+    @Scheduled(fixedRate = 60000) // every minute
+    public void reconcileLocalCache()
+    {
+        // Get the set of active vehicle IDs from Redis
+        Set<Object> activeIds = redisTemplate.opsForSet().members(ACTIVE_VEHICLE_REGISTRY);
+
+        // For directionsMap, create a list of IDs to remove
+        List<UUID> removedFromDirections = new ArrayList<>();
+        // Iterate over a copy of the key set to avoid ConcurrentModificationException
+        Set<UUID> directionsKeys = new HashSet<>(directionsMap.keySet());
+        for (UUID vehicleId : directionsKeys)
+        {
+            if (!activeIds.contains(vehicleId.toString()))
+            {
+                removedFromDirections.add(vehicleId);
+                directionsMap.remove(vehicleId);
+            }
+        }
+        if (!removedFromDirections.isEmpty())
+        {
+            logger.info("Reconciled directionsMap: Removed vehicles: {}", removedFromDirections);
+        }
+
+        // Do the same for lineSegmentDataMap
+        List<UUID> removedFromLineSegmentData = new ArrayList<>();
+        Set<UUID> lineSegmentKeys = new HashSet<>(lineSegmentDataMap.keySet());
+        for (UUID vehicleId : lineSegmentKeys)
+        {
+            if (!activeIds.contains(vehicleId.toString()))
+            {
+                removedFromLineSegmentData.add(vehicleId);
+                lineSegmentDataMap.remove(vehicleId);
+            }
+        }
+        if (!removedFromLineSegmentData.isEmpty())
+        {
+            logger.info("Reconciled lineSegmentDataMap: Removed vehicles: {}", removedFromLineSegmentData);
+        }
+    }
+
 }
