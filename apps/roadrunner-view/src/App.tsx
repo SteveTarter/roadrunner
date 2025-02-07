@@ -9,9 +9,12 @@ import { AuthenticationGuard } from './AuthenticationGuard';
 import { ProfilePage } from './components/ProfilePage/ProfilePage';
 import { DriverViewPage } from './components/DriverViewPage/DriverViewPage';
 import { library } from '@fortawesome/fontawesome-svg-core';
-import { faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import fontawesome from '@fortawesome/fontawesome'
+import { faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faArrowLeft, faArrowRight, fa0 } from '@fortawesome/free-solid-svg-icons';
+import { faPowerOff, faUser } from '@fortawesome/fontawesome-free-solid'
 
-library.add(faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash);
+library.add(faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faArrowLeft, faArrowRight, fa0 );
+fontawesome.library.add(faPowerOff, faUser);
 
 export const App = () => {
   const { isLoading } = useAuth0();

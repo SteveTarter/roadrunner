@@ -85,7 +85,7 @@ export const ManageMenu = (props: {
   }
 
   return (
-    <div className="d-flex justify-content-center align-items-center">
+    <div className="d-flex justify-content-left align-items-center">
       <UncontrolledDropdown nav inNavbar className="centered-dropdown">
         <DropdownToggle nav caret style={{ fontSize: "1.1rem" }}>
           Manage

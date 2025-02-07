@@ -1,8 +1,7 @@
+import './AppNavBar.css'
 import React, { useState } from "react";
 import { NavLink as RouterNavLink } from "react-router-dom";
-import fontawesome from '@fortawesome/fontawesome'
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPowerOff, faUser } from '@fortawesome/fontawesome-free-solid'
 
 import {
   Collapse,
@@ -41,8 +40,6 @@ export const AppNavBar = ({ additionalMenuItems }: { additionalMenuItems?: React
         returnTo: landingPageUri,
       }
     });
-
-  fontawesome.library.add(faPowerOff, faUser);
 
   return (
     <div className="nav-container">

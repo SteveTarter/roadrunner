@@ -234,7 +234,7 @@ export const HomePage = () => {
 
   return (
     <>
-      <div className="body row scroll-y">
+      <div className="map-container">
         <Map
           id="homePageMap"
           mapStyle={mapStyle}
