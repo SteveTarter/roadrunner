@@ -8,7 +8,8 @@ resource "kubernetes_deployment" "roadrunner_view_deployment" {
   }
 
   spec {
-    replicas = 1
+    replicas                = 1
+    revision_history_limit  = 2
 
     selector {
       match_labels = {
