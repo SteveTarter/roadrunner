@@ -483,12 +483,11 @@ public class VehicleManager
             vehicle.setListLineSegmentData(lineSegmentDataMap.get(vehicleId));
 
             boolean updated = vehicle.update();
-            if (updated)
-            {
-                vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
-                setVehicle(vehicle);
-            }
-            else
+
+            // Update execution time whether updated or not.
+            vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
+            setVehicle(vehicle);
+            if (!updated)
             {
                 if (vehicle.getLastCalculationEpochMillis() < msEpochTimeoutTime)
                 {
