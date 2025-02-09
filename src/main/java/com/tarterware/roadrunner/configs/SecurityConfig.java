@@ -30,7 +30,9 @@ public class SecurityConfig
         http.cors(Customizer.withDefaults()).csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                         // Allow unauthenticated access to actuator health and info endpoints
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info",
+                                "/actuator/metrics/roadrunner.latest.execution.time.milliseconds")
+                        .permitAll()
                         // All other requests require authentication
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(
