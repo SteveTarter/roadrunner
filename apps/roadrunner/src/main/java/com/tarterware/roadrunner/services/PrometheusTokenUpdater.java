@@ -8,6 +8,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -23,28 +24,27 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Service
-// @Profile("!dev") // iDo not use in the "dev" profile
+@Profile("!dev") // iDo not use in the "dev" profile
 public class PrometheusTokenUpdater
 {
-
     // Inject Auth0 and endpoint properties
-    @Value("${auth0.api.audience}")
+    @Value("${auth0.api.audience:}")
     private String auth0ApiAudience;
 
-    @Value("${auth0.api.client-id}")
+    @Value("${auth0.api.client-id:}")
     private String auth0ApiClientId;
 
-    @Value("${auth0.api.client-secret}")
+    @Value("${auth0.api.client-secret:}")
     private String auth0ApiClientSecret;
 
-    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}")
     private String tokenEndpointUrl;
 
     // Kubernetes secret configuration
-    @Value("${prometheus.secret.namespace}")
+    @Value("${prometheus.secret.namespace:}")
     private String secretNamespace;
 
-    @Value("${prometheus.secret.name}")
+    @Value("${prometheus.secret.name:}")
     private String secretName;
 
     private final KubernetesClient kubernetesClient;
