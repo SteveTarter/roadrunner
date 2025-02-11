@@ -28,5 +28,20 @@
     "name": "com.tarterware.roadrunner.update-period",
     "type": "java.lang.String",
     "description": "A description for 'com.tarterware.roadrunner.update-period'"
+  },
+  {
+    "name": "prometheus.secret.namespace",
+    "type": "java.lang.String",
+    "description": "A description for 'prometheus.secret.namespace'"
+  },
+  {
+    "name": "prometheus.secret.name",
+    "type": "java.lang.String",
+    "description": "A description for 'prometheus.secret.name'"
+  },
+  {
+    "name": "prometheus.secret.namespace",
+    "type": "java.lang.String",
+    "description": "A description for 'prometheus.secret.namespace'"
   }
 ]}
