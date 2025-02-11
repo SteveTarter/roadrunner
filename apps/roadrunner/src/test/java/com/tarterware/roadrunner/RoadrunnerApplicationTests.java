@@ -20,6 +20,8 @@ import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.services.IsochroneService;
 
+import io.fabric8.kubernetes.client.KubernetesClient;
+
 @SpringBootTest
 @Import(NoOpSchedulerConfig.class)
 class RoadrunnerApplicationTests
@@ -50,6 +52,9 @@ class RoadrunnerApplicationTests
 
     @MockitoBean
     private RedisTemplate<String, Object> redisTemplate;
+
+    @MockitoBean
+    private KubernetesClient kubernetesClient;
 
     @BeforeEach
     void setup() throws IOException
