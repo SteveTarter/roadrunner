@@ -42,6 +42,7 @@ import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.services.IsochroneService;
 
+import io.fabric8.kubernetes.client.KubernetesClient;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import utils.TestUtils;
@@ -79,6 +80,9 @@ class VehicleTest
 
     @MockitoBean
     private DirectionsService mockDirectionsService;
+
+    @MockitoBean
+    private KubernetesClient kubernetesClient;
 
     @Mock
     private HashOperations<String, Object, Object> hashOperations;
