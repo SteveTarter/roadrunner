@@ -39,6 +39,7 @@ import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.models.mapbox.RouteLeg;
 import com.tarterware.roadrunner.models.mapbox.RouteStep;
 import com.tarterware.roadrunner.services.DirectionsService;
+import com.tarterware.roadrunner.utilities.StatisticsCollector;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -90,12 +91,22 @@ public class VehicleManager
     // Service to retrieve directions for trip plans
     private DirectionsService directionsService;
 
-    // Thread-safe implementation of Number used to access the latestExecutionTime.
+    // Class to provide rudimentary statistics over last few runs of update loop
+    private StatisticsCollector statisticsCollector;
+
+    // Thread-safe implementation of Number used to access the latestExecutionTime
+    // and the other exposed statistics.
     private final AtomicReference<Double> msLatestExecutionTime = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> msMinimumExecutionTime = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> msMaximumExecutionTime = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> msAverageExecutionTime = new AtomicReference<>(0.0);
 
     public static final int SECS_VEHICLE_TIMEOUT = 30;
 
-    public static final String METRICS_ENDPOINT = "roadrunner.latest.execution.time.milliseconds";
+    public static final String ENDPOINT_LATEST_EXEC_TIME = "roadrunner.latest.execution.time.milliseconds";
+    public static final String ENDPOINT_MINIMUM_EXEC_TIME = "roadrunner.minimum.execution.time.milliseconds";
+    public static final String ENDPOINT_MAXIMUM_EXEC_TIME = "roadrunner.maximum.execution.time.milliseconds";
+    public static final String ENDPOINT_AVERAGE_EXEC_TIME = "roadrunner.average.execution.time.milliseconds";
 
     public static final String VEHICLE_KEY = "Vehicle";
 
@@ -126,8 +137,14 @@ public class VehicleManager
         this.directionsService = directionsService;
         this.redisTemplate = redisTemplate;
 
+        // Create the statistics collector to aid in publishing metrics.
+        this.statisticsCollector = new StatisticsCollector(10);
+
         // Register a gauge to expose the latest execution time.
-        meterRegistry.gauge(METRICS_ENDPOINT, msLatestExecutionTime, AtomicReference::get);
+        meterRegistry.gauge(ENDPOINT_LATEST_EXEC_TIME, msLatestExecutionTime, AtomicReference::get);
+        meterRegistry.gauge(ENDPOINT_MINIMUM_EXEC_TIME, msMinimumExecutionTime, AtomicReference::get);
+        meterRegistry.gauge(ENDPOINT_MAXIMUM_EXEC_TIME, msMaximumExecutionTime, AtomicReference::get);
+        meterRegistry.gauge(ENDPOINT_AVERAGE_EXEC_TIME, msAverageExecutionTime, AtomicReference::get);
     }
 
     @PostConstruct
@@ -447,8 +464,15 @@ public class VehicleManager
 
             cleanupDeletedVehicles(deletionSet);
 
+            // Determine how long processing the available vehicles took and record it.
             double msExecutionTime = (System.nanoTime() - nsManagerStartTime) / 1_000_000.0;
             msLatestExecutionTime.set(msExecutionTime);
+
+            // Update the statistics collector, then update the endpoint variables.
+            statisticsCollector.recordExecutionTime(msExecutionTime);
+            msMinimumExecutionTime.set(statisticsCollector.getMinExecutionTime());
+            msMaximumExecutionTime.set(statisticsCollector.getMaxExecutionTime());
+            msAverageExecutionTime.set(statisticsCollector.getAverageExecutionTime());
         }
         catch (Exception ex)
         {
