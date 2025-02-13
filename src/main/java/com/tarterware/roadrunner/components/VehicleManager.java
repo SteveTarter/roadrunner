@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
@@ -137,9 +138,6 @@ public class VehicleManager
         this.directionsService = directionsService;
         this.redisTemplate = redisTemplate;
 
-        // Create the statistics collector to aid in publishing metrics.
-        this.statisticsCollector = new StatisticsCollector(10);
-
         // Register a gauge to expose the latest execution time.
         meterRegistry.gauge(ENDPOINT_LATEST_EXEC_TIME, msLatestExecutionTime, AtomicReference::get);
         meterRegistry.gauge(ENDPOINT_MINIMUM_EXEC_TIME, msMinimumExecutionTime, AtomicReference::get);
@@ -166,6 +164,9 @@ public class VehicleManager
         // the string
         Duration duration = DurationStyle.detect(msPeriodString).parse(msPeriodString);
         msPeriod = duration.toMillis();
+
+        // Create the statistics collector to aid in publishing metrics.
+        this.statisticsCollector = new StatisticsCollector(10, msPeriod);
 
         logger.info("Starting VehicleManager with a period of {} milliseconds.", msPeriod);
     }
@@ -442,9 +443,22 @@ public class VehicleManager
         return lineSegmentDataMap.get(vehicleId);
     }
 
+    // Flag to track if the task is running
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
+
+    long lastNsManagerStartTime = System.nanoTime();
+
     @Scheduled(fixedRateString = "${com.tarterware.roadrunner.update-period}")
     public void updateVehicles()
     {
+        // Try to set the flag to true; if it's already true, exit early.
+        if (!isRunning.compareAndSet(false, true))
+        {
+            // Another execution is still running.
+            logger.info("Another thread running; returning");
+            return;
+        }
+
         long nsManagerStartTime = System.nanoTime();
         long currentEpochMillis = Instant.now().toEpochMilli();
         long msEpochTimeoutTime = currentEpochMillis - (1000 * SECS_VEHICLE_TIMEOUT);
@@ -470,13 +484,31 @@ public class VehicleManager
 
             // Update the statistics collector, then update the endpoint variables.
             statisticsCollector.recordExecutionTime(msExecutionTime);
-            msMinimumExecutionTime.set(statisticsCollector.getMinExecutionTime());
-            msMaximumExecutionTime.set(statisticsCollector.getMaxExecutionTime());
-            msAverageExecutionTime.set(statisticsCollector.getAverageExecutionTime());
+            double msFrameTime = (nsManagerStartTime - lastNsManagerStartTime) / 1_000_000.0;
+            double msMinExecutionTime = statisticsCollector.getMinExecutionTime();
+            double msMaxExecutionTime = statisticsCollector.getMaxExecutionTime();
+            double msAveExecutionTime = statisticsCollector.getAverageExecutionTime();
+            msMinimumExecutionTime.set(msMinExecutionTime);
+            msMaximumExecutionTime.set(msMaxExecutionTime);
+            msAverageExecutionTime.set(msAveExecutionTime);
+            logger.atDebug().setMessage("Frm:{}; Cur:{}; Ave:{}; Min: {}; Max:{}")
+                    .addArgument(String.format("%.3f", msFrameTime)) // Frm
+                    .addArgument(String.format("%.3f", msExecutionTime)) // Cur
+                    .addArgument(String.format("%.3f", msAveExecutionTime)) // Ave
+                    .addArgument(String.format("%.3f", msMinExecutionTime)) // Min
+                    .addArgument(String.format("%.3f", msMaxExecutionTime)) // Max
+                    .log();
+
+            lastNsManagerStartTime = nsManagerStartTime;
         }
         catch (Exception ex)
         {
             logger.error("Exception encountered during vehicle update", ex);
+        }
+        finally
+        {
+            // Reset the flag, allowing subsequent executions.
+            isRunning.set(false);
         }
     }
 

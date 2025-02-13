@@ -17,7 +17,7 @@ import java.util.OptionalDouble;
  * 
  * <pre>
  * // Create a StatisticsCollector that retains the last 10 execution times.
- * StatisticsCollector collector = new StatisticsCollector(10);
+ * StatisticsCollector collector = new StatisticsCollector(10, 250);
  * 
  * // Record a new execution time measurement.
  * collector.recordExecutionTime(123.4);
@@ -37,21 +37,32 @@ public class StatisticsCollector
     /** The maximum number of measurements to retain. */
     private final int capacity;
 
+    /** Threshold value; values above this will not be considered in stats. */
+    private double outlierThreshold;
+
     /**
      * Constructs a {@code StatisticsCollector} with the specified capacity.
      * 
      * @param capacity the maximum number of measurements to retain; must be at
      *                 least 1
+     * @param msPeriod the expected period of the task
      * @throws IllegalArgumentException if {@code capacity} is less than 1
      */
-    public StatisticsCollector(int capacity)
+    public StatisticsCollector(int capacity, long msPeriod)
     {
         if (capacity < 1)
         {
             throw new IllegalArgumentException("Capacity must be at least 1");
         }
+        if (msPeriod < 1)
+        {
+            throw new IllegalArgumentException("msPeriod must be at least 1");
+        }
         this.capacity = capacity;
         this.executionTimes = new ArrayDeque<>(capacity);
+
+        // Define the threshhold as 110% of the nominal period.
+        this.outlierThreshold = (double) msPeriod * 1.1;
     }
 
     /**
@@ -73,13 +84,14 @@ public class StatisticsCollector
     /**
      * Calculates and returns the average of the recorded execution times.
      *
-     * @return the average execution time, or 0.0 if no measurements have been
-     *         recorded
+     * @return the average execution time, or <code>outlierThreshold</code> if no
+     *         measurements have been recorded
      */
     public double getAverageExecutionTime()
     {
-        OptionalDouble average = executionTimes.stream().mapToDouble(Double::doubleValue).average();
-        return average.orElse(0.0);
+        OptionalDouble average = executionTimes.stream().filter(time -> time <= outlierThreshold)
+                .mapToDouble(Double::doubleValue).average();
+        return average.orElse(outlierThreshold);
     }
 
     /**
@@ -90,20 +102,22 @@ public class StatisticsCollector
      */
     public double getMinExecutionTime()
     {
-        OptionalDouble min = executionTimes.stream().mapToDouble(Double::doubleValue).min();
+        OptionalDouble min = executionTimes.stream().filter(time -> time <= outlierThreshold)
+                .mapToDouble(Double::doubleValue).min();
         return min.orElse(0.0);
     }
 
     /**
      * Returns the maximum execution time among the recorded measurements.
      *
-     * @return the maximum execution time, or 0.0 if no measurements have been
-     *         recorded
+     * @return the maximum execution time, or <code>outlierThreshold</code> if no
+     *         measurements have been recorded
      */
     public double getMaxExecutionTime()
     {
-        OptionalDouble max = executionTimes.stream().mapToDouble(Double::doubleValue).max();
-        return max.orElse(0.0);
+        OptionalDouble max = executionTimes.stream().filter(time -> time <= outlierThreshold)
+                .mapToDouble(Double::doubleValue).max();
+        return max.orElse(outlierThreshold);
     }
 
     /**
