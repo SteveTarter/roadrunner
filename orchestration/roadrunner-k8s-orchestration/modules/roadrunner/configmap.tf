@@ -19,8 +19,14 @@ com.tarterware.redis.host=${var.redis_host}
 com.tarterware.redis.port=6379
 com.tarterware.roadrunner.update-period=250ms
 spring.profiles.active=${terraform.workspace}
-management.endpoints.web.exposure.include=health,info,metrics
+management.endpoints.web.exposure.include=health,info,metrics,prometheus
+management.endpoint.health.show-details=always
 spring.security.oauth2.resourceserver.jwt.issuer-uri=${var.auth0_api_issuer_url}
+auth0.api.audience=${var.auth0_api_audience}
+auth0.api.client-id=${var.auth0_api_client_id}
+auth0.api.client-secret=${var.auth0_api_client_secret}
+prometheus.secret.namespace=monitoring
+prometheus.secret.name=prometheus-token-secret
 EOT
   }
 }

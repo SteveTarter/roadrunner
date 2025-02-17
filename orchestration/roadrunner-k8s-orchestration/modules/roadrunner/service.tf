@@ -8,13 +8,14 @@ resource "kubernetes_service" "roadrunner_service" {
   }
 
   spec {
-    type = "NodePort" # NodePort used for external access in local setups like Minikube
+    type = "ClusterIP"
 
     selector = {
       app = "roadrunner"
     }
 
     port {
+      name        = "http-metrics"
       port        = 18280 # Service port
       target_port = 8080  # Application's internal listening port
     }

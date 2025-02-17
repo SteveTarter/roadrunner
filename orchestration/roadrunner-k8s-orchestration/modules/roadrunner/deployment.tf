@@ -61,12 +61,12 @@ resource "kubernetes_deployment" "roadrunner" {
 
           resources {
             requests = {
-              memory = "512Mi"
-              cpu    = "500m"
+              memory = "256Mi"
+              cpu    = "250m"
             }
             limits = {
-              memory = "1Gi"
-              cpu    = "1"
+              memory = "512Mi"
+              cpu    = "500m"
             }
           }
         }

@@ -73,3 +73,8 @@ variable "redis_host" {
   type        = string
 }
 
+variable "prometheus_release_name" {
+  description = "The name of the Prometheus release"
+  type        = string
+}
+
