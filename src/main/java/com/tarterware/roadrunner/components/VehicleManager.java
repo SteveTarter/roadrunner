@@ -77,6 +77,9 @@ public class VehicleManager
     @Value("${com.tarterware.roadrunner.update-period}")
     private String msPeriodString;
 
+    @Value("${com.tarterware.roadrunner.update-capacity:20}")
+    private int updateStatCapacity;
+
     // Update period in milliseconds.
     private long msPeriod;
 
@@ -166,7 +169,7 @@ public class VehicleManager
         msPeriod = duration.toMillis();
 
         // Create the statistics collector to aid in publishing metrics.
-        this.statisticsCollector = new StatisticsCollector(10, msPeriod);
+        this.statisticsCollector = new StatisticsCollector(updateStatCapacity, msPeriod);
 
         logger.info("Starting VehicleManager with a period of {} milliseconds.", msPeriod);
     }
