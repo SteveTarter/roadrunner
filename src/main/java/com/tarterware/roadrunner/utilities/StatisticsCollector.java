@@ -2,7 +2,9 @@ package com.tarterware.roadrunner.utilities;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.OptionalDouble;
+import java.util.DoubleSummaryStatistics;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -40,6 +42,8 @@ public class StatisticsCollector
     /** Threshold value; values above this will not be considered in stats. */
     private double outlierThreshold;
 
+    private DoubleSummaryStatistics summaryStatistics;
+
     /**
      * Constructs a {@code StatisticsCollector} with the specified capacity.
      * 
@@ -61,8 +65,8 @@ public class StatisticsCollector
         this.capacity = capacity;
         this.executionTimes = new ArrayDeque<>(capacity);
 
-        // Define the threshhold as 110% of the nominal period.
-        this.outlierThreshold = (double) msPeriod * 1.1;
+        // Define the threshhold as 130% of the nominal period.
+        this.outlierThreshold = (double) msPeriod * 1.3;
     }
 
     /**
@@ -79,6 +83,16 @@ public class StatisticsCollector
             executionTimes.poll();
         }
         executionTimes.offer(ms);
+
+        // Sort execution times and determine the 95th percentile cutoff
+        List<Double> sortedTimes = executionTimes.stream().sorted().collect(Collectors.toList());
+        int cutoffIndex = (int) (sortedTimes.size() * 0.95); // Top 5% outliers
+
+        // Use only values up to the 95th percentile
+        List<Double> filteredTimes = sortedTimes.subList(0, cutoffIndex);
+
+        // Compute the average of the filtered values
+        summaryStatistics = filteredTimes.stream().mapToDouble(Double::doubleValue).summaryStatistics();
     }
 
     /**
@@ -89,9 +103,7 @@ public class StatisticsCollector
      */
     public double getAverageExecutionTime()
     {
-        OptionalDouble average = executionTimes.stream().filter(time -> time <= outlierThreshold)
-                .mapToDouble(Double::doubleValue).average();
-        return average.orElse(outlierThreshold);
+        return summaryStatistics.getCount() > 0 ? summaryStatistics.getAverage() : outlierThreshold;
     }
 
     /**
@@ -102,9 +114,7 @@ public class StatisticsCollector
      */
     public double getMinExecutionTime()
     {
-        OptionalDouble min = executionTimes.stream().filter(time -> time <= outlierThreshold)
-                .mapToDouble(Double::doubleValue).min();
-        return min.orElse(0.0);
+        return summaryStatistics.getCount() > 0 ? summaryStatistics.getMin() : 0.0;
     }
 
     /**
@@ -115,9 +125,7 @@ public class StatisticsCollector
      */
     public double getMaxExecutionTime()
     {
-        OptionalDouble max = executionTimes.stream().filter(time -> time <= outlierThreshold)
-                .mapToDouble(Double::doubleValue).max();
-        return max.orElse(outlierThreshold);
+        return summaryStatistics.getCount() > 0 ? summaryStatistics.getMax() : outlierThreshold;
     }
 
     /**
