@@ -25,11 +25,6 @@
     "description": "A description for 'com.tarterware.redis.port'"
   },
   {
-    "name": "com.tarterware.roadrunner.update-period",
-    "type": "java.lang.String",
-    "description": "A description for 'com.tarterware.roadrunner.update-period'"
-  },
-  {
     "name": "prometheus.secret.namespace",
     "type": "java.lang.String",
     "description": "A description for 'prometheus.secret.namespace'"
@@ -45,8 +40,18 @@
     "description": "A description for 'prometheus.secret.namespace'"
   },
   {
-    "name": "com.tarterware.roadrunner.update-capacity",
+    "name": "com.tarterware.roadrunner.jitter-stat-capacity",
     "type": "java.lang.String",
-    "description": "A description for 'com.tarterware.roadrunner.update-capacity'"
+    "description": "A description for 'com.tarterware.roadrunner.jitter-stat-capacity'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.vehicle-update-period",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.vehicle-update-period'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.vehicle-polling-period",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.vehicle-polling-period'"
   }
 ]}

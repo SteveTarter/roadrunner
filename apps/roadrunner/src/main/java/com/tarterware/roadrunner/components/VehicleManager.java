@@ -13,7 +13,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
@@ -40,7 +43,7 @@ import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.models.mapbox.RouteLeg;
 import com.tarterware.roadrunner.models.mapbox.RouteStep;
 import com.tarterware.roadrunner.services.DirectionsService;
-import com.tarterware.roadrunner.utilities.StatisticsCollector;
+import com.tarterware.roadrunner.utilities.JitterStatisticsCollector;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -74,17 +77,29 @@ public class VehicleManager
     // Template to use redis.
     private RedisTemplate<String, Object> redisTemplate;
 
-    @Value("${com.tarterware.roadrunner.update-period}")
-    private String msPeriodString;
+    // Target interval between vehicle updates.
+    @Value("${com.tarterware.roadrunner.vehicle-update-period:250ms}")
+    private String msUpdatePeriodString;
 
-    @Value("${com.tarterware.roadrunner.update-capacity:20}")
-    private int updateStatCapacity;
+    // Target interval between polling for vehicles that need updating. Should be
+    // lower than update period.
+    @Value("${com.tarterware.roadrunner.vehicle-polling-period:100ms}")
+    private String msPollingPeriodString;
+
+    @Value("${com.tarterware.roadrunner.jitter-stat-capacity:200}")
+    private int jitterStatCapacity;
+
+    // Polling period in milliseconds.
+    private long msPollingPeriod;
 
     // Update period in milliseconds.
-    private long msPeriod;
+    private long msUpdatePeriod;
 
     // Hostname where this manager is running
     private String hostName;
+
+    // Dedicated thread pool to handle the Directions processing
+    private final ExecutorService directionsExecutor = Executors.newFixedThreadPool(10);
 
     // Map of Directions by Vehicle ID.
     private final ConcurrentMap<UUID, Directions> directionsMap = new ConcurrentHashMap<UUID, Directions>();
@@ -92,25 +107,28 @@ public class VehicleManager
     // LineSegmentData by Vehicle ID.
     private final ConcurrentMap<UUID, List<LineSegmentData>> lineSegmentDataMap = new ConcurrentHashMap<UUID, List<LineSegmentData>>();
 
+    // Thread‑safe map to keep track of vehicles currently loading directions.
+    private final ConcurrentMap<UUID, Future<Directions>> directionsLoadingMap = new ConcurrentHashMap<>();
+
     // Service to retrieve directions for trip plans
     private DirectionsService directionsService;
 
-    // Class to provide rudimentary statistics over last few runs of update loop
-    private StatisticsCollector statisticsCollector;
+    // Class to provide jitter statistics over last few runs of update loop
+    private JitterStatisticsCollector statisticsCollector;
 
     // Thread-safe implementation of Number used to access the latestExecutionTime
     // and the other exposed statistics.
-    private final AtomicReference<Double> msLatestExecutionTime = new AtomicReference<>(0.0);
-    private final AtomicReference<Double> msMinimumExecutionTime = new AtomicReference<>(0.0);
-    private final AtomicReference<Double> msMaximumExecutionTime = new AtomicReference<>(0.0);
-    private final AtomicReference<Double> msAverageExecutionTime = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> msStdDevJitterTime = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> msMinimumJitterTime = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> msMaximumJitterTime = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> msMeanJitterTime = new AtomicReference<>(0.0);
 
     public static final int SECS_VEHICLE_TIMEOUT = 30;
 
-    public static final String ENDPOINT_LATEST_EXEC_TIME = "roadrunner.latest.execution.time.milliseconds";
-    public static final String ENDPOINT_MINIMUM_EXEC_TIME = "roadrunner.minimum.execution.time.milliseconds";
-    public static final String ENDPOINT_MAXIMUM_EXEC_TIME = "roadrunner.maximum.execution.time.milliseconds";
-    public static final String ENDPOINT_AVERAGE_EXEC_TIME = "roadrunner.average.execution.time.milliseconds";
+    public static final String ENDPOINT_STD_DEV_JITTER_TIME = "roadrunner.std-dev.jitter.time.milliseconds";
+    public static final String ENDPOINT_MINIMUM_JITTER_TIME = "roadrunner.minimum.jitter.time.milliseconds";
+    public static final String ENDPOINT_MAXIMUM_JITTER_TIME = "roadrunner.maximum.jitter.time.milliseconds";
+    public static final String ENDPOINT_MEAN_JITTER_TIME = "roadrunner.mean.jitter.time.milliseconds";
 
     public static final String VEHICLE_KEY = "Vehicle";
 
@@ -142,10 +160,10 @@ public class VehicleManager
         this.redisTemplate = redisTemplate;
 
         // Register a gauge to expose the latest execution time.
-        meterRegistry.gauge(ENDPOINT_LATEST_EXEC_TIME, msLatestExecutionTime, AtomicReference::get);
-        meterRegistry.gauge(ENDPOINT_MINIMUM_EXEC_TIME, msMinimumExecutionTime, AtomicReference::get);
-        meterRegistry.gauge(ENDPOINT_MAXIMUM_EXEC_TIME, msMaximumExecutionTime, AtomicReference::get);
-        meterRegistry.gauge(ENDPOINT_AVERAGE_EXEC_TIME, msAverageExecutionTime, AtomicReference::get);
+        meterRegistry.gauge(ENDPOINT_STD_DEV_JITTER_TIME, msStdDevJitterTime, AtomicReference::get);
+        meterRegistry.gauge(ENDPOINT_MINIMUM_JITTER_TIME, msMinimumJitterTime, AtomicReference::get);
+        meterRegistry.gauge(ENDPOINT_MAXIMUM_JITTER_TIME, msMaximumJitterTime, AtomicReference::get);
+        meterRegistry.gauge(ENDPOINT_MEAN_JITTER_TIME, msMeanJitterTime, AtomicReference::get);
     }
 
     @PostConstruct
@@ -163,15 +181,20 @@ public class VehicleManager
             logger.error("Unable to determine hostName!  Setting manager host to UNKNOWN");
             this.hostName = "UNKNOWN";
         }
+
         // DurationStyle.detect() determines the style (e.g., SIMPLE, ISO-8601) based on
         // the string
-        Duration duration = DurationStyle.detect(msPeriodString).parse(msPeriodString);
-        msPeriod = duration.toMillis();
+        Duration duration = DurationStyle.detect(msPollingPeriodString).parse(msPollingPeriodString);
+        msPollingPeriod = duration.toMillis();
+
+        duration = DurationStyle.detect(msUpdatePeriodString).parse(msUpdatePeriodString);
+        msUpdatePeriod = duration.toMillis();
 
         // Create the statistics collector to aid in publishing metrics.
-        this.statisticsCollector = new StatisticsCollector(updateStatCapacity, msPeriod);
+        this.statisticsCollector = new JitterStatisticsCollector(jitterStatCapacity);
 
-        logger.info("Starting VehicleManager with a period of {} milliseconds.", msPeriod);
+        logger.info("VehicleManager starting with polling period of {} ms; update Period {} ms.", msPollingPeriod,
+                msUpdatePeriod);
     }
 
     /**
@@ -246,6 +269,16 @@ public class VehicleManager
         return vMap;
     }
 
+    public void reset()
+    {
+        logger.info("Resetting the Redis variables");
+
+        redisTemplate.delete(VEHICLE_QUEUE);
+        redisTemplate.delete(ACTIVE_VEHICLE_REGISTRY);
+        redisTemplate.delete(VEHICLE_KEY);
+        redisTemplate.delete(TRIP_PLAN_KEY);
+    }
+
     /**
      * Retrieves a specific Vehicle by its UUID.
      *
@@ -296,6 +329,10 @@ public class VehicleManager
         redisTemplate.opsForHash().put(TRIP_PLAN_KEY, hashKey, tripPlan);
 
         processTripPlanData(vehicle.getId(), tripPlan);
+
+        // Update the last calculated time, since processTripPlandata can take a
+        // while...
+        vehicle.setLastCalculationEpochMillis(Instant.now().toEpochMilli());
 
         // Store the Vehicle.
         setVehicle(vehicle);
@@ -409,27 +446,53 @@ public class VehicleManager
      * @param vehicleId The UUID of the Vehicle.
      * @return The Directions object for the Vehicle.
      */
-    public Directions getVehicleDirections(UUID vehicleId)
+    public Directions getVehicleDirections(UUID vehicleId, boolean waitForResult)
     {
+        // Try to get Directions from the already computed map.
         Directions directions = directionsMap.get(vehicleId);
-
-        // If the Directions are null, then retrieve the TripPlan for this
-        // Vehicle, and generate the Directions and LineSegmentData.
-        if (directions == null)
+        if (directions != null)
         {
-            // The TripPlan was stored to Redis when the Vehicle was created, Go get it.
-            String hashKey = vehicleId.toString();
-            TripPlan tripPlan = (TripPlan) redisTemplate.opsForHash().get(TRIP_PLAN_KEY, hashKey);
+            return directions;
+        }
 
-            // Translate the TripPlan into data structures
-            processTripPlanData(vehicleId, tripPlan);
+        // Attempt to start an asynchronous load if not already in progress.
+        Future<Directions> future = directionsLoadingMap.computeIfAbsent(vehicleId,
+                id -> directionsExecutor.submit(() ->
+                {
+                    // Retrieve the TripPlan from Redis (or cache) for this vehicle.
+                    String hashKey = id.toString();
+                    TripPlan tripPlan = (TripPlan) redisTemplate.opsForHash().get(TRIP_PLAN_KEY, hashKey);
+                    if (tripPlan == null)
+                    {
+                        throw new IllegalStateException("TripPlan not found for Vehicle ID: " + id);
+                    }
 
-            directions = directionsMap.get(vehicleId);
+                    // Process the trip plan to build Directions and LineSegmentData.
+                    processTripPlanData(id, tripPlan);
+                    return directionsMap.get(id);
+                }));
 
-            if (directions == null)
-            {
-                throw new IllegalStateException("Unable to recreate Directions for Vehicle ID" + vehicleId);
-            }
+        // If caller said not to wait, return null to signal Vehicle is not ready to
+        // process on this instance.
+        if (!waitForResult)
+        {
+            return null;
+        }
+
+        try
+        {
+            // Wait for the asynchronous load to complete.
+            directions = future.get();
+        }
+        catch (InterruptedException | ExecutionException e)
+        {
+            throw new RuntimeException("Failed to load directions for Vehicle ID " + vehicleId, e);
+        }
+        finally
+        {
+            // Remove the future from the loading map so future requests can trigger a
+            // reload if needed.
+            directionsLoadingMap.remove(vehicleId);
         }
 
         return directions;
@@ -446,23 +509,11 @@ public class VehicleManager
         return lineSegmentDataMap.get(vehicleId);
     }
 
-    // Flag to track if the task is running
-    private final AtomicBoolean isRunning = new AtomicBoolean(false);
-
     long lastNsManagerStartTime = System.nanoTime();
 
-    @Scheduled(fixedRateString = "${com.tarterware.roadrunner.update-period}")
+    @Scheduled(fixedRateString = "${com.tarterware.roadrunner.vehicle-polling-period}")
     public void updateVehicles()
     {
-        // Try to set the flag to true; if it's already true, exit early.
-        if (!isRunning.compareAndSet(false, true))
-        {
-            // Another execution is still running.
-            logger.info("Another thread running; returning");
-            return;
-        }
-
-        long nsManagerStartTime = System.nanoTime();
         long currentEpochMillis = Instant.now().toEpochMilli();
         long msEpochTimeoutTime = currentEpochMillis - (1000 * SECS_VEHICLE_TIMEOUT);
 
@@ -470,7 +521,9 @@ public class VehicleManager
 
         try
         {
+            long vehicleCount = redisTemplate.opsForSet().size(ACTIVE_VEHICLE_REGISTRY);
             Set<ZSetOperations.TypedTuple<Object>> readyVehicles = fetchReadyVehicles(currentEpochMillis);
+            int readyVehicleCount = readyVehicles.size();
             if (readyVehicles != null)
             {
                 for (ZSetOperations.TypedTuple<Object> tuple : readyVehicles)
@@ -479,45 +532,48 @@ public class VehicleManager
                 }
             }
 
+            // Take care of corner case: with no vehicles, the stats never update.
+            // Add some jitter-free numbers so the averages will trend down.
+            if (vehicleCount == 0)
+            {
+                statisticsCollector.recordMeasurement(0);
+                statisticsCollector.recordMeasurement(0);
+                statisticsCollector.recordMeasurement(0);
+                statisticsCollector.recordMeasurement(0);
+                statisticsCollector.recordMeasurement(0);
+            }
             cleanupDeletedVehicles(deletionSet);
 
-            // Determine how long processing the available vehicles took and record it.
-            double msExecutionTime = (System.nanoTime() - nsManagerStartTime) / 1_000_000.0;
-            msLatestExecutionTime.set(msExecutionTime);
+            // Update the statistics endpoint variables.
+            double msMinimumJitterTime = statisticsCollector.getMin();
+            double msMaximumJitterTime = statisticsCollector.getMax();
+            double msMeanJitterTime = statisticsCollector.getMean();
+            double msStdDevJitterTime = statisticsCollector.getStandardDeviation();
+            this.msMinimumJitterTime.set(msMinimumJitterTime);
+            this.msMaximumJitterTime.set(msMaximumJitterTime);
+            this.msMeanJitterTime.set(msMeanJitterTime);
+            this.msStdDevJitterTime.set(msStdDevJitterTime);
 
-            // Update the statistics collector, then update the endpoint variables.
-            statisticsCollector.recordExecutionTime(msExecutionTime);
-            double msFrameTime = (nsManagerStartTime - lastNsManagerStartTime) / 1_000_000.0;
-            double msMinExecutionTime = statisticsCollector.getMinExecutionTime();
-            double msMaxExecutionTime = statisticsCollector.getMaxExecutionTime();
-            double msAveExecutionTime = statisticsCollector.getAverageExecutionTime();
-            msMinimumExecutionTime.set(msMinExecutionTime);
-            msMaximumExecutionTime.set(msMaxExecutionTime);
-            msAverageExecutionTime.set(msAveExecutionTime);
-            logger.atDebug().setMessage("Frm:{}; Cur:{}; Ave:{}; Min: {}; Max:{}")
-                    .addArgument(String.format("%.3f", msFrameTime)) // Frm
-                    .addArgument(String.format("%.3f", msExecutionTime)) // Cur
-                    .addArgument(String.format("%.3f", msAveExecutionTime)) // Ave
-                    .addArgument(String.format("%.3f", msMinExecutionTime)) // Min
-                    .addArgument(String.format("%.3f", msMaxExecutionTime)) // Max
+            // Log this information at debug level.
+            logger.atDebug().setMessage("Cnt:{}; Rdy:{}; Ave:{}; Std:{}; Min:{}; Max:{}")
+                    .addArgument(String.format("%3d", vehicleCount)) // Cnt
+                    .addArgument(String.format("%3d", readyVehicleCount)) // Rdy
+                    .addArgument(String.format("%.3f", msMeanJitterTime)) // Ave
+                    .addArgument(String.format("%.3f", msStdDevJitterTime)) // Std
+                    .addArgument(String.format("%.3f", msMinimumJitterTime)) // Min
+                    .addArgument(String.format("%.3f", msMaximumJitterTime)) // Max
                     .log();
-
-            lastNsManagerStartTime = nsManagerStartTime;
         }
         catch (Exception ex)
         {
             logger.error("Exception encountered during vehicle update", ex);
         }
-        finally
-        {
-            // Reset the flag, allowing subsequent executions.
-            isRunning.set(false);
-        }
     }
 
     private Set<ZSetOperations.TypedTuple<Object>> fetchReadyVehicles(long currentEpochMillis)
     {
-        return redisTemplate.opsForZSet().rangeByScoreWithScores(VEHICLE_QUEUE, 0, currentEpochMillis - msPeriod);
+        return redisTemplate.opsForZSet().rangeByScoreWithScores(VEHICLE_QUEUE, 0,
+                currentEpochMillis - msUpdatePeriod + msPollingPeriod / 4);
     }
 
     private void processVehicle(ZSetOperations.TypedTuple<Object> tuple, Set<UUID> deletionSet, long msEpochTimeoutTime)
@@ -538,24 +594,38 @@ public class VehicleManager
         if (vehicle != null)
         {
             // Retrieve additional data
-            vehicle.setDirections(getVehicleDirections(vehicleId));
-            vehicle.setListLineSegmentData(lineSegmentDataMap.get(vehicleId));
-
-            boolean updated = vehicle.update();
-
-            // Update execution time whether updated or not.
-            vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
-            setVehicle(vehicle);
-            if (!updated)
+            Directions vehicleDirections = getVehicleDirections(vehicleId, false);
+            if (vehicleDirections == null)
             {
-                if (vehicle.getLastCalculationEpochMillis() < msEpochTimeoutTime)
+                // If the vehicle directions are null, the data hasn't loaded yet. Setting the
+                // Vehicle will have the side effect of returning it to the queue.
+                setVehicle(vehicle);
+            }
+            else
+            {
+                vehicle.setDirections(vehicleDirections);
+                vehicle.setListLineSegmentData(lineSegmentDataMap.get(vehicleId));
+
+                // Calculate and record the jitter for this vehicle.
+                long msJitter = Instant.now().toEpochMilli() - vehicle.getLastCalculationEpochMillis();
+
+                statisticsCollector.recordMeasurement(msJitter);
+
+                boolean updated = vehicle.update();
+
+                // Update execution time whether updated or not.
+                vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
+                vehicle.setLastCalculationEpochMillis(Instant.now().toEpochMilli());
+
+                setVehicle(vehicle);
+
+                if (!updated)
                 {
-                    deletionSet.add(vehicleId);
-                    logger.info("Deleting vehicle ID {}", vehicle.getId());
-                }
-                else
-                {
-                    setVehicle(vehicle);
+                    if (vehicle.getLastCalculationEpochMillis() < msEpochTimeoutTime)
+                    {
+                        deletionSet.add(vehicleId);
+                        logger.info("Deleting vehicle ID {}", vehicle.getId());
+                    }
                 }
             }
         }
@@ -623,5 +693,4 @@ public class VehicleManager
             logger.info("Reconciled lineSegmentDataMap: Removed vehicles: {}", removedFromLineSegmentData);
         }
     }
-
 }

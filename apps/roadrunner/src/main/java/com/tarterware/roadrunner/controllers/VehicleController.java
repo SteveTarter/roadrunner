@@ -114,7 +114,7 @@ public class VehicleController
     @GetMapping("/get-vehicle-directions/{vehicleId}")
     ResponseEntity<Directions> getVehicleDirectionsFor(@PathVariable String vehicleId)
     {
-        Directions directions = vehicleManager.getVehicleDirections(UUID.fromString(vehicleId));
+        Directions directions = vehicleManager.getVehicleDirections(UUID.fromString(vehicleId), true);
         if (directions == null)
         {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
@@ -146,9 +146,7 @@ public class VehicleController
     @GetMapping("/reset-server")
     ResponseEntity<List<VehicleState>> resetServer()
     {
-        // TODO -
-        // Add routine that deletes all redis resources?
-        // vehicleManager.shutdown();
+        vehicleManager.reset();
 
         return new ResponseEntity<List<VehicleState>>(new ArrayList<VehicleState>(), HttpStatus.OK);
     }
