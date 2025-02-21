@@ -121,6 +121,7 @@ public class Vehicle
     // Timestamp of the last position update calculation.
     @JsonProperty
     @Getter
+    @Setter
     long lastCalculationEpochMillis;
 
     // Last time of executions for this Vehicle, in nanoseconds

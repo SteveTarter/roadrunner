@@ -143,7 +143,7 @@ class VehicleTest
         tuple.add(new DefaultTypedTuple<>(vehicleId.toString(), 1000.0));
         when(zSetOperations.rangeByScoreWithScores(any(), anyDouble(), anyDouble())).thenReturn(tuple);
 
-        vehicle.setDirections(vehicleManager.getVehicleDirections(vehicleId));
+        vehicle.setDirections(vehicleManager.getVehicleDirections(vehicleId, true));
         vehicle.setListLineSegmentData(vehicleManager.getLineSegmentData(vehicleId));
     }
 
