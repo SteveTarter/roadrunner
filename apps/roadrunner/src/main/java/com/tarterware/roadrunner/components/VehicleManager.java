@@ -573,7 +573,7 @@ public class VehicleManager
     private Set<ZSetOperations.TypedTuple<Object>> fetchReadyVehicles(long currentEpochMillis)
     {
         return redisTemplate.opsForZSet().rangeByScoreWithScores(VEHICLE_QUEUE, 0,
-                currentEpochMillis - msUpdatePeriod + msPollingPeriod / 4);
+                currentEpochMillis - msUpdatePeriod + (0.5 * msPollingPeriod));
     }
 
     private void processVehicle(ZSetOperations.TypedTuple<Object> tuple, Set<UUID> deletionSet, long msEpochTimeoutTime)
@@ -603,22 +603,32 @@ public class VehicleManager
             }
             else
             {
+                long msJitter = 0;
+                boolean updated = false;
+
                 vehicle.setDirections(vehicleDirections);
                 vehicle.setListLineSegmentData(lineSegmentDataMap.get(vehicleId));
 
                 // Calculate and record the jitter for this vehicle.
-                long msJitter = Instant.now().toEpochMilli() - vehicle.getLastCalculationEpochMillis();
+                long msSinceLastRun = Instant.now().toEpochMilli() - vehicle.getLastCalculationEpochMillis();
+                if (msSinceLastRun > msPollingPeriod)
+                {
 
+                    updated = vehicle.update();
+
+                    // If the vehicle was updated, update it's statistics.
+                    if (updated)
+                    {
+                        msJitter = msSinceLastRun - msUpdatePeriod;
+                    }
+                }
                 statisticsCollector.recordMeasurement(msJitter);
 
-                boolean updated = vehicle.update();
-
-                // Update execution time whether updated or not.
+                // Update vehicle execution time and store vehicle state
                 vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
-                vehicle.setLastCalculationEpochMillis(Instant.now().toEpochMilli());
-
                 setVehicle(vehicle);
 
+                // If the vehicle was not updated, see if it has reached timeout.
                 if (!updated)
                 {
                     if (vehicle.getLastCalculationEpochMillis() < msEpochTimeoutTime)
