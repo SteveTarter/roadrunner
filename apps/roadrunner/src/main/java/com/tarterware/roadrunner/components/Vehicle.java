@@ -221,19 +221,8 @@ public class Vehicle
      */
     public void updateMetersOffset(double metersOffset)
     {
-        if (metersOffset <= 0.0)
-        {
-            // Set the position to the start of the route.
-            List<Double> startLocation = directions.getWaypoints().get(0).getLocation();
-            positionLimited = false;
-            positionValid = true;
-            degLatitude = startLocation.get(1);
-            degLongitude = startLocation.get(0);
-
-            this.metersOffset = 0.0;
-            _determineDesiredSpeed();
-            return;
-        }
+        // If the requested offset is at or beyond the end offset, set the position
+        // limited flag, set position to the end position, and declare arrival.
         if (metersOffset >= directions.getRoutes().get(0).getDistance())
         {
             // Set the position to the end of the route.
@@ -248,7 +237,24 @@ public class Vehicle
             metersPerSecondDesired = 0.0;
             metersPerSecond = 0.0;
             logger.info("Vehicle " + id + " has arrived at its destination");
+            lastCalculationEpochMillis = Instant.now().toEpochMilli();
+
             return;
+        }
+
+        // If an offset of zero or less is requested, start the vehicle at the starting
+        // position, and set the recorded vehicle offset to 0.0.
+        if (metersOffset <= 0.0)
+        {
+            // Set the position to the start of the route.
+            List<Double> startLocation = directions.getWaypoints().get(0).getLocation();
+            positionLimited = false;
+            positionValid = true;
+            degLatitude = startLocation.get(1);
+            degLongitude = startLocation.get(0);
+
+            this.metersOffset = 0.0;
+            _determineDesiredSpeed();
         }
 
         // First, determine the appropriate LineSegmentData to use.
