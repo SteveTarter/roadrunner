@@ -18,7 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.IntStream;
+import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -31,10 +31,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.convert.DurationStyle;
 import org.springframework.core.env.Environment;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ScanOptions;
-import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -217,7 +218,7 @@ public class VehicleManager
     public Map<UUID, Vehicle> getVehicleMap(int page, int pageSize)
     {
         // Create a Map of Vehicles to return
-        Map<UUID, Vehicle> vMap = new HashMap<UUID, Vehicle>();
+        Map<UUID, Vehicle> vMap = new HashMap<>();
 
         // Use SSCAN to iterate over the elements of the set
         ScanOptions scanOptions = ScanOptions.scanOptions().count(pageSize).build();
@@ -233,22 +234,26 @@ public class VehicleManager
 
         // Now, loop through the cursor, filling up to "pageSize" vehicleId elements.
         int recordsToFill = pageSize;
-        List<Object> vehicleIds = new ArrayList<>();
+        List<String> vehicleIdList = new ArrayList<>();
         while ((recordsToFill > 0) && cursor.hasNext())
         {
             String vehicleId = cursor.next().toString();
-            vehicleIds.add(vehicleId);
+            vehicleIdList.add(vehicleId);
             recordsToFill--;
         }
-        List<Object> vehicleObjects = redisTemplate.opsForHash().multiGet(VEHICLE_KEY, vehicleIds);
 
-        // Iterate over the list of keys using the same index as in vehicleObjects.
-        IntStream.range(0, vehicleIds.size()).forEach(i ->
+        // Convert each vehicle ID to its full key
+        List<String> keys = vehicleIdList.stream().map(id -> getVehicleKey(UUID.fromString(id)))
+                .collect(Collectors.toList());
+
+        // Fetch multiple Vehicle objects using opsForValue()
+        List<Object> vehicleObjects = redisTemplate.opsForValue().multiGet(keys);
+
+        // Process the fetched Vehicle objects
+        for (int i = 0; i < vehicleIdList.size(); i++)
         {
             Object obj = vehicleObjects.get(i);
-            // Extract the vehicle ID from the key (assuming the key is "Vehicle:" + id)
-            String id = (String) vehicleIds.get(i);
-
+            String id = vehicleIdList.get(i);
             if (obj == null)
             {
                 // If the vehicle is null, perform redis cleanup.
@@ -264,7 +269,7 @@ public class VehicleManager
                     vMap.put(vehicle.getId(), vehicle);
                 }
             }
-        });
+        }
 
         return vMap;
     }
@@ -287,6 +292,15 @@ public class VehicleManager
      */
     public Vehicle getVehicle(UUID uuid)
     {
+        String vehicleKey = getVehicleKey(uuid);
+
+        Vehicle vehicle = (Vehicle) redisTemplate.opsForValue().get(vehicleKey);
+
+        return vehicle;
+    }
+
+    public Vehicle getVehicleOld(UUID uuid)
+    {
         String hashKey = uuid.toString();
 
         Vehicle vehicle = (Vehicle) redisTemplate.opsForHash().get(VEHICLE_KEY, hashKey);
@@ -294,17 +308,9 @@ public class VehicleManager
         return vehicle;
     }
 
-    private void setVehicle(Vehicle vehicle)
+    public String getVehicleKey(UUID vehicleId)
     {
-        String hashKey = vehicle.getId().toString();
-
-        // Add a marker that this manager calculated the vehicle state.
-        vehicle.setManagerHost(hostName);
-
-        redisTemplate.opsForHash().put(VEHICLE_KEY, hashKey, vehicle);
-
-        // Add it to the set of Vehicles to be updated.
-        redisTemplate.opsForZSet().add(VEHICLE_QUEUE, hashKey, vehicle.lastCalculationEpochMillis);
+        return String.format("vehicle:%s\n", vehicleId.toString());
     }
 
     /**
@@ -334,8 +340,14 @@ public class VehicleManager
         // while...
         vehicle.setLastCalculationEpochMillis(Instant.now().toEpochMilli());
 
-        // Store the Vehicle.
-        setVehicle(vehicle);
+        // Add a marker that this manager calculated the vehicle state.
+        vehicle.setManagerHost(hostName);
+
+        String vehicleKey = getVehicleKey(vehicle.getId());
+        redisTemplate.opsForValue().set(vehicleKey, vehicle);
+
+        // Add it to the set of Vehicles to be updated.
+        redisTemplate.opsForZSet().add(VEHICLE_QUEUE, hashKey, vehicle.lastCalculationEpochMillis);
 
         // Add the vehicle to the Active Vehicle Registry
         redisTemplate.opsForSet().add(ACTIVE_VEHICLE_REGISTRY, vehicle.getId().toString());
@@ -519,126 +531,130 @@ public class VehicleManager
 
         Set<UUID> deletionSet = new HashSet<>();
 
-        try
+        long vehicleCount = redisTemplate.opsForSet().size(ACTIVE_VEHICLE_REGISTRY);
+        Set<Object> readyVehicles = fetchReadyVehicles(currentEpochMillis);
+        int readyVehicleCount = 0;
+        if (readyVehicles != null)
         {
-            long vehicleCount = redisTemplate.opsForSet().size(ACTIVE_VEHICLE_REGISTRY);
-            Set<ZSetOperations.TypedTuple<Object>> readyVehicles = fetchReadyVehicles(currentEpochMillis);
-            int readyVehicleCount = readyVehicles.size();
-            if (readyVehicles != null)
+            readyVehicleCount = readyVehicles.size();
+
+            for (Object vehicleIdObj : readyVehicles)
             {
-                for (ZSetOperations.TypedTuple<Object> tuple : readyVehicles)
+                long nsVehicleStartTime = System.nanoTime();
+                UUID vehicleId = UUID.fromString((String) vehicleIdObj);
+
+                // If directions haven't finished generating, it will return null.
+                Directions vehicleDirections = getVehicleDirections(vehicleId, false);
+
+                if (vehicleDirections != null)
                 {
-                    processVehicle(tuple, deletionSet, msEpochTimeoutTime);
+                    String vehicleKey = getVehicleKey(vehicleId);
+
+                    try
+                    {
+                        redisTemplate.execute((RedisCallback<List<Object>>) redisConnection ->
+                        {
+                            redisConnection.watch(vehicleKey.getBytes());
+                            Vehicle vehicle = (Vehicle) redisTemplate.opsForValue().get(vehicleKey);
+                            if ((vehicle != null) && !vehicle.isProcessing())
+                            {
+                                // Set the processing flag to indicate update in progress.
+                                vehicle.setProcessing(true);
+                                redisTemplate.opsForValue().set(vehicleKey, vehicle);
+
+                                long msJitter = 0;
+                                boolean updated = false;
+
+                                vehicle.setDirections(vehicleDirections);
+                                vehicle.setListLineSegmentData(lineSegmentDataMap.get(vehicleId));
+
+                                // Calculate and record the jitter for this vehicle.
+                                long msSinceLastRun = Instant.now().toEpochMilli()
+                                        - vehicle.getLastCalculationEpochMillis();
+                                if (msSinceLastRun > msPollingPeriod)
+                                {
+
+                                    updated = vehicle.update();
+
+                                    // If the vehicle was updated, update it's statistics.
+                                    if (updated)
+                                    {
+                                        msJitter = msSinceLastRun - msUpdatePeriod;
+                                    }
+                                }
+                                statisticsCollector.recordMeasurement(msJitter);
+
+                                // Update vehicle execution time and store vehicle state
+                                vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
+
+                                // Clear flag indicating that the Vehicle was being updated
+                                vehicle.setProcessing(false);
+
+                                redisConnection.multi();
+                                redisTemplate.opsForValue().set(vehicleKey, vehicle);
+                                redisTemplate.opsForZSet().add(VEHICLE_QUEUE, vehicleId,
+                                        vehicle.getLastCalculationEpochMillis());
+
+                                // If the vehicle was not updated, see if it has reached timeout.
+                                if (!updated)
+                                {
+                                    if (vehicle.getLastCalculationEpochMillis() < msEpochTimeoutTime)
+                                    {
+                                        deletionSet.add(vehicleId);
+                                        logger.info("Deleting vehicle ID {}", vehicle.getId());
+                                    }
+                                }
+
+                                return (List<Object>) redisConnection.exec();
+                            }
+                            return (List<Object>) null;
+                        });
+                    }
+                    catch (OptimisticLockingFailureException e)
+                    {
+                        // Swallow; another instance serviced this Vehicle.
+                    }
                 }
             }
-
-            // Take care of corner case: with no vehicles, the stats never update.
-            // Add some jitter-free numbers so the averages will trend down.
-            if (vehicleCount == 0)
-            {
-                statisticsCollector.recordMeasurement(0);
-                statisticsCollector.recordMeasurement(0);
-                statisticsCollector.recordMeasurement(0);
-                statisticsCollector.recordMeasurement(0);
-                statisticsCollector.recordMeasurement(0);
-            }
-            cleanupDeletedVehicles(deletionSet);
-
-            // Update the statistics endpoint variables.
-            double msMinimumJitterTime = statisticsCollector.getMin();
-            double msMaximumJitterTime = statisticsCollector.getMax();
-            double msMeanJitterTime = statisticsCollector.getMean();
-            double msStdDevJitterTime = statisticsCollector.getStandardDeviation();
-            this.msMinimumJitterTime.set(msMinimumJitterTime);
-            this.msMaximumJitterTime.set(msMaximumJitterTime);
-            this.msMeanJitterTime.set(msMeanJitterTime);
-            this.msStdDevJitterTime.set(msStdDevJitterTime);
-
-            // Log this information at debug level.
-            logger.atDebug().setMessage("Cnt:{}; Rdy:{}; Ave:{}; Std:{}; Min:{}; Max:{}")
-                    .addArgument(String.format("%3d", vehicleCount)) // Cnt
-                    .addArgument(String.format("%3d", readyVehicleCount)) // Rdy
-                    .addArgument(String.format("%.3f", msMeanJitterTime)) // Ave
-                    .addArgument(String.format("%.3f", msStdDevJitterTime)) // Std
-                    .addArgument(String.format("%.3f", msMinimumJitterTime)) // Min
-                    .addArgument(String.format("%.3f", msMaximumJitterTime)) // Max
-                    .log();
         }
-        catch (Exception ex)
+
+        // Take care of corner case: with no vehicles, the stats never update.
+        // Add some jitter-free numbers so the averages will trend down.
+        if (vehicleCount == 0)
         {
-            logger.error("Exception encountered during vehicle update", ex);
+            statisticsCollector.recordMeasurement(0);
+            statisticsCollector.recordMeasurement(0);
+            statisticsCollector.recordMeasurement(0);
+            statisticsCollector.recordMeasurement(0);
+            statisticsCollector.recordMeasurement(0);
         }
+        cleanupDeletedVehicles(deletionSet);
+
+        // Update the statistics endpoint variables.
+        double msMinimumJitterTime = statisticsCollector.getMin();
+        double msMaximumJitterTime = statisticsCollector.getMax();
+        double msMeanJitterTime = statisticsCollector.getMean();
+        double msStdDevJitterTime = statisticsCollector.getStandardDeviation();
+        this.msMinimumJitterTime.set(msMinimumJitterTime);
+        this.msMaximumJitterTime.set(msMaximumJitterTime);
+        this.msMeanJitterTime.set(msMeanJitterTime);
+        this.msStdDevJitterTime.set(msStdDevJitterTime);
+
+        // Log this information at debug level.
+        logger.atDebug().setMessage("Cnt:{}; Rdy:{}; Ave:{}; Std:{}; Min:{}; Max:{}")
+                .addArgument(String.format("%3d", vehicleCount)) // Cnt
+                .addArgument(String.format("%3d", readyVehicleCount)) // Rdy
+                .addArgument(String.format("%.3f", msMeanJitterTime)) // Ave
+                .addArgument(String.format("%.3f", msStdDevJitterTime)) // Std
+                .addArgument(String.format("%.3f", msMinimumJitterTime)) // Min
+                .addArgument(String.format("%.3f", msMaximumJitterTime)) // Max
+                .log();
     }
 
-    private Set<ZSetOperations.TypedTuple<Object>> fetchReadyVehicles(long currentEpochMillis)
+    private Set<Object> fetchReadyVehicles(long currentEpochMillis)
     {
-        return redisTemplate.opsForZSet().rangeByScoreWithScores(VEHICLE_QUEUE, 0,
+        return redisTemplate.opsForZSet().rangeByScore(VEHICLE_QUEUE, 0,
                 currentEpochMillis - msUpdatePeriod + (0.5 * msPollingPeriod));
-    }
-
-    private void processVehicle(ZSetOperations.TypedTuple<Object> tuple, Set<UUID> deletionSet, long msEpochTimeoutTime)
-    {
-        long nsVehicleStartTime = System.nanoTime();
-        UUID vehicleId = UUID.fromString((String) tuple.getValue());
-
-        // Attempt to atomically remove the vehicle from the queue
-        Long removed = redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, vehicleId.toString());
-        if (removed == null || removed == 0)
-        {
-            // If removal was not successful, assume another instance has claimed it; skip
-            // processing.
-            return;
-        }
-
-        Vehicle vehicle = getVehicle(vehicleId);
-        if (vehicle != null)
-        {
-            // Retrieve additional data
-            Directions vehicleDirections = getVehicleDirections(vehicleId, false);
-            if (vehicleDirections == null)
-            {
-                // If the vehicle directions are null, the data hasn't loaded yet. Setting the
-                // Vehicle will have the side effect of returning it to the queue.
-                setVehicle(vehicle);
-            }
-            else
-            {
-                long msJitter = 0;
-                boolean updated = false;
-
-                vehicle.setDirections(vehicleDirections);
-                vehicle.setListLineSegmentData(lineSegmentDataMap.get(vehicleId));
-
-                // Calculate and record the jitter for this vehicle.
-                long msSinceLastRun = Instant.now().toEpochMilli() - vehicle.getLastCalculationEpochMillis();
-                if (msSinceLastRun > msPollingPeriod)
-                {
-
-                    updated = vehicle.update();
-
-                    // If the vehicle was updated, update it's statistics.
-                    if (updated)
-                    {
-                        msJitter = msSinceLastRun - msUpdatePeriod;
-                    }
-                }
-                statisticsCollector.recordMeasurement(msJitter);
-
-                // Update vehicle execution time and store vehicle state
-                vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
-                setVehicle(vehicle);
-
-                // If the vehicle was not updated, see if it has reached timeout.
-                if (!updated)
-                {
-                    if (vehicle.getLastCalculationEpochMillis() < msEpochTimeoutTime)
-                    {
-                        deletionSet.add(vehicleId);
-                        logger.info("Deleting vehicle ID {}", vehicle.getId());
-                    }
-                }
-            }
-        }
     }
 
     private void cleanupDeletedVehicles(Set<UUID> deletionSet)
