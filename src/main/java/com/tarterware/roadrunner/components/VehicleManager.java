@@ -573,6 +573,9 @@ public class VehicleManager
                                 // Update vehicle execution time and store vehicle state
                                 vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
 
+                                // Mark that this manager calculated the vehicle state.
+                                vehicle.setManagerHost(hostName);
+
                                 redisTemplate.opsForValue().set(vehicleKey, vehicle);
                                 redisTemplate.opsForZSet().add(VEHICLE_UPDATE_QUEUE_ZSET, vehicleId,
                                         vehicle.getLastCalculationEpochMillis());
