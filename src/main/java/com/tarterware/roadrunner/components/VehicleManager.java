@@ -31,9 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.convert.DurationStyle;
 import org.springframework.core.env.Environment;
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.redis.core.Cursor;
-import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -131,11 +129,11 @@ public class VehicleManager
     public static final String ENDPOINT_MAXIMUM_JITTER_TIME = "roadrunner.maximum.jitter.time.milliseconds";
     public static final String ENDPOINT_MEAN_JITTER_TIME = "roadrunner.mean.jitter.time.milliseconds";
 
-    public static final String VEHICLE_KEY = "Vehicle";
-
     public static final String ACTIVE_VEHICLE_REGISTRY = "ActiveVehicleRegistry";
 
-    public static final String VEHICLE_QUEUE = "VehicleQueue";
+    public static final String VEHICLE_UPDATE_LOCK_SET = "VehicleUpdateLockSet";
+
+    public static final String VEHICLE_UPDATE_QUEUE_ZSET = "VehicleUpdateQueue";
 
     public static final String TRIP_PLAN_KEY = "TripPlan";
 
@@ -258,8 +256,9 @@ public class VehicleManager
             {
                 // If the vehicle is null, perform redis cleanup.
                 logger.info("Vehicle ID {} no longer exists. Removing from queue.", id);
-                redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, id);
+                redisTemplate.opsForZSet().remove(VEHICLE_UPDATE_QUEUE_ZSET, id);
                 redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, id);
+                redisTemplate.opsForSet().remove(VEHICLE_UPDATE_LOCK_SET, id);
             }
             else
             {
@@ -278,10 +277,10 @@ public class VehicleManager
     {
         logger.info("Resetting the Redis variables");
 
-        redisTemplate.delete(VEHICLE_QUEUE);
+        redisTemplate.delete(VEHICLE_UPDATE_QUEUE_ZSET);
         redisTemplate.delete(ACTIVE_VEHICLE_REGISTRY);
-        redisTemplate.delete(VEHICLE_KEY);
         redisTemplate.delete(TRIP_PLAN_KEY);
+        redisTemplate.delete(VEHICLE_UPDATE_LOCK_SET);
     }
 
     /**
@@ -299,18 +298,9 @@ public class VehicleManager
         return vehicle;
     }
 
-    public Vehicle getVehicleOld(UUID uuid)
-    {
-        String hashKey = uuid.toString();
-
-        Vehicle vehicle = (Vehicle) redisTemplate.opsForHash().get(VEHICLE_KEY, hashKey);
-
-        return vehicle;
-    }
-
     public String getVehicleKey(UUID vehicleId)
     {
-        return String.format("vehicle:%s\n", vehicleId.toString());
+        return String.format("vehicle:%s", vehicleId.toString());
     }
 
     /**
@@ -347,7 +337,7 @@ public class VehicleManager
         redisTemplate.opsForValue().set(vehicleKey, vehicle);
 
         // Add it to the set of Vehicles to be updated.
-        redisTemplate.opsForZSet().add(VEHICLE_QUEUE, hashKey, vehicle.lastCalculationEpochMillis);
+        redisTemplate.opsForZSet().add(VEHICLE_UPDATE_QUEUE_ZSET, hashKey, vehicle.lastCalculationEpochMillis);
 
         // Add the vehicle to the Active Vehicle Registry
         redisTemplate.opsForSet().add(ACTIVE_VEHICLE_REGISTRY, vehicle.getId().toString());
@@ -548,20 +538,17 @@ public class VehicleManager
 
                 if (vehicleDirections != null)
                 {
-                    String vehicleKey = getVehicleKey(vehicleId);
-
-                    try
+                    // Attempt to add this vehicle ID to the update lock set. If the add fails,
+                    // another instance is updating this vehicle, and so should be skipped.
+                    if (redisTemplate.opsForSet().add(VEHICLE_UPDATE_LOCK_SET, vehicleId) > 0)
                     {
-                        redisTemplate.execute((RedisCallback<List<Object>>) redisConnection ->
-                        {
-                            redisConnection.watch(vehicleKey.getBytes());
-                            Vehicle vehicle = (Vehicle) redisTemplate.opsForValue().get(vehicleKey);
-                            if ((vehicle != null) && !vehicle.isProcessing())
-                            {
-                                // Set the processing flag to indicate update in progress.
-                                vehicle.setProcessing(true);
-                                redisTemplate.opsForValue().set(vehicleKey, vehicle);
+                        String vehicleKey = getVehicleKey(vehicleId);
 
+                        try
+                        {
+                            Vehicle vehicle = (Vehicle) redisTemplate.opsForValue().get(vehicleKey);
+                            if (vehicle != null)
+                            {
                                 long msJitter = 0;
                                 boolean updated = false;
 
@@ -573,7 +560,6 @@ public class VehicleManager
                                         - vehicle.getLastCalculationEpochMillis();
                                 if (msSinceLastRun > msPollingPeriod)
                                 {
-
                                     updated = vehicle.update();
 
                                     // If the vehicle was updated, update it's statistics.
@@ -587,12 +573,8 @@ public class VehicleManager
                                 // Update vehicle execution time and store vehicle state
                                 vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
 
-                                // Clear flag indicating that the Vehicle was being updated
-                                vehicle.setProcessing(false);
-
-                                redisConnection.multi();
                                 redisTemplate.opsForValue().set(vehicleKey, vehicle);
-                                redisTemplate.opsForZSet().add(VEHICLE_QUEUE, vehicleId,
+                                redisTemplate.opsForZSet().add(VEHICLE_UPDATE_QUEUE_ZSET, vehicleId,
                                         vehicle.getLastCalculationEpochMillis());
 
                                 // If the vehicle was not updated, see if it has reached timeout.
@@ -605,14 +587,16 @@ public class VehicleManager
                                     }
                                 }
 
-                                return (List<Object>) redisConnection.exec();
                             }
-                            return (List<Object>) null;
-                        });
-                    }
-                    catch (OptimisticLockingFailureException e)
-                    {
-                        // Swallow; another instance serviced this Vehicle.
+                        }
+                        catch (Exception e)
+                        {
+                            logger.error("Unexpected Exception updating vehicle {}", vehicleId, e);
+                        }
+                        finally
+                        {
+                            redisTemplate.opsForSet().remove(VEHICLE_UPDATE_LOCK_SET, vehicleId);
+                        }
                     }
                 }
             }
@@ -653,7 +637,7 @@ public class VehicleManager
 
     private Set<Object> fetchReadyVehicles(long currentEpochMillis)
     {
-        return redisTemplate.opsForZSet().rangeByScore(VEHICLE_QUEUE, 0,
+        return redisTemplate.opsForZSet().rangeByScore(VEHICLE_UPDATE_QUEUE_ZSET, 0,
                 currentEpochMillis - msUpdatePeriod + (0.5 * msPollingPeriod));
     }
 
@@ -674,8 +658,7 @@ public class VehicleManager
         deletionSet.forEach(vehicleID ->
         {
             String hashKey = vehicleID.toString();
-            redisTemplate.opsForHash().delete(VEHICLE_KEY, hashKey);
-            redisTemplate.opsForZSet().remove(VEHICLE_QUEUE, hashKey);
+            redisTemplate.opsForZSet().remove(VEHICLE_UPDATE_QUEUE_ZSET, hashKey);
             redisTemplate.opsForSet().remove(ACTIVE_VEHICLE_REGISTRY, hashKey);
         });
     }

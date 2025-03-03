@@ -142,7 +142,8 @@ class VehicleTest
 
         // Ensure Redis returns the vehicle when asked by ID
         UUID vehicleId = vehicle.getId();
-        when(hashOperations.get(VehicleManager.VEHICLE_KEY, vehicleId.toString())).thenReturn(vehicle);
+        String vehicleKey = vehicleManager.getVehicleKey(vehicleId);
+        when(valueOperations.get(vehicleKey.toString())).thenReturn(vehicle);
 
         // Stub "ready" vehicle IDs in Redis
         tuple.add(new DefaultTypedTuple<>(vehicleId.toString(), 1000.0));
