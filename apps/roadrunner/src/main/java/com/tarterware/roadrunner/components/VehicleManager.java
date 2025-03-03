@@ -558,6 +558,7 @@ public class VehicleManager
                                 // Calculate and record the jitter for this vehicle.
                                 long msSinceLastRun = Instant.now().toEpochMilli()
                                         - vehicle.getLastCalculationEpochMillis();
+
                                 if (msSinceLastRun > msPollingPeriod)
                                 {
                                     updated = vehicle.update();
@@ -641,7 +642,7 @@ public class VehicleManager
     private Set<Object> fetchReadyVehicles(long currentEpochMillis)
     {
         return redisTemplate.opsForZSet().rangeByScore(VEHICLE_UPDATE_QUEUE_ZSET, 0,
-                currentEpochMillis - msUpdatePeriod + (0.5 * msPollingPeriod));
+                currentEpochMillis - msUpdatePeriod + (long) (msPollingPeriod));
     }
 
     private void cleanupDeletedVehicles(Set<UUID> deletionSet)
