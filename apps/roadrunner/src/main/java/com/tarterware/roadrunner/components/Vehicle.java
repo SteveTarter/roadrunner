@@ -135,11 +135,6 @@ public class Vehicle
     @Setter
     String managerHost;
 
-    // Processing in progress flag
-    @Getter
-    @Setter
-    private boolean processing;
-
     @Setter
     private Directions directions;
 
