@@ -642,7 +642,7 @@ public class VehicleManager
     private Set<Object> fetchReadyVehicles(long currentEpochMillis)
     {
         return redisTemplate.opsForZSet().rangeByScore(VEHICLE_UPDATE_QUEUE_ZSET, 0,
-                currentEpochMillis - msUpdatePeriod + (long) (msPollingPeriod));
+                currentEpochMillis - msUpdatePeriod + msPollingPeriod);
     }
 
     private void cleanupDeletedVehicles(Set<UUID> deletionSet)
@@ -704,6 +704,21 @@ public class VehicleManager
         if (!removedFromLineSegmentData.isEmpty())
         {
             logger.info("Reconciled lineSegmentDataMap: Removed vehicles: {}", removedFromLineSegmentData);
+        }
+
+        // Update the JitterStatisticsCollector so that the 10 last stats will be
+        // recorded.
+        int vehicleCount = (int) (10 * redisTemplate.opsForSet().size(ACTIVE_VEHICLE_REGISTRY));
+        if (vehicleCount < 200)
+        {
+            vehicleCount = 200;
+        }
+
+        if (vehicleCount != statisticsCollector.getCount())
+        {
+            logger.info("Reconfiguring statistics collector to have {} slots", vehicleCount);
+
+            statisticsCollector = new JitterStatisticsCollector(statisticsCollector, vehicleCount);
         }
     }
 }

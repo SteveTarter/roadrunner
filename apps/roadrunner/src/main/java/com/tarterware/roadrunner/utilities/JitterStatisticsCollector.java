@@ -29,6 +29,29 @@ public class JitterStatisticsCollector
         this.measurements = new double[capacity];
     }
 
+    public JitterStatisticsCollector(JitterStatisticsCollector other, int newCapacity)
+    {
+        if (newCapacity < 1)
+        {
+            throw new IllegalArgumentException("Capacity must be at least 1");
+        }
+
+        this.capacity = newCapacity;
+        this.measurements = new double[newCapacity];
+        int origStart = 0;
+        if (newCapacity < other.capacity)
+        {
+            origStart = newCapacity - other.capacity;
+        }
+        int length = Math.min(newCapacity, other.capacity);
+        System.arraycopy(other.measurements, origStart, measurements, 0, length);
+        count = length;
+        index = length - 1;
+
+        // Recalculate all statistics over the current window.
+        recalcAll();
+    }
+
     /**
      * Records a new measurement. If the collector is full, it replaces the oldest
      * value and then recalculates statistics over the entire window.
