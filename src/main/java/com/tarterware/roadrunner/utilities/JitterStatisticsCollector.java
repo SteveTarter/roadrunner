@@ -41,7 +41,7 @@ public class JitterStatisticsCollector
         int origStart = 0;
         if (newCapacity < other.capacity)
         {
-            origStart = newCapacity - other.capacity;
+            origStart = other.capacity - newCapacity;
         }
         int length = Math.min(newCapacity, other.capacity);
         System.arraycopy(other.measurements, origStart, measurements, 0, length);
