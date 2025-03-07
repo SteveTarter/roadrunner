@@ -389,7 +389,7 @@ public class VehicleManager
      * <li>Stores the Directions and LineSegmentData in the respective maps for
      * later use.</li>
      * </ol>
-     * 
+     *
      * @param vehicleId The UUID of the Vehicle.
      * @param tripPlan  The TripPlan containing route and stop information.
      */
@@ -641,7 +641,8 @@ public class VehicleManager
 
                                 if (msJitter > 400)
                                 {
-                                    logger.info("{}/{}; {}; Vehicle {}", index, readyVehicleCount, vehicleId, msJitter);
+                                    logger.info("{}/{}; {} ms; Vehicle {}", //
+                                            index, readyVehicleCount, msJitter, vehicleId);
                                 }
 
                                 // Update vehicle execution time and store vehicle state
