@@ -22,7 +22,7 @@ resource "kubernetes_manifest" "roadrunner_service_monitor" {
         {
           port = "http-metrics"  # Port application exposes metrics on
           path = "/actuator/prometheus" # The prometheus path
-          interval = "15s" # Scrape interval
+          interval = "10s" # Scrape interval
           authorization = {
             type = "Bearer"
             credentials = {

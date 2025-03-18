@@ -4,67 +4,67 @@ prometheus:
 rules:
   custom:
     # Minimum execution time metric
-    - seriesQuery: 'roadrunner_minimum_execution_time_milliseconds{namespace!="",pod!=""}'
+    - seriesQuery: 'roadrunner_minimum_jitter_time_milliseconds{namespace!="",pod!=""}'
       name:
-        matches: roadrunner_minimum_execution_time_milliseconds
+        matches: roadrunner_minimum_jitter_time_milliseconds
       resources:
         overrides:
           namespace: { resource: "namespace" }
           pod: { resource: "pod" }
       # Use the minimum aggregator so that you get the lowest value from the matching series.
-      metricsQuery: 'min by (namespace, pod) (roadrunner_minimum_execution_time_milliseconds / 1000)'
+      metricsQuery: 'min by (namespace, pod) (roadrunner_minimum_jitter_time_milliseconds / 1000)'
 
-    # Maximum execution time metric
-    - seriesQuery: 'roadrunner_maximum_execution_time_milliseconds{namespace!="",pod!=""}'
+    # Maximum jitter time metric
+    - seriesQuery: 'roadrunner_maximum_jitter_time_milliseconds{namespace!="",pod!=""}'
       name:
-        matches: roadrunner_maximum_execution_time_milliseconds
+        matches: roadrunner_maximum_jitter_time_milliseconds
       resources:
         overrides:
           namespace: { resource: "namespace" }
           pod: { resource: "pod" }
       # Use the maximum aggregator so that you capture the worst-case value.
-      metricsQuery: 'max by (namespace, pod) (roadrunner_maximum_execution_time_milliseconds / 1000)'
+      metricsQuery: 'max by (namespace, pod) (roadrunner_maximum_jitter_time_milliseconds / 1000)'
 
-    # Average execution time metric
-    - seriesQuery: 'roadrunner_average_execution_time_milliseconds{namespace!="",pod!=""}'
+    # Average jitter time metric
+    - seriesQuery: 'roadrunner_mean_jitter_time_milliseconds{namespace!="",pod!=""}'
       name:
-        matches: roadrunner_average_execution_time_milliseconds
+        matches: roadrunner_mean_jitter_time_milliseconds
       resources:
         overrides:
           namespace: { resource: "namespace" }
           pod: { resource: "pod" }
       # Using avg() may not make sense here,
       # so consider whether you need this signal at all.
-      metricsQuery: 'avg by (namespace, pod) (roadrunner_average_execution_time_milliseconds / 1000)'
+      metricsQuery: 'avg by (namespace, pod) (roadrunner_mean_jitter_time_milliseconds / 1000)'
 
   external:
-    # External metric for the minimum execution time (if needed)
-    - seriesQuery: 'roadrunner_minimum_execution_time_milliseconds{namespace!="",pod!=""}'
+    # External metric for the minimum jitter time (if needed)
+    - seriesQuery: 'roadrunner_minimum_jitter_time_milliseconds{namespace!="",pod!=""}'
       name:
-        as: "roadrunner_minimum_execution_time_milliseconds"
+        as: "roadrunner_minimum_jitter_time_milliseconds"
       resources:
         overrides:
           namespace: { resource: "namespace" }
           pod: { resource: "pod" }
-      metricsQuery: 'min by (namespace, pod) (roadrunner_minimum_execution_time_milliseconds / 1000)'
+      metricsQuery: 'min by (namespace, pod) (roadrunner_minimum_jitter_time_milliseconds / 1000)'
 
-    # External metric for the maximum execution time (recommended for scaling)
-    - seriesQuery: 'roadrunner_maximum_execution_time_milliseconds{namespace!="",pod!=""}'
+    # External metric for the maximum jitter time (recommended for scaling)
+    - seriesQuery: 'roadrunner_maximum_jitter_time_milliseconds{namespace!="",pod!=""}'
       name:
-        as: "roadrunner_maximum_execution_time_milliseconds"
+        as: "roadrunner_maximum_jitter_time_milliseconds"
       resources:
         overrides:
           namespace: { resource: "namespace" }
           pod: { resource: "pod" }
-      metricsQuery: 'max by (namespace, pod) (roadrunner_maximum_execution_time_milliseconds / 1000)'
+      metricsQuery: 'max by (namespace, pod) (roadrunner_maximum_jitter_time_milliseconds / 1000)'
 
-    # External metric for the average execution time (if you really want to expose it)
-    - seriesQuery: 'roadrunner_average_execution_time_milliseconds{namespace!="",pod!=""}'
+    # External metric for the mean jitter time (if you really want to expose it)
+    - seriesQuery: 'roadrunner_mean_jitter_time_milliseconds{namespace!="",pod!=""}'
       name:
-        as: "roadrunner_average_execution_time_milliseconds"
+        as: "roadrunner_mean_jitter_time_milliseconds"
       resources:
         overrides:
           namespace: { resource: "namespace" }
           pod: { resource: "pod" }
-      metricsQuery: 'avg by (namespace, pod) (roadrunner_average_execution_time_milliseconds / 1000)'
+      metricsQuery: 'avg by (namespace, pod) (roadrunner_mean_jitter_time_milliseconds / 1000)'
 

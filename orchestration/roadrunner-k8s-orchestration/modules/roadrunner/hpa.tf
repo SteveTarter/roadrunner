@@ -18,11 +18,11 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "roadrunner_hpa" {
       type = "Pods"
       pods {
         metric {
-          name = "roadrunner_maximum_execution_time_milliseconds"
+          name = "roadrunner_mean_jitter_time_milliseconds"
         }
         target {
           type          = "AverageValue"
-          average_value = "175m"  # 175 milliseconds threshold
+          average_value = "100m"  # 100 milliseconds threshold
         }
       }
     }
