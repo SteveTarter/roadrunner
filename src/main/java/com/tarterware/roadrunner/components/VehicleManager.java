@@ -284,7 +284,7 @@ public class VehicleManager
      * <li>{@link #TRIP_PLAN_KEY}: The key storing trip plan information.</li>
      * <li>{@link #VEHICLE_UPDATE_LOCK_SET}: The set used for locking vehicles
      * during updates.</li>
-     * <li>All keys starting with "vehicle:": These keys store individual vehicle
+     * <li>All keys starting with "{vehicle}:": These keys store individual vehicle
      * data.</li>
      * </ul>
      * This method is typically used to clean up the Redis database before starting
@@ -300,7 +300,7 @@ public class VehicleManager
         redisTemplate.delete(VEHICLE_UPDATE_LOCK_SET);
 
         // Delete all of the Vehicle data.
-        redisTemplate.delete("vehicle:*");
+        redisTemplate.delete("{vehicle}:*");
     }
 
     /**
@@ -320,14 +320,14 @@ public class VehicleManager
 
     /**
      * Returns the Redis key used to store a Vehicle object. The key is formatted as
-     * "vehicle:{vehicleId}".
+     * "{vehicle}:<vehicleId>".
      *
      * @param vehicleId The UUID of the Vehicle.
      * @return The formatted Redis key for the Vehicle.
      */
     public String getVehicleKey(UUID vehicleId)
     {
-        return String.format("vehicle:%s", vehicleId.toString());
+        return String.format("{vehicle}:%s", vehicleId.toString());
     }
 
     /**
