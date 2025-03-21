@@ -228,7 +228,8 @@ public class VehicleManager
         int index = page * pageSize;
         if (index > size)
         {
-            throw new IllegalArgumentException("Page " + page + " of page size " + pageSize + " outside bounds!");
+            throw new IllegalArgumentException(
+                    "Page " + page + " of page size " + pageSize + " outside " + size + " bounds!");
         }
 
         // Now, loop through the cursor, filling up to "pageSize" vehicleId elements.
