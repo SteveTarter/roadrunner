@@ -204,7 +204,7 @@ public class VehicleManager
      */
     public int getVehicleCount()
     {
-        return redisTemplate.opsForSet().size(ACTIVE_VEHICLE_REGISTRY).intValue();
+        return activeIdsList.size();
     }
 
     /**
