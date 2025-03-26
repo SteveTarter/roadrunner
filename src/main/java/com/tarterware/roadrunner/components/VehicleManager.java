@@ -638,13 +638,19 @@ public class VehicleManager
                                         msJitter = msSinceLastRun - msUpdatePeriod;
                                     }
                                 }
-                                statisticsCollector.recordMeasurement(msJitter);
 
-                                if (msJitter > 400)
+                                // FIXME - There must be a better way.
+                                // If all Rodarunner pods stop servicing the data for a while, the resulting
+                                // jitter reports can cause the autoscaler to spike. Capping the jitter value is
+                                // an attempt to address this.
+                                if (msJitter > (3 * msUpdatePeriod))
                                 {
                                     logger.info("{}/{}; {} ms; Vehicle {}", //
                                             index, readyVehicleCount, msJitter, vehicleId);
+
+                                    msJitter = 3 * msUpdatePeriod;
                                 }
+                                statisticsCollector.recordMeasurement(msJitter);
 
                                 // Update vehicle execution time and store vehicle state
                                 vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
