@@ -72,6 +72,10 @@ locals {
   redis_host = terraform.workspace == "minikube" && length(module.redis) > 0 ? module.redis[0].redis_host : var.aws_memorydb_host
 }
 
+module "prometheus" {
+  source = "./modules/prometheus"
+}
+
 module "roadrunner" {
   source = "./modules/roadrunner"
 
@@ -90,6 +94,7 @@ module "roadrunner" {
   auth0_api_rest_url_base        = var.auth0_api_rest_url_base
   tarterware_cert_arn            = var.tarterware_cert_arn
   redis_host                     = local.redis_host
+  prometheus_release_name        = module.prometheus.prometheus_release_name
 
   depends_on = [null_resource.redis_ready]
 }
