@@ -41,7 +41,7 @@ import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.models.mapbox.RouteLeg;
 import com.tarterware.roadrunner.models.mapbox.RouteStep;
 import com.tarterware.roadrunner.services.DirectionsService;
-import com.tarterware.roadrunner.utilities.JitterStatisticsCollector;
+import com.tarterware.roadrunner.utilities.StatisticsCollector;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -84,8 +84,8 @@ public class VehicleManager
     @Value("${com.tarterware.roadrunner.vehicle-polling-period:100ms}")
     private String msPollingPeriodString;
 
-    @Value("${com.tarterware.roadrunner.jitter-stat-capacity:200}")
-    private int jitterStatCapacity;
+    @Value("${com.tarterware.roadrunner.queue-stat-capacity:10}")
+    private int queueStatCapacity;
 
     // Polling period in milliseconds.
     private long msPollingPeriod;
@@ -113,22 +113,22 @@ public class VehicleManager
     // Service to retrieve directions for trip plans
     private DirectionsService directionsService;
 
-    // Class to provide jitter statistics over last few runs of update loop
-    private JitterStatisticsCollector statisticsCollector;
+    // Class to provide statistics over last few runs of update loop
+    private StatisticsCollector statisticsCollector;
 
     // Thread-safe implementation of Number used to access the latestExecutionTime
     // and the other exposed statistics.
-    private final AtomicReference<Double> msStdDevJitterTime = new AtomicReference<>(0.0);
-    private final AtomicReference<Double> msMinimumJitterTime = new AtomicReference<>(0.0);
-    private final AtomicReference<Double> msMaximumJitterTime = new AtomicReference<>(0.0);
-    private final AtomicReference<Double> msMeanJitterTime = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> stdDevQueueDepthRatio = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> minimumQueueDepthRatio = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> maximumQueueDepthRatio = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> meanQueueDepthRatio = new AtomicReference<>(0.0);
 
     public static final int SECS_VEHICLE_TIMEOUT = 30;
 
-    public static final String ENDPOINT_STD_DEV_JITTER_TIME = "roadrunner.std-dev.jitter.time.milliseconds";
-    public static final String ENDPOINT_MINIMUM_JITTER_TIME = "roadrunner.minimum.jitter.time.milliseconds";
-    public static final String ENDPOINT_MAXIMUM_JITTER_TIME = "roadrunner.maximum.jitter.time.milliseconds";
-    public static final String ENDPOINT_MEAN_JITTER_TIME = "roadrunner.mean.jitter.time.milliseconds";
+    public static final String ENDPOINT_STD_DEV_QUEUE_DEPTH_RATIO = "roadrunner.std-dev.queue.depth.ratio";
+    public static final String ENDPOINT_MINIMUM_QUEUE_DEPTH_RATIO = "roadrunner.minimum.queue.depth.ratio";
+    public static final String ENDPOINT_MAXIMUM_QUEUE_DEPTH_RATIO = "roadrunner.maximum.queue.depth.ratio";
+    public static final String ENDPOINT_MEAN_QUEUE_DEPTH_RATIO = "roadrunner.mean.queue.depth.ratio";
 
     public static final String ACTIVE_VEHICLE_REGISTRY = "ActiveVehicleRegistry";
 
@@ -160,10 +160,10 @@ public class VehicleManager
         this.redisTemplate = redisTemplate;
 
         // Register a gauge to expose the latest execution time.
-        meterRegistry.gauge(ENDPOINT_STD_DEV_JITTER_TIME, msStdDevJitterTime, AtomicReference::get);
-        meterRegistry.gauge(ENDPOINT_MINIMUM_JITTER_TIME, msMinimumJitterTime, AtomicReference::get);
-        meterRegistry.gauge(ENDPOINT_MAXIMUM_JITTER_TIME, msMaximumJitterTime, AtomicReference::get);
-        meterRegistry.gauge(ENDPOINT_MEAN_JITTER_TIME, msMeanJitterTime, AtomicReference::get);
+        meterRegistry.gauge(ENDPOINT_STD_DEV_QUEUE_DEPTH_RATIO, stdDevQueueDepthRatio, AtomicReference::get);
+        meterRegistry.gauge(ENDPOINT_MINIMUM_QUEUE_DEPTH_RATIO, minimumQueueDepthRatio, AtomicReference::get);
+        meterRegistry.gauge(ENDPOINT_MAXIMUM_QUEUE_DEPTH_RATIO, maximumQueueDepthRatio, AtomicReference::get);
+        meterRegistry.gauge(ENDPOINT_MEAN_QUEUE_DEPTH_RATIO, meanQueueDepthRatio, AtomicReference::get);
     }
 
     @PostConstruct
@@ -191,7 +191,7 @@ public class VehicleManager
         msUpdatePeriod = duration.toMillis();
 
         // Create the statistics collector to aid in publishing metrics.
-        this.statisticsCollector = new JitterStatisticsCollector(jitterStatCapacity);
+        this.statisticsCollector = new StatisticsCollector(queueStatCapacity);
 
         logger.info("VehicleManager starting with polling period of {} ms; update Period {} ms.", msPollingPeriod,
                 msUpdatePeriod);
@@ -571,15 +571,15 @@ public class VehicleManager
      * <li>Retrieves the vehicle's directions and line segment data.</li>
      * <li>Calculates the time since the last update and updates the vehicle's
      * position if necessary.</li>
-     * <li>Records jitter statistics, which measure the deviation from the expected
-     * update interval.</li>
+     * <li>Records queueDepthRatio statistics, which measure the deviation from the
+     * expected queue size waiting for processing.</li>
      * <li>Updates the vehicle's state in Redis, including its last execution time
      * and the manager host that performed the update.</li>
      * <li>Checks if the vehicle has timed out and marks it for deletion if
      * necessary.</li>
      * </ol>
      * After processing all vehicles, the method cleans up deleted vehicles and
-     * updates the jitter statistics for monitoring performance.
+     * updates the statistics for monitoring performance.
      */
     @Scheduled(fixedRateString = "${com.tarterware.roadrunner.vehicle-polling-period}")
     public void updateVehicles()
@@ -590,11 +590,11 @@ public class VehicleManager
         Set<UUID> deletionSet = new HashSet<>();
 
         long vehicleCount = redisTemplate.opsForSet().size(ACTIVE_VEHICLE_REGISTRY);
+
         Set<Object> readyVehicles = fetchReadyVehicles(currentEpochMillis);
         int readyVehicleCount = 0;
         if (readyVehicles != null)
         {
-            int index = 0;
             readyVehicleCount = readyVehicles.size();
 
             for (Object vehicleIdObj : readyVehicles)
@@ -618,7 +618,6 @@ public class VehicleManager
                             Vehicle vehicle = (Vehicle) redisTemplate.opsForValue().get(vehicleKey);
                             if (vehicle != null)
                             {
-                                long msJitter = 0;
                                 boolean updated = false;
 
                                 vehicle.setDirections(vehicleDirections);
@@ -631,26 +630,7 @@ public class VehicleManager
                                 if (msSinceLastRun > msPollingPeriod)
                                 {
                                     updated = vehicle.update();
-
-                                    // If the vehicle was updated, update it's statistics.
-                                    if (updated)
-                                    {
-                                        msJitter = msSinceLastRun - msUpdatePeriod;
-                                    }
                                 }
-
-                                // FIXME - There must be a better way.
-                                // If all Rodarunner pods stop servicing the data for a while, the resulting
-                                // jitter reports can cause the autoscaler to spike. Capping the jitter value is
-                                // an attempt to address this.
-                                if (msJitter > (3 * msUpdatePeriod))
-                                {
-                                    logger.info("{}/{}; {} ms; Vehicle {}", //
-                                            index, readyVehicleCount, msJitter, vehicleId);
-
-                                    msJitter = 3 * msUpdatePeriod;
-                                }
-                                statisticsCollector.recordMeasurement(msJitter);
 
                                 // Update vehicle execution time and store vehicle state
                                 vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
@@ -683,38 +663,39 @@ public class VehicleManager
                         }
                     }
                 }
-                index++;
             }
         }
+
+        // Calculate the factor
+        double expectedVehicleCount = ((double) msPollingPeriod / (double) msUpdatePeriod) * vehicleCount;
+        double queueDepthRatio = 0.0;
+        if (expectedVehicleCount != 0)
+        {
+            queueDepthRatio = readyVehicleCount / expectedVehicleCount;
+        }
+        statisticsCollector.recordMeasurement(queueDepthRatio);
 
         // Clean up the data of the vehicles that have been found to be deleted
         cleanupDeletedVehicles(deletionSet);
 
-        // Take care of corner case: with no vehicles, the stats never update.
-        // Add some jitter-free numbers so the averages will trend down.
-        if (vehicleCount == 0)
-        {
-            statisticsCollector.recordMeasurement(0);
-        }
-
         // Update the statistics endpoint variables.
-        double msMinimumJitterTime = statisticsCollector.getMin();
-        double msMaximumJitterTime = statisticsCollector.getMax();
-        double msMeanJitterTime = statisticsCollector.getMean();
-        double msStdDevJitterTime = statisticsCollector.getStandardDeviation();
-        this.msMinimumJitterTime.set(msMinimumJitterTime);
-        this.msMaximumJitterTime.set(msMaximumJitterTime);
-        this.msMeanJitterTime.set(msMeanJitterTime);
-        this.msStdDevJitterTime.set(msStdDevJitterTime);
+        double minimumQueueDepthRatio = statisticsCollector.getMin();
+        double maximumQueueDepthRatio = statisticsCollector.getMax();
+        double meanQueueDepthRatio = statisticsCollector.getMean();
+        double stdDevQueueDepthRatio = statisticsCollector.getStandardDeviation();
+        this.minimumQueueDepthRatio.set(minimumQueueDepthRatio);
+        this.maximumQueueDepthRatio.set(maximumQueueDepthRatio);
+        this.meanQueueDepthRatio.set(meanQueueDepthRatio);
+        this.stdDevQueueDepthRatio.set(stdDevQueueDepthRatio);
 
         // Log this information at debug level.
         logger.atDebug().setMessage("Cnt:{}; Rdy:{}; Ave:{}; Std:{}; Min:{}; Max:{}")
                 .addArgument(String.format("%3d", vehicleCount)) // Cnt
                 .addArgument(String.format("%3d", readyVehicleCount)) // Rdy
-                .addArgument(String.format("%.3f", msMeanJitterTime)) // Ave
-                .addArgument(String.format("%.3f", msStdDevJitterTime)) // Std
-                .addArgument(String.format("%.3f", msMinimumJitterTime)) // Min
-                .addArgument(String.format("%.3f", msMaximumJitterTime)) // Max
+                .addArgument(String.format("%.3f", meanQueueDepthRatio)) // Ave
+                .addArgument(String.format("%.3f", stdDevQueueDepthRatio)) // Std
+                .addArgument(String.format("%.3f", minimumQueueDepthRatio)) // Min
+                .addArgument(String.format("%.3f", maximumQueueDepthRatio)) // Max
                 .log();
     }
 
@@ -728,7 +709,7 @@ public class VehicleManager
     private Set<Object> fetchReadyVehicles(long currentEpochMillis)
     {
         return redisTemplate.opsForZSet().rangeByScore(VEHICLE_UPDATE_QUEUE_ZSET, 0,
-                currentEpochMillis - msUpdatePeriod + msPollingPeriod);
+                currentEpochMillis - msUpdatePeriod - (msPollingPeriod / 2));
     }
 
     /**
@@ -812,21 +793,6 @@ public class VehicleManager
         if (!removedFromLineSegmentData.isEmpty())
         {
             logger.info("Reconciled lineSegmentDataMap: Removed vehicles: {}", removedFromLineSegmentData);
-        }
-
-        // Update the JitterStatisticsCollector so that the 10 last statistics for each
-        // vehicle will be recorded.
-        int vehicleCount = (int) (10 * redisTemplate.opsForSet().size(ACTIVE_VEHICLE_REGISTRY));
-        if (vehicleCount < 10)
-        {
-            vehicleCount = 10;
-        }
-
-        if (vehicleCount != statisticsCollector.getCount())
-        {
-            logger.info("Reconfiguring statistics collector to have {} slots", vehicleCount);
-
-            statisticsCollector = new JitterStatisticsCollector(statisticsCollector, vehicleCount);
         }
     }
 
