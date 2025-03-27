@@ -40,11 +40,6 @@
     "description": "A description for 'prometheus.secret.namespace'"
   },
   {
-    "name": "com.tarterware.roadrunner.jitter-stat-capacity",
-    "type": "java.lang.String",
-    "description": "A description for 'com.tarterware.roadrunner.jitter-stat-capacity'"
-  },
-  {
     "name": "com.tarterware.roadrunner.vehicle-update-period",
     "type": "java.lang.String",
     "description": "A description for 'com.tarterware.roadrunner.vehicle-update-period'"
@@ -53,5 +48,10 @@
     "name": "com.tarterware.roadrunner.vehicle-polling-period",
     "type": "java.lang.String",
     "description": "A description for 'com.tarterware.roadrunner.vehicle-polling-period'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.queue-stat-capacity",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.queue-stat-capacity'"
   }
 ]}

@@ -53,9 +53,9 @@ The following variables need to be set in the `application.properties` file for 
   How often each vehicle should be updated.
   Example: `250ms`
 
-- **`com.tarterware.roadrunner.jitter-stat-capacity`**  
-  Number of reading to consider in jitter statistics
-  Example: `200`
+- **`com.tarterware.roadrunner.queue-stat-capacity`**  
+  Number of readings to consider in queue depth ratio statistics
+  Example: `10`
 
 - **`prometheus.secret.namespace`**  
   Namespace of secret for prometheus to obtain Bearer token.

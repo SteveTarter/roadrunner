@@ -1,150 +1,196 @@
 package com.tarterware.roadrunner.utilities;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.DoubleSummaryStatistics;
-import java.util.List;
-import java.util.stream.Collectors;
-
 /**
- * <p>
- * A utility class for collecting and maintaining a fixed-size collection of
- * double measurements (such as execution times). When the number of recorded
- * values reaches the specified capacity, the oldest value is automatically
- * removed to make room for a new one.
- * </p>
- * 
- * <p>
- * Example usage:
- * 
- * <pre>
- * // Create a StatisticsCollector that retains the last 10 execution times.
- * StatisticsCollector collector = new StatisticsCollector(10, 250);
- * 
- * // Record a new execution time measurement.
- * collector.recordExecutionTime(123.4);
- * 
- * // Get aggregate statistics.
- * double average = collector.getAverageExecutionTime();
- * double max = collector.getMaxExecutionTime();
- * </pre>
- * </p>
+ * A utility class for collecting statistics (mean, standard deviation, min, and
+ * max) over a fixed-size circular buffer.
  */
 public class StatisticsCollector
 {
-
-    /** A fixed-size queue to hold the recorded measurements. */
-    private final Deque<Double> executionTimes;
-
-    /** The maximum number of measurements to retain. */
+    // Maximum number of measurements to retain
     private final int capacity;
 
-    /** Threshold value; values above this will not be considered in stats. */
-    private double outlierThreshold;
+    // Circular buffer to hold measurements
+    private final double[] measurements;
 
-    private DoubleSummaryStatistics summaryStatistics;
+    // Current position in the circular buffer
+    private int index = 0;
+
+    // Current number of valid measurements in the buffer
+    private int count = 0;
+
+    // Recalculated statistics over the entire window
+    private double mean = 0.0;
+    private double m2 = 0.0; // Variance times (n-1)
+
+    // Minimum and maximum measurements observed
+    private double min = Double.MAX_VALUE;
+    private double max = Double.MIN_VALUE;
 
     /**
-     * Constructs a {@code StatisticsCollector} with the specified capacity.
-     * 
-     * @param capacity the maximum number of measurements to retain; must be at
-     *                 least 1
-     * @param msPeriod the expected period of the task
-     * @throws IllegalArgumentException if {@code capacity} is less than 1
+     * Constructs a new StatisticsCollector with the specified capacity.
+     *
+     * @param capacity the maximum number of measurements to retain
+     * @throws IllegalArgumentException if capacity is less than 1
      */
-    public StatisticsCollector(int capacity, long msPeriod)
+    public StatisticsCollector(int capacity)
     {
         if (capacity < 1)
         {
             throw new IllegalArgumentException("Capacity must be at least 1");
         }
-        if (msPeriod < 1)
-        {
-            throw new IllegalArgumentException("msPeriod must be at least 1");
-        }
         this.capacity = capacity;
-        this.executionTimes = new ArrayDeque<>(capacity);
-
-        // Define the threshhold as 130% of the nominal period.
-        this.outlierThreshold = (double) msPeriod * 1.3;
+        this.measurements = new double[capacity];
     }
 
     /**
-     * Records a new execution time measurement. If the collector has reached its
-     * capacity, the oldest measurement is automatically removed.
+     * Constructs a new StatisticsCollector using data from another collector, but
+     * with a new buffer capacity. Copies the most recent measurements up to the new
+     * capacity and recalculates statistics.
      *
-     * @param ms the execution time in milliseconds
+     * @param other       the original StatisticsCollector to copy from
+     * @param newCapacity the capacity of the new collector
+     * @throws IllegalArgumentException if newCapacity is less than 1
      */
-    public void recordExecutionTime(double ms)
+    public StatisticsCollector(StatisticsCollector other, int newCapacity)
     {
-        if (executionTimes.size() == capacity)
+        if (newCapacity < 1)
         {
-            // Remove the oldest measurement to maintain the fixed capacity.
-            executionTimes.poll();
+            throw new IllegalArgumentException("Capacity must be at least 1");
         }
-        executionTimes.offer(ms);
 
-        // Sort execution times and determine the 95th percentile cutoff
-        List<Double> sortedTimes = executionTimes.stream().sorted().collect(Collectors.toList());
-        int cutoffIndex = (int) (sortedTimes.size() * 0.95); // Top 5% outliers
+        this.capacity = newCapacity;
+        this.measurements = new double[newCapacity];
 
-        // Use only values up to the 95th percentile
-        List<Double> filteredTimes = sortedTimes.subList(0, cutoffIndex);
+        // If the new buffer is smaller, skip older values.
+        int origStart = 0;
+        if (newCapacity < other.capacity)
+        {
+            origStart = other.capacity - newCapacity;
+        }
 
-        // Compute the average of the filtered values
-        summaryStatistics = filteredTimes.stream().mapToDouble(Double::doubleValue).summaryStatistics();
+        int length = Math.min(newCapacity, other.capacity);
+        System.arraycopy(other.measurements, origStart, measurements, 0, length);
+        count = length;
+        index = length - 1;
+
+        // Recalculate all statistics over the current window.
+        recalcAll();
     }
 
     /**
-     * Calculates and returns the average of the recorded execution times.
+     * Records a new measurement. If the collector is full, it replaces the oldest
+     * value and then recalculates statistics over the entire window.
      *
-     * @return the average execution time, or <code>outlierThreshold</code> if no
-     *         measurements have been recorded
+     * @param value the measurement
      */
-    public double getAverageExecutionTime()
+    public synchronized void recordMeasurement(double value)
     {
-        return summaryStatistics.getCount() > 0 ? summaryStatistics.getAverage() : outlierThreshold;
+        // Write the new measurement into the circular buffer.
+        measurements[index] = value;
+        index = (index + 1) % capacity;
+        if (count < capacity)
+        {
+            count++;
+        }
+
+        // Recalculate all statistics over the current window.
+        recalcAll();
     }
 
     /**
-     * Returns the minimum execution time among the recorded measurements.
-     *
-     * @return the minimum execution time, or 0.0 if no measurements have been
-     *         recorded
+     * Recalculates mean, standard deviation, min, and max values from the current
+     * measurements in the buffer.
      */
-    public double getMinExecutionTime()
+    private void recalcAll()
     {
-        return summaryStatistics.getCount() > 0 ? summaryStatistics.getMin() : 0.0;
+        double sum = 0.0;
+        double sumSq = 0.0;
+        double currentMin = Double.MAX_VALUE;
+        double currentMax = Double.MIN_VALUE;
+
+        // When the buffer isn't full, only consider the first 'count' elements;
+        // when full, all 'capacity' elements are valid.
+        int n = (count < capacity) ? count : capacity;
+
+        for (int i = 0; i < n; i++)
+        {
+            double v = measurements[i];
+            sum += v;
+            sumSq += v * v;
+            if (v < currentMin)
+            {
+                currentMin = v;
+            }
+            if (v > currentMax)
+            {
+                currentMax = v;
+            }
+        }
+
+        mean = (n > 0) ? sum / n : 0.0;
+
+        // Compute sample variance (m2 is variance*(n-1))
+        if (n > 1)
+        {
+            double variance = (sumSq - n * mean * mean) / (n - 1);
+            m2 = variance;
+        }
+        else
+        {
+            m2 = 0.0;
+        }
+
+        min = currentMin;
+        max = currentMax;
     }
 
     /**
-     * Returns the maximum execution time among the recorded measurements.
+     * Returns the average of the recorded measurements.
      *
-     * @return the maximum execution time, or <code>outlierThreshold</code> if no
-     *         measurements have been recorded
+     * @return the mean value
      */
-    public double getMaxExecutionTime()
+    public synchronized double getMean()
     {
-        return summaryStatistics.getCount() > 0 ? summaryStatistics.getMax() : outlierThreshold;
+        return mean;
+    }
+
+    /**
+     * Returns the standard deviation of the recorded measurements.
+     *
+     * @return the standard deviation, or 0 if fewer than two values are recorded
+     */
+    public synchronized double getStandardDeviation()
+    {
+        return count > 1 ? Math.sqrt(m2) : 0.0;
+    }
+
+    /**
+     * Returns the minimum recorded measurement.
+     *
+     * @return the minimum value, or 0 if no measurements are recorded
+     */
+    public synchronized double getMin()
+    {
+        return count > 0 ? min : 0.0;
+    }
+
+    /**
+     * Returns the maximum recorded measurement.
+     *
+     * @return the maximum value, or 0 if no measurements are recorded
+     */
+    public synchronized double getMax()
+    {
+        return count > 0 ? max : 0.0;
     }
 
     /**
      * Returns the current number of recorded measurements.
      *
-     * @return the number of recorded execution times
+     * @return the number of values currently in the buffer
      */
-    public int getCount()
+    public synchronized int getCount()
     {
-        return executionTimes.size();
-    }
-
-    /**
-     * Returns the capacity of this collector.
-     *
-     * @return the maximum number of execution times this collector can store
-     */
-    public int getCapacity()
-    {
-        return capacity;
+        return count;
     }
 }

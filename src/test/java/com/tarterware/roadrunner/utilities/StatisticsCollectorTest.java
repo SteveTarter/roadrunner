@@ -5,22 +5,22 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
-class JitterStatisticsCollectorTest
+class StatisticsCollectorTest
 {
 
     @Test
     void testInvalidCapacity()
     {
         // Capacity must be at least 1
-        assertThrows(IllegalArgumentException.class, () -> new JitterStatisticsCollector(0));
-        assertThrows(IllegalArgumentException.class, () -> new JitterStatisticsCollector(-5));
+        assertThrows(IllegalArgumentException.class, () -> new StatisticsCollector(0));
+        assertThrows(IllegalArgumentException.class, () -> new StatisticsCollector(-5));
     }
 
     @Test
     void testInitialState()
     {
         // When no measurement has been recorded, statistics should be zero (or default)
-        JitterStatisticsCollector collector = new JitterStatisticsCollector(3);
+        StatisticsCollector collector = new StatisticsCollector(3);
         assertEquals(0, collector.getCount());
         assertEquals(0.0, collector.getMean(), 0.0001);
         assertEquals(0.0, collector.getStandardDeviation(), 0.0001);
@@ -31,7 +31,7 @@ class JitterStatisticsCollectorTest
     @Test
     void testSingleMeasurement()
     {
-        JitterStatisticsCollector collector = new JitterStatisticsCollector(3);
+        StatisticsCollector collector = new StatisticsCollector(3);
         collector.recordMeasurement(10.0);
         // With only one measurement, mean and min/max are equal, and std dev is 0.
         assertEquals(1, collector.getCount());
@@ -44,7 +44,7 @@ class JitterStatisticsCollectorTest
     @Test
     void testMultipleMeasurementsWithinCapacity()
     {
-        JitterStatisticsCollector collector = new JitterStatisticsCollector(3);
+        StatisticsCollector collector = new StatisticsCollector(3);
         collector.recordMeasurement(10.0);
         collector.recordMeasurement(20.0);
         collector.recordMeasurement(30.0);
@@ -64,7 +64,7 @@ class JitterStatisticsCollectorTest
     void testCircularBufferReplacement()
     {
         // With capacity 3, add 4 measurements so that the first value is replaced.
-        JitterStatisticsCollector collector = new JitterStatisticsCollector(3);
+        StatisticsCollector collector = new StatisticsCollector(3);
         collector.recordMeasurement(10.0); // buffer: [10]
         collector.recordMeasurement(20.0); // buffer: [10, 20]
         collector.recordMeasurement(30.0); // buffer: [10, 20, 30]
@@ -89,14 +89,14 @@ class JitterStatisticsCollectorTest
     void testCopyConstructorWithSmallerCapacity()
     {
         // Create an original collector with capacity 4.
-        JitterStatisticsCollector original = new JitterStatisticsCollector(4);
+        StatisticsCollector original = new StatisticsCollector(4);
         original.recordMeasurement(10.0);
         original.recordMeasurement(20.0);
         original.recordMeasurement(30.0);
         original.recordMeasurement(40.0);
         // Create a new collector with a smaller capacity (3). The copy constructor
         // should copy the last 3 measurements.
-        JitterStatisticsCollector copy = new JitterStatisticsCollector(original, 3);
+        StatisticsCollector copy = new StatisticsCollector(original, 3);
         // Expected window: [20, 30, 40]
         double expectedMean = (20.0 + 30.0 + 40.0) / 3.0; // 30.0
         double expectedStd = Math
@@ -116,13 +116,13 @@ class JitterStatisticsCollectorTest
     void testCopyConstructorWithLargerCapacity()
     {
         // Create an original collector with capacity 3.
-        JitterStatisticsCollector original = new JitterStatisticsCollector(3);
+        StatisticsCollector original = new StatisticsCollector(3);
         original.recordMeasurement(10.0);
         original.recordMeasurement(20.0);
         original.recordMeasurement(30.0);
         // Create a new collector with a larger capacity (5). The copy should contain
         // the existing measurements.
-        JitterStatisticsCollector copy = new JitterStatisticsCollector(original, 5);
+        StatisticsCollector copy = new StatisticsCollector(original, 5);
         // Expected window: [10, 20, 30]
         double expectedMean = (10.0 + 20.0 + 30.0) / 3.0; // 20.0
         double expectedStd = Math
