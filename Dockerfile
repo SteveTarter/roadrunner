@@ -1,4 +1,4 @@
-FROM openjdk:17
+FROM openjdk:21
 COPY ./target/*.jar roadrunner.jar
 ENTRYPOINT ["java","-jar","/roadrunner.jar"]
 # Web port
