@@ -21,7 +21,7 @@
     "react-bootstrap": "^2.10",
     "react-dom": "^18.3",
     "react-map-gl": "^7.1",
-    "react-router-dom": "^7.1",
+    "react-router-dom": "^7.9.3",
     "react-scripts": "^5.0.1",
     "reactstrap": "^9.2",
     "typescript": "^4"
@@ -36,6 +36,24 @@
       "react-app/jest"
     ]
   },
+  "overrides": {
+    "@babel/helpers": "^7.26.10",
+    "@babel/runtime": "^7.26.10",
+    "@svgr/plugin-svgo": "^6.5.1",
+    "@svgr/webpack": "^6.5.1",
+    "brace-expansion": "^1.1.12",
+    "compression": "^1.8.1",
+    "css-select": "^4.3.0",
+    "form-data": "^3.0.4",
+    "http-proxy-middleware": "^2.0.9",
+    "nth-check": "^2.1.1",
+    "on-headers": "^1.1.0",
+    "postcss": "^8.4.38",
+    "react-router": "^7.9.3",
+    "react-router-dom": "^7.9.3",
+    "svgo": "^2.8.0",
+    "webpack-dev-server": "^4.15.2"
+  },
   "browserslist": {
     "production": [
       ">0.2%",
@@ -49,6 +67,7 @@
     ]
   },
   "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@types/mapbox-gl": "^3.4",
     "@types/react-dom": "^18.3"
   }
