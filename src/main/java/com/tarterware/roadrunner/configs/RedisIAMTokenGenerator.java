@@ -18,6 +18,15 @@ public class RedisIAMTokenGenerator
     // Instance Metadata Service
     private static final String REGION = "us-east-1"; // Hard-coded region
 
+    /**
+     * Generates an IAM authentication token for accessing a Redis instance in AWS.
+     * This token is created using AWS Signature Version 4 signing process.
+     *
+     * @param host The hostname of the Redis instance.
+     * @param port The port number of the Redis instance.
+     * @return The IAM authentication token as a string.
+     * @throws RuntimeException if there is an error generating the token.
+     */
     public String generateIAMAuthToken(String host, int port)
     {
         try
