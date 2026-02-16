@@ -338,14 +338,14 @@ public class Vehicle
     public boolean update()
     {
         boolean updated = false;
-        Instant now = Instant.now();
+        long nowEpochMillis = Instant.now().toEpochMilli();
 
         // Don't bother to calculate an updated position if at the end of the trip.
         if (!positionLimited)
         {
             // If the vehicle speed isn't at the desired speed yet, determine
             // if it needs to go faster or slower, and adjust speed accordingly.
-            long msElapsed = now.toEpochMilli() - lastCalculationEpochMillis;
+            long msElapsed = nowEpochMillis - lastCalculationEpochMillis;
             if (metersPerSecond != metersPerSecondDesired)
             {
                 if (metersPerSecond < metersPerSecondDesired)
@@ -388,7 +388,7 @@ public class Vehicle
                 degBearing = normalize(degBearing);
             }
 
-            lastCalculationEpochMillis = now.toEpochMilli();
+            lastCalculationEpochMillis = nowEpochMillis;
             updated = true;
         }
 
