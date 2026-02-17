@@ -2,9 +2,9 @@ name: Build and Push to DockerHub
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    tags:
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,6 +14,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
+    - name: Extract release version
+      id: release_version
+      shell: bash
+      run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
@@ -36,4 +41,4 @@ jobs:
       with:
         context: .
         push: true
-        tags: tarterware/roadrunner-view:latest, tarterware/roadrunner-view:${{ github.run_number }}
+        tags: tarterware/roadrunner-view:latest, tarterware/roadrunner-view:${{ steps.release_version.outputs.version }}
