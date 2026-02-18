@@ -56,7 +56,7 @@ export const ProfilePage: React.FC = () => {
           </span>
         </p>
 
-        <div className="profile-grid">
+        <div className="profile-grid" style={{ position: "fixed", top: 100, left: 10 }}>
           <div className="profile__header">
             {user.picture ? (
               <img
