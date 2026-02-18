@@ -1,8 +1,8 @@
 import { Layer, Marker, Popup, Source } from "react-map-gl";
+import { fetchAuthSession } from "aws-amplify/auth";
 import type { LayerProps } from "react-map-gl";
 import type { Feature } from "geojson";
 import { useEffect, useState } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
 import { VehicleDisplay } from "../../models/VehicleDisplay";
 import { VehicleState } from "../../models/VehicleState";
 import { Button, Card } from "react-bootstrap";
@@ -11,28 +11,37 @@ export const VehicleIcon: React.FC<{
   vehicleState: VehicleState,
   vehicleDisplay: VehicleDisplay
 }> = (props) => {
-  const { getAccessTokenSilently } = useAuth0();
 
   const [token, setToken] = useState("");
   const [directionsGeometry, setDirectionsGeometry] = useState([]);
 
   const MPS_TO_MPH = 2.236936;
 
+  // Load (and silently refresh) an access token
   useEffect(() => {
-    if (token) {
-      return;
+    let cancelled = false;
+
+    async function loadToken() {
+      if (token) return;
+
+      try {
+        const session = await fetchAuthSession();
+        const accessToken = session.tokens?.accessToken?.toString();
+
+        if (!accessToken) {
+          console.error("No access token available. Route guard should have redirected to login.");
+          return;
+        }
+
+        if (!cancelled) setToken(accessToken);
+      } catch (error: any) {
+        console.error("Error fetching token:", error?.message ?? error);
+      }
     }
 
-    const audience = process.env.REACT_APP_AUTH0_AUDIENCE;
-    getAccessTokenSilently({
-      authorizationParams: {
-        audience: audience,
-      }
-    })
-      .then(async token => {
-        setToken(token);
-      });
-  }, [token, getAccessTokenSilently]);
+    loadToken();
+    return () => { cancelled = true; };
+  }, [token]);
 
   useEffect(() => {
 
@@ -67,7 +76,7 @@ export const VehicleIcon: React.FC<{
       }
     };
     fetchVehicleDirections();
-  }, [props.vehicleState.id, token, getAccessTokenSilently]);
+  }, [props.vehicleState.id, token]);
 
   function getLineLayer(id: string, colorCode: string, vehicleSize: number): LayerProps {
     return {

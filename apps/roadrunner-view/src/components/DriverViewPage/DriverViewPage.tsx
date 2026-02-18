@@ -1,5 +1,5 @@
 import './DriverViewPage.css';
-import { useAuth0 } from "@auth0/auth0-react";
+import { fetchAuthSession } from "aws-amplify/auth";
 import { useCallback, useEffect, useState } from "react";
 import Map, { FullscreenControl, useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
@@ -13,7 +13,6 @@ import { ViewControl } from './ViewControl';
 export const DriverViewPage = () => {
   // Get the Vehicle ID from the URL in the window
   const vehicleId = (window.location.pathname).split('/')[2];
-  const { getAccessTokenSilently } = useAuth0();
   const navigate = useNavigate();
   const { driverViewPageMap } = useMap();
   const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN!;
@@ -41,14 +40,31 @@ export const DriverViewPage = () => {
   // Millisecond delay before executing load code.
   const MS_LOAD_DELAY_TIME = 500;
 
+  // Load (and silently refresh) an access token
   useEffect(() => {
-    if (!token) {
-      const audience = process.env.REACT_APP_AUTH0_AUDIENCE;
-      getAccessTokenSilently({ authorizationParams: { audience } })
-        .then(setToken)
-        .catch(error => console.error("Error fetching token:", error));
+    let cancelled = false;
+
+    async function loadToken() {
+      if (token) return;
+
+      try {
+        const session = await fetchAuthSession();
+        const accessToken = session.tokens?.accessToken?.toString();
+
+        if (!accessToken) {
+          console.error("No access token available. Route guard should have redirected to login.");
+          return;
+        }
+
+        if (!cancelled) setToken(accessToken);
+      } catch (error: any) {
+        console.error("Error fetching token:", error?.message ?? error);
+      }
     }
-  }, [token, getAccessTokenSilently]);
+
+    loadToken();
+    return () => { cancelled = true; };
+  }, [token]);
 
   const gotoHomePage = useCallback(() => {
     navigate('/home');

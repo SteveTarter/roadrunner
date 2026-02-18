@@ -1,7 +1,7 @@
 import { Button, Card, Form, FormLabel } from "react-bootstrap";
 import { useEffect, useState } from "react";
 import { Input } from "reactstrap";
-import { useAuth0 } from "@auth0/auth0-react";
+import { fetchAuthSession } from "aws-amplify/auth";
 // eslint-disable-next-line
 import { AddressAutofill } from '@mapbox/search-js-react';
 import { useNavigate } from "react-router-dom";
@@ -9,7 +9,6 @@ import { useNavigate } from "react-router-dom";
 export const CreateVehiclePanel = (props: {
   setIsCreateVehicleActive: any
 }) => {
-  const { getAccessTokenSilently } = useAuth0();
   const [token, setToken] = useState("");
 
   const navigate = useNavigate();
@@ -18,21 +17,31 @@ export const CreateVehiclePanel = (props: {
 
   const AddressAutofill = require('@mapbox/search-js-react').AddressAutofill;
 
+  // Load (and silently refresh) an access token
   useEffect(() => {
-    if (token) {
-      return;
+    let cancelled = false;
+
+    async function loadToken() {
+      if (token) return;
+
+      try {
+        const session = await fetchAuthSession();
+        const accessToken = session.tokens?.accessToken?.toString();
+
+        if (!accessToken) {
+          console.error("No access token available. Route guard should have redirected to login.");
+          return;
+        }
+
+        if (!cancelled) setToken(accessToken);
+      } catch (error: any) {
+        console.error("Error fetching token:", error?.message ?? error);
+      }
     }
 
-    const audience = process.env.REACT_APP_AUTH0_AUDIENCE;
-    getAccessTokenSilently({
-      authorizationParams: {
-        audience: audience,
-      }
-    })
-      .then(async token => {
-        setToken(token);
-      });
-  }, [token, getAccessTokenSilently]);
+    loadToken();
+    return () => { cancelled = true; };
+  }, [token]);
 
   const createVehicle = async (): Promise<void> => {
     const inputs = document.querySelectorAll("form input");
