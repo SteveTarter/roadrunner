@@ -22,26 +22,50 @@ variable "mapbox_api_key" {
   type        = string
 }
 
-variable "auth0_api_issuer_url" {
-  description = "The issuer URL for the Auth0 API, used for token verification."
+variable "cognito_redirect_sign_in" {
+  description = "The redirect sign in URL for the Cognito application."
   sensitive   = true
   type        = string
 }
 
-variable "auth0_api_domain" {
-  description = "The domain name for the Auth0 API."
+variable "cognito_redirect_sign_out" {
+  description = "The redirect sign outin URL for the Cognito application."
   sensitive   = true
   type        = string
 }
 
-variable "roadrunner_view_auth0_client_id" {
-  description = "The client ID for the Roadrunner View application within Auth0."
+variable "cognito_authority" {
+  description = "The authority URL for Cognito."
   sensitive   = true
   type        = string
 }
 
-variable "roadrunner_view_auth0_client_secret" {
-  description = "The client secret for the Roadrunner View application within Auth0."
+variable "cognito_client_id" {
+  description = "The client ID for the Cognito app"
+  sensitive   = true
+  type        = string
+}
+
+variable "cognito_redirect_uri" {
+  description = "The redirect URL for the Cognito application."
+  sensitive   = true
+  type        = string
+}
+
+variable "cognito_user_pool_id" {
+  description = "The User Pool ID for the Cognito application."
+  sensitive   = true
+  type        = string
+}
+
+variable "cognito_user_pool_client_id" {
+  description = "The User Pool ID for the Cognito application."
+  sensitive   = true
+  type        = string
+}
+
+variable "cognito_domain" {
+  description = "The domain for the Cognito application."
   sensitive   = true
   type        = string
 }

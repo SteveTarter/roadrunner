@@ -27,38 +27,14 @@ variable "spring_mail_password" {
   type        = string
 }
 
-variable "auth0_api_audience" {
-  description = "The audience value for the Auth0 API, used for authentication."
+variable "cognito_authority" {
+  description = "The authority URL for Cognito."
   sensitive   = true
   type        = string
 }
 
-variable "auth0_api_client_id" {
-  description = "The client ID for the Auth0 API, used for authentication."
-  sensitive   = true
-  type        = string
-}
-
-variable "auth0_api_client_secret" {
-  description = "The client secret for the Auth0 API, used for secure authentication."
-  sensitive   = true
-  type        = string
-}
-
-variable "auth0_api_scope" {
-  description = "The scope for the Auth0 API, defining access permissions."
-  sensitive   = true
-  type        = string
-}
-
-variable "auth0_api_issuer_url" {
-  description = "The issuer URL for the Auth0 API, used for token verification."
-  sensitive   = true
-  type        = string
-}
-
-variable "auth0_api_rest_url_base" {
-  description = "The base URL for the Auth0 API REST endpoint."
+variable "cognito_client_id" {
+  description = "The application client ID in Cognito."
   sensitive   = true
   type        = string
 }
