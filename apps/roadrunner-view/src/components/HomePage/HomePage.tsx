@@ -2,7 +2,6 @@ import './HomePage.css';
 import Map, { useMap } from "react-map-gl";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { SpinnerLoading } from "../Utils/SpinnerLoading"
-import { useAuth0 } from "@auth0/auth0-react";
 import { VehicleIcon } from './VehicleIcon';
 import { VehicleDisplay } from '../../models/VehicleDisplay';
 import { VehicleState } from '../../models/VehicleState';
@@ -13,10 +12,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { Button } from 'react-bootstrap';
 import { CreateVehiclePanel } from './CreateVehiclePanel';
+import { fetchAuthSession, signInWithRedirect } from "aws-amplify/auth";
 
 export const HomePage = () => {
-  const { getAccessTokenSilently } = useAuth0();
-
   const { homePageMap } = useMap();
 
   const [token, setToken] = useState("");
@@ -50,13 +48,34 @@ export const HomePage = () => {
   const SECS_VEHICLE_TIMEOUT = 30;
 
   useEffect(() => {
-    if (!token) {
-      const audience = process.env.REACT_APP_AUTH0_AUDIENCE;
-      getAccessTokenSilently({ authorizationParams: { audience } })
-        .then(setToken)
-        .catch(error => console.error("Error fetching token:", error));
+    let cancelled = false;
+
+    async function loadToken() {
+      if (token) return;
+
+      try {
+        const session = await fetchAuthSession();
+        const accessToken = session.tokens?.accessToken?.toString();
+
+        if (!accessToken) {
+          // No cached/refreshable session -> interactive login
+          await signInWithRedirect();
+          return;
+        }
+
+        if (!cancelled) setToken(accessToken);
+      } catch (e) {
+        console.error("Error fetching Cognito token:", e);
+        // optional: fall back to interactive login
+        // await signInWithRedirect();
+      }
     }
-  }, [token, getAccessTokenSilently]);
+
+    loadToken();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   // Memoize vehicle state list derived from the ref
   const vehicleStateList = useMemo(() => {
