@@ -13,56 +13,56 @@ Companion project of the Roadrunner Viewer
 
 The following variables need to be set in the `application.properties` file for the application to start:
 
-- **`spring.config.import`**  
+- `spring.config.import`  
   Specifies external properties files to import. Optional file for sensitive configuration.  
   Example: `optional:secrets.properties`
 
-- **`spring.data.rest.base-path`**  
+- `spring.data.rest.base-path`  
   Base path for REST API.  
   Example: `/`
 
-- **`mapbox.api.url`**  
+- `mapbox.api.url`  
   URL to the Mapbox API.  
   Example: `https://api.mapbox.com/`
 
-- **`management.endpoints.web.exposure.include`**  
+- `management.endpoints.web.exposure.include`  
   Management endpoints exposed via HTTP.  
   Example: `health,info`
 
-- **`management.endpoint.health.show-details`**  
+- `management.endpoint.health.show-details`  
   Show health endpoint details.  
   Example: `always`
 
-- **`com.tarterware.redis.host`**  
+- `com.tarterware.redis.host`  
   Host address of the Redis server.  
   Example: `127.0.0.1`
 
-- **`com.tarterware.redis.port`**  
+- `com.tarterware.redis.port`  
   Port of the Redis server.  
   Example: `6379`
 
-- **`spring.profiles.active`**
-  Active Spring profile.  Should be 'eks' for AWS builds.
+- `spring.profiles.active`  
+  Active Spring profile.  Should be 'eks' for AWS builds.  
   Example: `eks`
 
-- **`com.tarterware.roadrunner.vehicle-polling-period`**
-  How often to poll the ready list for vehicles
+- `com.tarterware.roadrunner.vehicle-polling-period`  
+  How often to poll the ready list for vehicles  
   Example: `100ms`
 
-- **`com.tarterware.roadrunner.vehicle-update-period`**  
-  How often each vehicle should be updated.
+- `com.tarterware.roadrunner.vehicle-update-period`  
+  How often each vehicle should be updated.  
   Example: `250ms`
 
-- **`com.tarterware.roadrunner.jitter-stat-capacity`**  
-  Number of reading to consider in jitter statistics
+- `com.tarterware.roadrunner.jitter-stat-capacity`  
+  Number of reading to consider in jitter statistics  
   Example: `200`
 
-- **`prometheus.secret.namespace`**  
-  Namespace of secret for prometheus to obtain Bearer token.
+- `prometheus.secret.namespace`  
+  Namespace of secret for prometheus to obtain Bearer token.  
   Example: `roadrunner`
 
-- **`prometheus.secret.name`**  
-  Namespace of secret for prometheus to obtain Bearer token.
+- `prometheus.secret.name`  
+  Namespace of secret for prometheus to obtain Bearer token.  
   Example: `prometheus-token-secret`
  
 
@@ -70,28 +70,32 @@ The following variables need to be set in the `application.properties` file for 
 
 The following variables should be set in a 'secrets.properties' file that is peer to the application properties.  Note that this is not in the repo by design.
 
-- **`mapbox.api.key`**
-  API key for the MapBox mapping provider
+- `mapbox.api.key`  
+  API key for the MapBox mapping provider  
   Example: `pk.bleggity-blah`
 
-- **`spring.security.oauth2.resourceserver.jwt.issuer-uri`**
-  OAuth2 JWT issuer
+- `spring.security.oauth2.resourceserver.jwt.issuer-uri`  
+  OAuth2 JWT issuer  
   Example: `https://dev-PROJECTID.us.auth0.com/`
 
-- **`auth0.api.audience`**
-  OAuth2 JWT issuer
+- `auth0.api.audience`  
+  OAuth2 JWT issuer  
   Example: `https://auth.PROJECTED.com/`
 
-- **`auth0.api.client-id`**
-  Auth0 Client ID
+- `auth0.api.client-id`  
+  Auth0 Client ID  
   Example: `a-client-id-but-not-this`
 
-- **`auth0.api.client-secret`**
-  Auth0 Client Secret
+- `auth0.api.client-secret`  
+  Auth0 Client Secret  
   Example: `nunyabiznezz`
 
-- **`com.tarterware.redis.password`**
-  Password to access redis outside AWS
+- `cognito.app-client-id`  
+  Cognito Client ID  
+  Example: `20ishlongalphanumeric`
+  
+- `com.tarterware.redis.password`  
+  Password to access redis outside AWS  
   Example: `nunyabiznezazzole`
 
 
