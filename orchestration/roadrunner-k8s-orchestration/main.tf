@@ -28,7 +28,7 @@ provider "aws" {
 
 # Configure Helm provider
 provider "helm" {
-  kubernetes {
+  kubernetes = {
     config_path = var.kubeconfig_path # Parameterized path for kubeconfig
     config_context = var.cluster_name
   }
@@ -81,20 +81,16 @@ module "roadrunner" {
 
   # This module sets up the core infrastructure for the Roadrunner application, including networking, IAM roles, and Kubernetes resources.
 
-  cluster_name                   = var.cluster_name
-  roadrunner_namespace           = var.roadrunner_namespace
-  mapbox_api_key                 = var.mapbox_api_key
-  spring_mail_username           = var.spring_mail_username
-  spring_mail_password           = var.spring_mail_password
-  auth0_api_client_id            = var.auth0_api_client_id
-  auth0_api_client_secret        = var.auth0_api_client_secret
-  auth0_api_scope                = var.auth0_api_scope
-  auth0_api_issuer_url           = var.auth0_api_issuer_url
-  auth0_api_audience             = var.auth0_api_audience
-  auth0_api_rest_url_base        = var.auth0_api_rest_url_base
-  tarterware_cert_arn            = var.tarterware_cert_arn
-  redis_host                     = local.redis_host
-  prometheus_release_name        = module.prometheus.prometheus_release_name
+  cluster_name                 = var.cluster_name
+  roadrunner_namespace         = var.roadrunner_namespace
+  mapbox_api_key               = var.mapbox_api_key
+  spring_mail_username         = var.spring_mail_username
+  spring_mail_password         = var.spring_mail_password
+  cognito_authority            = var.cognito_authority
+  cognito_client_id            = var.cognito_client_id
+  tarterware_cert_arn          = var.tarterware_cert_arn
+  redis_host                   = local.redis_host
+  prometheus_release_name      = module.prometheus.prometheus_release_name
 
   depends_on = [null_resource.redis_ready]
 }
@@ -104,16 +100,20 @@ module "roadrunner_view" {
 
   # This module configures the frontend for the Roadrunner application and relies on the `roadrunner` module to provide backend services and infrastructure. The dependency ensures that the backend is fully set up before the frontend configuration is applied.
 
-  roadrunner_namespace                 = var.roadrunner_namespace
-  roadrunner_rest_url_base             = var.roadrunner_rest_url_base
-  roadrunner_view_url_base             = var.roadrunner_view_url_base
-  mapbox_api_key                       = var.mapbox_api_key
-  auth0_api_issuer_url                 = var.auth0_api_issuer_url
-  auth0_api_domain                     = var.auth0_api_domain
-  roadrunner_view_auth0_client_id      = var.roadrunner_view_auth0_client_id
-  roadrunner_view_auth0_client_secret  = var.roadrunner_view_auth0_client_secret
-  tarterware_cert_arn                  = var.tarterware_cert_arn
-  tarterware_api_audience              = var.tarterware_api_audience
+  roadrunner_namespace         = var.roadrunner_namespace
+  roadrunner_rest_url_base     = var.roadrunner_rest_url_base
+  roadrunner_view_url_base     = var.roadrunner_view_url_base
+  mapbox_api_key               = var.mapbox_api_key
+  cognito_authority            = var.cognito_authority
+  cognito_client_id            = var.cognito_client_id
+  cognito_redirect_uri         = var.cognito_redirect_uri
+  cognito_user_pool_id         = var.cognito_user_pool_id
+  cognito_user_pool_client_id  = var.cognito_user_pool_client_id
+  cognito_domain               = var.cognito_domain
+  cognito_redirect_sign_in     = var.cognito_redirect_sign_in
+  cognito_redirect_sign_out    = var.cognito_redirect_sign_out
+  tarterware_cert_arn          = var.tarterware_cert_arn
+  tarterware_api_audience      = var.tarterware_api_audience
 
   depends_on = [module.roadrunner]
 }
