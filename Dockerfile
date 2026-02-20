@@ -1,4 +1,4 @@
-FROM openjdk:21
+FROM eclipse-temurin:21-jre
 COPY ./target/*.jar roadrunner.jar
 ENTRYPOINT ["java","-jar","/roadrunner.jar"]
 # Web port
