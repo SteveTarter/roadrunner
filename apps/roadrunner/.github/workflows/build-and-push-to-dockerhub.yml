@@ -16,11 +16,11 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: google-github-actions/release-please-action@v4
+      - uses: googleapis/release-please-action@v4
         id: release
         with:
           release-type: java # Tailored for Maven/Java projects
-          package-name: roadrunner
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   build:
     needs: release
@@ -43,9 +43,11 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
+    # Build and run tests with Maven
     - name: Build and Test with Maven
       run: mvn -B package --file pom.xml
 
+    # Publish test results
     - name: Archive Test Results
       if: always()
       uses: actions/upload-artifact@v4
@@ -53,9 +55,9 @@ jobs:
         name: test-results
         path: target/surefire-reports/
 
+    # Display test results in GitHub interface
     - name: Publish Test Report
       if: always()
-      continue-on-error: true
       uses: dorny/test-reporter@v1
       with:
         name: Unit Test Results
