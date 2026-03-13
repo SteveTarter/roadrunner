@@ -9,13 +9,14 @@ import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSatellite, faHome, faMap } from '@fortawesome/free-solid-svg-icons';
 import { ViewControl } from './ViewControl';
+import { CONFIG } from "../../config";
 
 export const DriverViewPage = () => {
   // Get the Vehicle ID from the URL in the window
   const vehicleId = (window.location.pathname).split('/')[2];
   const navigate = useNavigate();
   const { driverViewPageMap } = useMap();
-  const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN!;
+  const mapboxToken = CONFIG.MAPBOX_TOKEN;
 
   const [token, setToken] = useState("");
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -104,7 +105,7 @@ export const DriverViewPage = () => {
     if (!token) return;
 
     // Get the latest VehicleState
-    const restUrlBase = process.env.REACT_APP_ROADRUNNER_REST_URL_BASE!;
+    const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
     const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-vehicle-state/${vehicleId}`;
     fetch(getStatesUrl, {
       method: 'get',

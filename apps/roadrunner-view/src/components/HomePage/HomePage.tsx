@@ -13,12 +13,13 @@ import { faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash }
 import { Button } from 'react-bootstrap';
 import { CreateVehiclePanel } from './CreateVehiclePanel';
 import { fetchAuthSession, signInWithRedirect } from "aws-amplify/auth";
+import { CONFIG } from "../../config";
 
 export const HomePage = () => {
   const { homePageMap } = useMap();
 
   const [token, setToken] = useState("");
-  const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN!;
+  const mapboxToken = CONFIG.MAPBOX_TOKEN;
   const [vehicleSize, setVehicleSize] = useState(5);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -106,7 +107,7 @@ export const HomePage = () => {
     );
 
     // Get the latest VehicleStates
-    const restUrlBase = process.env.REACT_APP_ROADRUNNER_REST_URL_BASE!;
+    const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
 
     // Add page and pageSize parameters to the query string
     const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-all-vehicle-states?page=${pageNumber}`;

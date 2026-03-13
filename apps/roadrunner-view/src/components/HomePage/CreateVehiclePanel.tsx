@@ -5,6 +5,7 @@ import { fetchAuthSession } from "aws-amplify/auth";
 // eslint-disable-next-line
 import { AddressAutofill } from '@mapbox/search-js-react';
 import { useNavigate } from "react-router-dom";
+import { CONFIG } from "../../config";
 
 export const CreateVehiclePanel = (props: {
   setIsCreateVehicleActive: any
@@ -13,7 +14,7 @@ export const CreateVehiclePanel = (props: {
 
   const navigate = useNavigate();
 
-  const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN!;
+  const mapboxToken = CONFIG.MAPBOX_TOKEN;
 
   const AddressAutofill = require('@mapbox/search-js-react').AddressAutofill;
 
@@ -71,7 +72,7 @@ export const CreateVehiclePanel = (props: {
 
     console.log(formattedData);
 
-    const url = `${process.env.REACT_APP_ROADRUNNER_REST_URL_BASE}/api/vehicle/create-new`;
+    const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/create-new`;
     try {
       const response = await fetch(url, {
         method: 'post',

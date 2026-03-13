@@ -2,6 +2,7 @@ import './AppNavBar.css'
 import React, { useEffect, useMemo, useState } from "react";
 import { NavLink as RouterNavLink } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CONFIG } from "../../config";
 
 import {
   Collapse,
@@ -35,7 +36,7 @@ export const AppNavBar = ({ additionalMenuItems }: { additionalMenuItems?: React
 
   const toggle = () => setIsOpen(!isOpen);
 
-  const landingPageUri = process.env.REACT_APP_LANDING_PAGE_URL;
+  const landingPageUri = CONFIG.LANDING_PAGE_URL;
 
   // Load auth state + user attributes
   useEffect(() => {
