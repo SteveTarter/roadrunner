@@ -2,6 +2,7 @@ import { fetchAuthSession } from "aws-amplify/auth";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from "reactstrap";
+import { CONFIG } from "../../config";
 
 export const ManageMenu = (props: {
   openCreateVehicle: any
@@ -37,7 +38,7 @@ export const ManageMenu = (props: {
   }, [token]);
 
   const handleCreateCrissCross = async () => {
-    const url = `${process.env.REACT_APP_ROADRUNNER_REST_URL_BASE}/api/vehicle/create-crisscross`;
+    const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/create-crisscross`;
     const body = {
       degLatitude: 32.74666,
       degLongitude: -97.319507,
@@ -67,7 +68,7 @@ export const ManageMenu = (props: {
   };
 
   const handleResetServer = async () => {
-    const url = `${process.env.REACT_APP_ROADRUNNER_REST_URL_BASE}/api/vehicle/reset-server`;
+    const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/reset-server`;
     try {
       const response = await fetch(url, {
         method: 'get',

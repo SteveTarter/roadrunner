@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { VehicleDisplay } from "../../models/VehicleDisplay";
 import { VehicleState } from "../../models/VehicleState";
 import { Button, Card } from "react-bootstrap";
+import { CONFIG } from "../../config";
 
 export const VehicleIcon: React.FC<{
   vehicleState: VehicleState,
@@ -52,7 +53,7 @@ export const VehicleIcon: React.FC<{
 
       try {
         // Get the latest VehicleStates
-        const restUrlBase = process.env.REACT_APP_ROADRUNNER_REST_URL_BASE!;
+        const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
         const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-vehicle-directions/${props.vehicleState.id}`;
         fetch(getStatesUrl, {
           method: 'get',
