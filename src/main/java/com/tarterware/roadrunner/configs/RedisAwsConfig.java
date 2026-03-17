@@ -15,7 +15,9 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
-@Profile("eks") // Only use in the "eks" profile
+@Profile("memorydb") // This has been disabled. Since there is no memorydb profile, this is never
+                     // activated.
+
 public class RedisAwsConfig
 {
     @Value("${com.tarterware.redis.host}")
