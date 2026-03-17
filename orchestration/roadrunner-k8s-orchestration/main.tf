@@ -52,24 +52,11 @@ resource "kubernetes_namespace" "roadrunner_namespace" {
   }
 }
 
-# Install redis only on minikube.  MemoryDB will be used on EKS.  For now, that's hand-generated.
+# This module sets up a Redis instance to share data between Roadrunner instances.
 module "redis" {
   source = "./modules/redis"
-  count  = terraform.workspace == "minikube" ? 1 : 0
-
-# This module sets up a Redis instance to share datas between Roadrunner instances.
 
   roadrunner_namespace           = var.roadrunner_namespace
-}
-
-# Conditional null_resource for dependency
-resource "null_resource" "redis_ready" {
-  count = terraform.workspace == "minikube" ? 1 : 0
-}
-
-# Determine the redis host based on the workspace.
-locals {
-  redis_host = terraform.workspace == "minikube" && length(module.redis) > 0 ? module.redis[0].redis_host : var.aws_memorydb_host
 }
 
 module "prometheus" {
@@ -89,10 +76,12 @@ module "roadrunner" {
   cognito_authority            = var.cognito_authority
   cognito_client_id            = var.cognito_client_id
   tarterware_cert_arn          = var.tarterware_cert_arn
-  redis_host                   = local.redis_host
+  redis_host                   = module.redis.redis_host
+  redis_password               = module.redis.redis_password
   prometheus_release_name      = module.prometheus.prometheus_release_name
+  enable_service_monitor       = var.enable_service_monitor
 
-  depends_on = [null_resource.redis_ready]
+  depends_on = [module.redis]
 }
 
 module "roadrunner_view" {

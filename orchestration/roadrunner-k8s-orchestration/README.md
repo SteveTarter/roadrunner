@@ -116,7 +116,7 @@ kubectl config use-context <arn-of-cluster>
 
 ```bash
 terraform init -upgrade
-terraform plan -var-file=eks.tfvars
-terraform apply -var-file=eks.tfvars
+terraform plan -var-file=eks.tfvars -var='enable_service_monitor=false'
+terraform apply -var-file=eks.tfvars -var='enable_service_monitor=false'
 ```
 

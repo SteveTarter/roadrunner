@@ -104,8 +104,8 @@ variable "tarterware_api_audience" {
   type        = string
 }
 
-variable "aws_memorydb_host" {
-  description = "AWS MemoryDB host (redis replacement, AWS only)"
-  sensitive   = false
-  type        = string
+variable "enable_service_monitor" {
+  type        = bool
+  description = "Create the ServiceMonitor after the Prometheus CRDs exist"
+  default     = false
 }

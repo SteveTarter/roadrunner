@@ -17,6 +17,7 @@ mapbox.api.url=https://api.mapbox.com/
 spring.data.rest.base-path=/
 com.tarterware.redis.host=${var.redis_host}
 com.tarterware.redis.port=6379
+com.tarterware.redis.password=${var.redis_password}
 com.tarterware.roadrunner.vehicle-polling-period=100ms
 com.tarterware.roadrunner.vehicle-update-period=250ms
 com.tarterware.roadrunner.jitter-stat-capacity=200
