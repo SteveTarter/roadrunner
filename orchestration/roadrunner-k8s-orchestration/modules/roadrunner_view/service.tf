@@ -13,7 +13,7 @@ resource "kubernetes_service" "roadrunner_view_service" {
 
     port {
       port        = 13000 # Service port
-      target_port = 3000  # Application's internal listening port
+      target_port = 80    # Application's internal listening port
     }
   }
 }
