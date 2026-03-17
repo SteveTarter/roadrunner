@@ -49,8 +49,19 @@ variable "redis_host" {
   type        = string
 }
 
+variable "redis_password" {
+  description = "The password of the Redis service"
+  sensitive   = true
+  type        = string
+}
+
 variable "prometheus_release_name" {
   description = "The name of the Prometheus release"
   type        = string
 }
 
+variable "enable_service_monitor" {
+  type        = bool
+  description = "Create the ServiceMonitor after the Prometheus CRDs exist"
+  default     = false
+}
