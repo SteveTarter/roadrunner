@@ -100,8 +100,10 @@ kubectl config use-context minikube
 
 ```bash
 terraform init -upgrade
-terraform plan -var-file=minikube.tfvars
-terraform apply -var-file=minikube.tfvars
+terraform plan -var-file=minikube.tfvars -var='enable_kafka_cluster=false'
+terraform apply -var-file=minikube.tfvars -var='enable_kafka_cluster=false'
+terraform plan -var-file=minikube.tfvars -var='enable_kafka_cluster=true'
+terraform apply -var-file=minikube.tfvars -var='enable_kafka_cluster=true'
 ```
 
 ## Installation on AWS EKS
@@ -116,7 +118,9 @@ kubectl config use-context <arn-of-cluster>
 
 ```bash
 terraform init -upgrade
-terraform plan -var-file=eks.tfvars -var='enable_service_monitor=false'
-terraform apply -var-file=eks.tfvars -var='enable_service_monitor=false'
+terraform plan -var-file=eks.tfvars -var='enable_service_monitor=false' -var='enable_kafka_cluster=false'
+terraform apply -var-file=eks.tfvars -var='enable_service_monitor=false' -var='enable_kafka_cluster=false'
+terraform plan -var-file=eks.tfvars -var='enable_service_monitor=false' -var='enable_kafka_cluster=true'
+terraform apply -var-file=eks.tfvars -var='enable_service_monitor=false' -var='enable_kafka_cluster=true'
 ```
 

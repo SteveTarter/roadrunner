@@ -70,6 +70,28 @@ module "strimzi_operator" {
   chart_version   = "0.51.0"
 }
 
+module "kafka_cluster" {
+  source = "./modules/kafka-cluster"
+
+  providers = {
+    kubectl = kubectl
+  }
+
+  enabled             = var.enable_kafka_cluster
+  namespace           = kubernetes_namespace.roadrunner_namespace.metadata[0].name
+  cluster_name        = "roadrunner-kafka"
+  kafka_version       = "4.2.0"
+  replicas            = terraform.workspace == "eks" ? 1 : 1
+
+  storage_type        = var.kafka_storage_type
+  storage_size        = var.kafka_storage_size
+  storage_class       = var.kafka_storage_class
+
+  operator_dependency = module.strimzi_operator
+
+  depends_on          = [module.strimzi_operator]
+}
+
 module "roadrunner" {
   source = "./modules/roadrunner"
 
@@ -94,7 +116,8 @@ module "roadrunner" {
 module "roadrunner_view" {
   source = "./modules/roadrunner_view"
 
-  # This module configures the frontend for the Roadrunner application and relies on the `roadrunner` module to provide backend services and infrastructure. The dependency ensures that the backend is fully set up before the frontend configuration is applied.
+  # This module configures the frontend for the Roadrunner application and relies on the `roadrunner` module to provide backend services and infrastructure. 
+  # The dependency ensures that the backend is fully set up before the frontend configuration is applied.
 
   roadrunner_namespace         = var.roadrunner_namespace
   roadrunner_rest_url_base     = var.roadrunner_rest_url_base
