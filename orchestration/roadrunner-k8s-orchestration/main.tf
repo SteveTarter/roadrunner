@@ -63,6 +63,13 @@ module "prometheus" {
   source = "./modules/prometheus"
 }
 
+module "strimzi_operator" {
+  source          = "./modules/strimzi-operator"
+  namespace       = "strimzi"
+  watch_namespace = "roadrunner"
+  chart_version   = "0.51.0"
+}
+
 module "roadrunner" {
   source = "./modules/roadrunner"
 
