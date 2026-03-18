@@ -12,6 +12,19 @@ resource "helm_release" "kube_prometheus_stack" {
           serviceMonitorSelector: # Select the service monitors
             matchLabels:
               release: kube-prometheus-stack
+
+      # Fix for Minikube / Python 3.14 SSL strictness
+      grafana:
+        sidecar:
+          image:
+            tag: 1.28.0  # Pinning to a stable version with older Python
+          dashboards:
+            enabled: true
+          datasources:
+            enabled: true
+            # Applying the pin here as well to prevent the same error
+            image:
+              tag: 1.28.0
     EOT
   ]
 }
