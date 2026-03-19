@@ -59,9 +59,3 @@ variable "prometheus_release_name" {
   description = "The name of the Prometheus release"
   type        = string
 }
-
-variable "enable_service_monitor" {
-  type        = bool
-  description = "Create the ServiceMonitor after the Prometheus CRDs exist"
-  default     = false
-}

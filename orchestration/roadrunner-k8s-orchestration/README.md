@@ -100,10 +100,45 @@ kubectl config use-context minikube
 
 ```bash
 terraform init -upgrade
-terraform plan -var-file=minikube.tfvars -var='enable_kafka_cluster=false'
-terraform apply -var-file=minikube.tfvars -var='enable_kafka_cluster=false'
-terraform plan -var-file=minikube.tfvars -var='enable_kafka_cluster=true'
-terraform apply -var-file=minikube.tfvars -var='enable_kafka_cluster=true'
+
+terraform plan -var-file=minikube.tfvars
+terraform apply  -var-file=minikube.tfvars
+```
+
+4. Verify the cluster is ready:
+
+```bash
+kubectl get kafka -n roadrunner
+kubectl get kafkanodepool -n roadrunner
+kubectl get pods -n roadrunner
+kubectl get svc -n roadrunner | grep kafka
+```
+
+What you want to see:
+*   Kafka resource shows `READY=True`
+*   broker pod exists and is Running
+*   bootstrap service exists
+
+## Destruction on Minikube
+
+1. Destroy the application:
+
+```bash
+terraform destroy -var-file=minikube.tfvars
+```
+
+2. Verify that the topics are gone:
+
+```bash
+kubectl get kafkatopic -n roadrunner
+```
+
+3. Verify the Kafka resources and pool are gone:
+
+```bash
+kubectl get kafka -n roadrunner
+kubectl get kafkanodepool -n roadrunner
+kubectl get pods -n roadrunner
 ```
 
 ## Installation on AWS EKS
@@ -114,13 +149,47 @@ terraform workspace select eks
 kubectl config use-context <arn-of-cluster>
 ```
 
-2. Deploy the application:
+2. Deploy the application.  The service monitor in deployed in stages:
 
 ```bash
 terraform init -upgrade
-terraform plan -var-file=eks.tfvars -var='enable_service_monitor=false' -var='enable_kafka_cluster=false'
-terraform apply -var-file=eks.tfvars -var='enable_service_monitor=false' -var='enable_kafka_cluster=false'
-terraform plan -var-file=eks.tfvars -var='enable_service_monitor=false' -var='enable_kafka_cluster=true'
-terraform apply -var-file=eks.tfvars -var='enable_service_monitor=false' -var='enable_kafka_cluster=true'
+terraform plan -var-file=eks.tfvars
+terraform apply -var-file=eks.tfvars
+```
+
+3. Verify the cluster is ready:
+
+```bash
+kubectl get kafka -n roadrunner
+kubectl get kafkanodepool -n roadrunner
+kubectl get pods -n roadrunner
+kubectl get svc -n roadrunner | grep kafka
+```
+
+What you want to see:
+*   Kafka resource shows `READY=True`
+*   broker pod exists and is Running
+*   bootstrap service exists
+
+## Destruction on AWK EKS
+
+1. Destroy the stack:
+
+```bash
+terraform destroy -var-file=eks.tfvars
+```
+
+2. Verify that the topics are actually gone:
+
+```bash
+kubectl get kafkatopic -n roadrunner
+```
+
+3. Verify the Kafka resources and pool are gone:
+
+```bash
+kubectl get kafka -n roadrunner
+kubectl get kafkanodepool -n roadrunner
+kubectl get pods -n roadrunner
 ```
 

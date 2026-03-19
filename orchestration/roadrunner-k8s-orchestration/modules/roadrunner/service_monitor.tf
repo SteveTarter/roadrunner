@@ -1,5 +1,4 @@
 resource "kubernetes_manifest" "roadrunner_service_monitor" {
-  count = var.enable_service_monitor ? 1 : 0
 
   manifest = {
     apiVersion = "monitoring.coreos.com/v1"
@@ -17,7 +16,7 @@ resource "kubernetes_manifest" "roadrunner_service_monitor" {
       }
       selector = {
         matchLabels = {
-          name = "roadrunner" # Application label
+          name = kubernetes_deployment.roadrunner.metadata[0].name # Application label
         }
       }
       endpoints = [

@@ -8,7 +8,6 @@ terraform {
 }
 
 resource "kubectl_manifest" "kafka_nodepool" {
-  count     = var.enabled ? 1 : 0
   yaml_body = yamlencode({
     apiVersion = "kafka.strimzi.io/v1beta2"
     kind       = "KafkaNodePool"
@@ -46,7 +45,6 @@ resource "kubectl_manifest" "kafka_nodepool" {
 }
 
 resource "kubectl_manifest" "kafka_cluster" {
-  count     = var.enabled ? 1 : 0
   yaml_body = yamlencode({
     apiVersion = "kafka.strimzi.io/v1beta2"
     kind       = "Kafka"

@@ -77,7 +77,6 @@ module "kafka_cluster" {
     kubectl = kubectl
   }
 
-  enabled             = var.enable_kafka_cluster
   namespace           = kubernetes_namespace.roadrunner_namespace.metadata[0].name
   cluster_name        = "roadrunner-kafka"
   kafka_version       = "4.2.0"
@@ -88,8 +87,28 @@ module "kafka_cluster" {
   storage_class       = var.kafka_storage_class
 
   operator_dependency = module.strimzi_operator
+}
 
-  depends_on          = [module.strimzi_operator]
+module "kafka_topics" {
+  source = "./modules/kafka-topics"
+
+  providers = {
+    kubectl = kubectl
+  }
+
+  namespace    = kubernetes_namespace.roadrunner_namespace.metadata[0].name
+  cluster_name = module.kafka_cluster.name
+
+  topics = {
+    "vehicle-position-v1" = {
+      topic_name = "vehicle.position.v1"
+      partitions = 6
+      replicas   = 1
+      config = {
+        "retention.ms" = "604800000"   # 7 days
+      }
+    }
+  }
 }
 
 module "roadrunner" {
@@ -108,7 +127,6 @@ module "roadrunner" {
   redis_host                   = module.redis.redis_host
   redis_password               = module.redis.redis_password
   prometheus_release_name      = module.prometheus.prometheus_release_name
-  enable_service_monitor       = var.enable_service_monitor
 
   depends_on = [module.redis]
 }

@@ -104,32 +104,20 @@ variable "tarterware_api_audience" {
   type        = string
 }
 
-variable "enable_service_monitor" {
-  type        = bool
-  description = "Create the ServiceMonitor after the Prometheus CRDs exist"
-  default     = false
-}
-
-variable "enable_kafka_cluster" {
-  description = "Create the Kafka cluster"
-  type        = bool
-  default     = false
-}
-
 variable "kafka_storage_type" {
   description = "Kafka storage type"
-  type    = string
-  default = "ephemeral"
+  type        = string
+  default     = "ephemeral"
 }
 
 variable "kafka_storage_size" {
   description = "Kafka storage size"
-  type    = string
-  default = "20Gi"
+  type        = string
+  default     = "20Gi"
 }
 
 variable "kafka_storage_class" {
   description = "Kafka storage class"
-  type    = string
-  default = null
+  type        = string
+  default     = null
 }
