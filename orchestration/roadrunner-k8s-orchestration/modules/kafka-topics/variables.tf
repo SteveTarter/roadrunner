@@ -1,9 +1,3 @@
-variable "enabled" {
-  description = "Create Kafka topis"
-  type        = bool
-  default     = false
-}
-
 variable "namespace" {
   description = "Namespace"
   type        = string

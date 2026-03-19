@@ -1,9 +1,3 @@
-variable "enabled" {
-  description = "Flag if Kafka cluster should be constructed"
-  type        = bool
-  default     = false
-}
-
 variable "namespace" {
   description  = "The Kubernetes namespace where the Kafka cluster resources will be deployed."
   type         = string

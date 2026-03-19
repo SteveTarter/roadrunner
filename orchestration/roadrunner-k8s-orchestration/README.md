@@ -96,18 +96,16 @@ terraform workspace select minikube
 kubectl config use-context minikube
 ```
 
-Terraform gets confused and fails to find resources if everything is deployed at once, so we have to use a staged deployment strategy.
-
-3. Deploy everything except the Kafka cluster:
+3. Deploy the application:
 
 ```bash
 terraform init -upgrade
 
-terraform apply -var-file=minikube.tfvars -var='enable_kafka_cluster=false' -var='enable_kafka_topics=false'
-terraform apply  -var-file=minikube.tfvars -var='enable_kafka_cluster=true'  -var='enable_kafka_topics=false'
+terraform plan -var-file=minikube.tfvars
+terraform apply  -var-file=minikube.tfvars
 ```
 
-4. Stop and verify the cluster is actually ready before enabling topics:
+4. Verify the cluster is ready:
 
 ```bash
 kubectl get kafka -n roadrunner
@@ -116,51 +114,31 @@ kubectl get pods -n roadrunner
 kubectl get svc -n roadrunner | grep kafka
 ```
 
-What you want to see before turning on topics:
+What you want to see:
 *   Kafka resource shows `READY=True`
 *   broker pod exists and is Running
 *   bootstrap service exists
 
-5. Once those conditions are met, enable the topics:
-
-```bash
-terraform apply  -var-file=minikube.tfvars -var='enable_kafka_cluster=true'  -var='enable_kafka_topics=true'
-```
-
-6. Enjoy!
-
 ## Destruction on Minikube
-Unfortunately, uninstalling is equally complicated.
 
-1. Turn off topics:
+1. Destroy the application:
 
 ```bash
-terraform apply -var-file=minikube.tfvars -var='enable_kafka_cluster=true'  -var='enable_kafka_topics=false'
+terraform destroy -var-file=minikube.tfvars
 ```
-2. Verify that the topics are actually gone:
+
+2. Verify that the topics are gone:
 
 ```bash
 kubectl get kafkatopic -n roadrunner
 ```
 
-3. Turn off the Kafka cluster:
-
-```bash
-terraform apply -var-file=minikube.tfvars -var='enable_kafka_cluster=false' -var='enable_kafka_topics=false'
-```
-
-4. Verify the Kafka resources and pool are gone:
+3. Verify the Kafka resources and pool are gone:
 
 ```bash
 kubectl get kafka -n roadrunner
 kubectl get kafkanodepool -n roadrunner
 kubectl get pods -n roadrunner
-```
-
-5. Destroy the rest of the stack:
-
-```bash
-terraform destroy -var-file=minikube.tfvars -var='enable_kafka_cluster=false' -var='enable_kafka_topics=false'
 ```
 
 ## Installation on AWS EKS
@@ -171,23 +149,15 @@ terraform workspace select eks
 kubectl config use-context <arn-of-cluster>
 ```
 
-Terraform gets confused and fails to find resources if everything is deployed at once, so we have to use a staged deployment strategy.
-
-2. Deploy everything except Kafka.  The service monitor in deployed in stages:
+2. Deploy the application.  The service monitor in deployed in stages:
 
 ```bash
 terraform init -upgrade
-terraform apply -var-file=eks.tfvars -var='enable_service_monitor=false' -var='enable_kafka_cluster=false' -var='enable_kafka_topics=false'
-terraform apply -var-file=eks.tfvars -var='enable_service_monitor=false' -var='enable_kafka_cluster=true' -var='enable_kafka_topics=false'
+terraform plan -var-file=eks.tfvars
+terraform apply -var-file=eks.tfvars
 ```
 
-3. Deploy the Kafka cluster:
-
-```bash
-terraform apply -var-file=eks.tfvars -var='enable_service_monitor=true' -var='enable_kafka_cluster=true' -var='enable_kafka_topics=false'
-```
-
-4. Stop and verify the cluster is actually ready before enabling topics:
+3. Verify the cluster is ready:
 
 ```bash
 kubectl get kafka -n roadrunner
@@ -196,56 +166,30 @@ kubectl get pods -n roadrunner
 kubectl get svc -n roadrunner | grep kafka
 ```
 
-What you want to see before turning on topics:
+What you want to see:
 *   Kafka resource shows `READY=True`
 *   broker pod exists and is Running
 *   bootstrap service exists
 
-5. Once those conditions are met, enable the topics:
-
-```bash
-terraform apply  -var-file=eks.tfvars -var='enable_service_monitor=true' -var='enable_kafka_cluster=true'  -var='enable_kafka_topics=true'
-```
-
-6. Enjoy!
-
 ## Destruction on AWK EKS
-Unfortunately, uninstalling is equally complicated.
 
-1. Turn off topics:
+1. Destroy the stack:
 
 ```bash
-terraform apply -var-file=eks.tfvars -var='enable_service_monitor=true' -var='enable_kafka_cluster=true'  -var='enable_kafka_topics=false'
+terraform destroy -var-file=eks.tfvars
 ```
+
 2. Verify that the topics are actually gone:
 
 ```bash
 kubectl get kafkatopic -n roadrunner
 ```
 
-3. Turn off the Kafka cluster:
-
-```bash
-terraform apply -var-file=eks.tfvars -var='enable_service_monitor=true' -var='enable_kafka_cluster=false' -var='enable_kafka_topics=false'
-```
-
-4. Verify the Kafka resources and pool are gone:
+3. Verify the Kafka resources and pool are gone:
 
 ```bash
 kubectl get kafka -n roadrunner
 kubectl get kafkanodepool -n roadrunner
 kubectl get pods -n roadrunner
-```
-
-5. Disable the service monitor
-
-```bash
-terraform apply -var-file=eks.tfvars -var='enable_service_monitor=false' -var='enable_kafka_cluster=false' -var='enable_kafka_topics=false'
-```
-
-6. Destroy the rest of the stack:
-
-```bash
-terraform destroy -var-file=eks.tfvars -var='enable_service_monitor=false' -var='enable_kafka_cluster=false' -var='enable_kafka_topics=false'
 ```
 

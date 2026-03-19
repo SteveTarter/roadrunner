@@ -8,7 +8,7 @@ terraform {
 }
 
 resource "kubectl_manifest" "topics" {
-  for_each = var.enabled ? var.topics : {}
+  for_each = var.topics
 
   yaml_body = yamlencode({
     apiVersion = "kafka.strimzi.io/v1"
