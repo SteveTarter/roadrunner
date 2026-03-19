@@ -88,8 +88,6 @@ module "kafka_cluster" {
   storage_class       = var.kafka_storage_class
 
   operator_dependency = module.strimzi_operator
-
-  depends_on          = [module.strimzi_operator]
 }
 
 module "kafka_topics" {
@@ -101,7 +99,7 @@ module "kafka_topics" {
 
   enabled      = var.enable_kafka_topics
   namespace    = kubernetes_namespace.roadrunner_namespace.metadata[0].name
-  cluster_name = "roadrunner-kafka"
+  cluster_name = module.kafka_cluster.name
 
   topics = {
     "vehicle-position-v1" = {
@@ -113,8 +111,6 @@ module "kafka_topics" {
       }
     }
   }
-
-  depends_on = [module.kafka_cluster]
 }
 
 module "roadrunner" {
