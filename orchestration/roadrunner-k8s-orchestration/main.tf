@@ -92,6 +92,31 @@ module "kafka_cluster" {
   depends_on          = [module.strimzi_operator]
 }
 
+module "kafka_topics" {
+  source = "./modules/kafka-topics"
+
+  providers = {
+    kubectl = kubectl
+  }
+
+  enabled      = var.enable_kafka_topics
+  namespace    = kubernetes_namespace.roadrunner_namespace.metadata[0].name
+  cluster_name = "roadrunner-kafka"
+
+  topics = {
+    "vehicle-position-v1" = {
+      topic_name = "vehicle.position.v1"
+      partitions = 6
+      replicas   = 1
+      config = {
+        "retention.ms" = "604800000"   # 7 days
+      }
+    }
+  }
+
+  depends_on = [module.kafka_cluster]
+}
+
 module "roadrunner" {
   source = "./modules/roadrunner"
 
