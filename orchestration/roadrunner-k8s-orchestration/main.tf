@@ -127,8 +127,8 @@ module "roadrunner" {
   redis_host                   = module.redis.redis_host
   redis_password               = module.redis.redis_password
   prometheus_release_name      = module.prometheus.prometheus_release_name
-
-  depends_on = [module.redis]
+  kafka_bootstrap_servers      = module.kafka_cluster.bootstrap_servers
+  kafka_topic_vehicle_position = module.kafka_topics.topic_names["vehicle-position-v1"]
 }
 
 module "roadrunner_view" {

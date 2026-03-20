@@ -59,3 +59,15 @@ variable "prometheus_release_name" {
   description = "The name of the Prometheus release"
   type        = string
 }
+
+variable "kafka_bootstrap_servers" {
+  description = "Kafka bootstrap servers addresses"
+  type        = string
+  default     = null
+}
+
+variable "kafka_topic_vehicle_position" {
+  description = "Kafka topic for vehicle position events"
+  type        = string
+  default     = null
+}
