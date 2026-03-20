@@ -105,6 +105,10 @@
             <artifactId>weka-stable</artifactId>
             <version>3.8.6</version> <!-- Or latest -->
         </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
