@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -25,7 +24,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.DefaultTypedTuple;
 import org.springframework.data.redis.core.HashOperations;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
@@ -39,14 +37,16 @@ import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
+import com.tarterware.roadrunner.ports.TripPlanRepository;
+import com.tarterware.roadrunner.ports.VehicleStateStore;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.services.IsochroneService;
+import com.tarterware.roadrunner.utils.TestUtils;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import utils.TestUtils;
 
 @SpringBootTest
 @Import(NoOpSchedulerConfig.class)
@@ -77,7 +77,10 @@ class VehicleTest
     private JwtDecoder jwtDecoder;
 
     @MockitoBean
-    private RedisTemplate<String, Object> redisTemplate;
+    private TripPlanRepository tripPlanRepository;
+
+    @MockitoBean
+    private VehicleStateStore vehicleStateStore;
 
     @MockitoBean
     private DirectionsService mockDirectionsService;
@@ -116,13 +119,6 @@ class VehicleTest
         // Initialize mocks
         MockitoAnnotations.openMocks(this);
 
-        // Mock RedisTemplate behavior
-        when(redisTemplate.opsForHash()).thenReturn(hashOperations);
-        when(redisTemplate.opsForSet()).thenReturn(setOperations);
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-        when(zSetOperations.add(anyString(), any(), anyDouble())).thenReturn(true);
-
         // Stub "ready" vehicles
         Set<TypedTuple<Object>> tuple = new HashSet<>();
         when(zSetOperations.rangeByScoreWithScores(any(), anyDouble(), anyDouble())).thenReturn(tuple);
@@ -135,7 +131,8 @@ class VehicleTest
 
         meterRegistry = new SimpleMeterRegistry();
 
-        vehicleManager = new VehicleManager(directionsService, redisTemplate, meterRegistry, environment);
+        vehicleManager = new VehicleManager(directionsService, vehicleStateStore, tripPlanRepository, meterRegistry,
+                environment);
 
         // Create the vehicle
         vehicle = vehicleManager.createVehicle(mockTripPlan);
