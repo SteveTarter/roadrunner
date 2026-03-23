@@ -213,7 +213,7 @@ public class VehicleManager
      */
     public int getVehicleCount()
     {
-        return (int) this.vehicleStateStore.getActiveVehicleCount();
+        return activeIdsList.size();
     }
 
     /**
@@ -334,7 +334,6 @@ public class VehicleManager
         this.vehicleEventPublisher.publishVehicleCreated(vehicle);
 
         logger.info("Created vehicle ID {}", vehicle.getId());
-
         return vehicle;
     }
 
@@ -551,9 +550,9 @@ public class VehicleManager
 
         Set<UUID> deletionSet = new HashSet<>();
 
-        long vehicleCount = this.vehicleStateStore.getActiveVehicleCount();
-        Set<UUID> readyVehicles = fetchReadyVehicles(currentEpochMillis);
         int readyVehicleCount = 0;
+        long vehicleCount = this.vehicleStateStore.getActiveVehicleCount();
+        Set<UUID> readyVehicles = this.vehicleStateStore.getActiveVehicleIds();
         if (readyVehicles != null)
         {
             int index = 0;
@@ -619,8 +618,6 @@ public class VehicleManager
 
                                 this.vehicleStateStore.saveVehicle(vehicle);
                                 this.vehicleEventPublisher.publishVehicleUpdated(vehicle);
-                                this.vehicleStateStore.scheduleVehicle(vehicleId,
-                                        vehicle.getLastCalculationEpochMillis() + msUpdatePeriod);
 
                                 // If the vehicle was not updated, see if it has reached timeout.
                                 if (!updated)
@@ -677,20 +674,6 @@ public class VehicleManager
                 .addArgument(String.format("%.3f", msMinimumJitterTime)) // Min
                 .addArgument(String.format("%.3f", msMaximumJitterTime)) // Max
                 .log();
-    }
-
-    /**
-     * Fetches a set of vehicles that are ready to be updated based on the current
-     * time and the configured update period.
-     *
-     * @param currentEpochMillis The current time in milliseconds since the epoch.
-     * @return A set of vehicle IDs (as Objects) that are ready for update.
-     */
-    private Set<UUID> fetchReadyVehicles(long currentEpochMillis)
-    {
-        // return this.vehicleStateStore.getReadyVehicleIds(currentEpochMillis -
-        // msUpdatePeriod + msPollingPeriod);
-        return this.vehicleStateStore.getActiveVehicleIds();
     }
 
     /**

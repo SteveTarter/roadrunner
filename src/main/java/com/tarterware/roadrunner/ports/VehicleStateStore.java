@@ -62,23 +62,6 @@ public interface VehicleStateStore
     void removeActiveVehicle(UUID vehicleId);
 
     /**
-     * Return vehicle ids that are due for processing at or before the given epoch
-     * time.
-     *
-     * @param readyThroughEpochMillis epoch time to target
-     * @return UUIDs of ready Vehicles
-     */
-    Set<UUID> getReadyVehicleIds(long readyThroughEpochMillis);
-
-    /**
-     * Insert or update the next scheduled processing time for a vehicle.
-     *
-     * @param vehicleId       UUID of vehicle
-     * @param nextEpochMillis epoch time to target
-     */
-    void scheduleVehicle(UUID vehicleId, long nextEpochMillis);
-
-    /**
      * Acquire a per-vehicle update lock.
      *
      * @param vehicleId UUID of vehicle

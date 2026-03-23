@@ -13,6 +13,7 @@ import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 @Component
 public class RedisVehicleEventPublisher implements VehicleEventPublisher
 {
+    @SuppressWarnings("unused")
     private final RedisTemplate<String, Object> redisTemplate;
 
     private static final Logger logger = LoggerFactory.getLogger(RedisVehicleEventPublisher.class);
