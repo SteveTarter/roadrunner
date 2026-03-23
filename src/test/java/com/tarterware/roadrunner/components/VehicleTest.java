@@ -38,6 +38,7 @@ import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
+import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.ports.VehicleStateStore;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
@@ -81,6 +82,9 @@ class VehicleTest
 
     @MockitoBean
     private VehicleStateStore vehicleStateStore;
+
+    @MockitoBean
+    private VehicleEventPublisher vehicleEventPublisher;
 
     @MockitoBean
     private DirectionsService mockDirectionsService;
@@ -131,8 +135,8 @@ class VehicleTest
 
         meterRegistry = new SimpleMeterRegistry();
 
-        vehicleManager = new VehicleManager(directionsService, vehicleStateStore, tripPlanRepository, meterRegistry,
-                environment);
+        vehicleManager = new VehicleManager(directionsService, vehicleStateStore, tripPlanRepository,
+                vehicleEventPublisher, meterRegistry, environment);
 
         // Create the vehicle
         vehicle = vehicleManager.createVehicle(mockTripPlan);
