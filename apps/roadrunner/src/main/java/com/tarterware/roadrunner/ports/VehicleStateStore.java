@@ -49,14 +49,14 @@ public interface VehicleStateStore
 
     /**
      * Add Vehicle UUID to active vehicle set.
-     * 
+     *
      * @param vehicleId UUID of Vehicle to save.
      */
     void addActiveVehicle(UUID vehicleId);
 
     /**
      * Remove Vehicle UUID from active vehicle set.
-     * 
+     *
      * @param vehicleId UUID of Vehicle to remove.
      */
     void removeActiveVehicle(UUID vehicleId);
@@ -64,7 +64,7 @@ public interface VehicleStateStore
     /**
      * Return vehicle ids that are due for processing at or before the given epoch
      * time.
-     * 
+     *
      * @param readyThroughEpochMillis epoch time to target
      * @return UUIDs of ready Vehicles
      */
@@ -72,7 +72,7 @@ public interface VehicleStateStore
 
     /**
      * Insert or update the next scheduled processing time for a vehicle.
-     * 
+     *
      * @param vehicleId       UUID of vehicle
      * @param nextEpochMillis epoch time to target
      */

@@ -39,6 +39,7 @@ import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.models.mapbox.RouteLeg;
 import com.tarterware.roadrunner.models.mapbox.RouteStep;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
+import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.ports.VehicleStateStore;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.utilities.JitterStatisticsCollector;
@@ -111,6 +112,7 @@ public class VehicleManager
     private DirectionsService directionsService;
 
     private VehicleStateStore vehicleStateStore;
+    private VehicleEventPublisher vehicleEventPublisher;
     private TripPlanRepository tripPlanRepository;
 
     // Class to provide jitter statistics over last few runs of update loop
@@ -155,6 +157,7 @@ public class VehicleManager
             DirectionsService directionsService,
             VehicleStateStore vehicleStateStore,
             TripPlanRepository tripPlanRepository,
+            VehicleEventPublisher vehicleEventPublisher,
             MeterRegistry meterRegistry,
             Environment environment)
     {
@@ -163,6 +166,7 @@ public class VehicleManager
         this.directionsService = directionsService;
         this.vehicleStateStore = vehicleStateStore;
         this.tripPlanRepository = tripPlanRepository;
+        this.vehicleEventPublisher = vehicleEventPublisher;
 
         // Register a gauge to expose the latest execution time.
         meterRegistry.gauge(ENDPOINT_STD_DEV_JITTER_TIME, msStdDevJitterTime, AtomicReference::get);
@@ -327,6 +331,7 @@ public class VehicleManager
 
         this.vehicleStateStore.saveVehicle(vehicle);
         this.vehicleStateStore.addActiveVehicle(vehicle.getId());
+        this.vehicleEventPublisher.publishVehicleCreated(vehicle);
 
         logger.info("Created vehicle ID {}", vehicle.getId());
 
@@ -594,7 +599,7 @@ public class VehicleManager
                                 }
 
                                 // FIXME - There must be a better way.
-                                // If all Rodarunner pods stop servicing the data for a while, the resulting
+                                // If all Roadrunner pods stop servicing the data for a while, the resulting
                                 // jitter reports can cause the autoscaler to spike. Capping the jitter value is
                                 // an attempt to address this.
                                 if (msJitter > (3 * msUpdatePeriod))
@@ -613,6 +618,7 @@ public class VehicleManager
                                 vehicle.setManagerHost(hostName);
 
                                 this.vehicleStateStore.saveVehicle(vehicle);
+                                this.vehicleEventPublisher.publishVehicleUpdated(vehicle);
                                 this.vehicleStateStore.scheduleVehicle(vehicleId,
                                         vehicle.getLastCalculationEpochMillis() + msUpdatePeriod);
 
@@ -703,9 +709,16 @@ public class VehicleManager
      */
     private void cleanupDeletedVehicles(Set<UUID> deletionSet)
     {
+        // Remove the vehicle states from Redis
+        deletionSet.forEach(vehicleID ->
+        {
+            this.vehicleStateStore.removeActiveVehicle(vehicleID);
+        });
+
         deletionSet.forEach(vehicleId ->
         {
             this.vehicleStateStore.deleteVehicle(vehicleId);
+            this.vehicleEventPublisher.publishVehicleDeleted(vehicleId);
         });
 
         // Remove from directionsMap and lineSegmentDataMap (assuming thread-safe maps
@@ -714,13 +727,6 @@ public class VehicleManager
         {
             directionsMap.remove(vehicleID);
             lineSegmentDataMap.remove(vehicleID);
-        });
-
-        // Remove the vehicle states from Redis
-        deletionSet.forEach(vehicleID ->
-        {
-            this.vehicleStateStore.removeActiveVehicle(vehicleID);
-            this.vehicleStateStore.deleteVehicle(vehicleID);
         });
     }
 
@@ -742,7 +748,7 @@ public class VehicleManager
         Set<UUID> directionsKeys = new HashSet<>(directionsMap.keySet());
         for (UUID vehicleId : directionsKeys)
         {
-            if (!activeIdsList.contains(vehicleId.toString()))
+            if (!activeIdsList.contains(vehicleId))
             {
                 removedFromDirections.add(vehicleId);
                 directionsMap.remove(vehicleId);
@@ -758,7 +764,7 @@ public class VehicleManager
         Set<UUID> lineSegmentKeys = new HashSet<>(lineSegmentDataMap.keySet());
         for (UUID vehicleId : lineSegmentKeys)
         {
-            if (!activeIdsList.contains(vehicleId.toString()))
+            if (!activeIdsList.contains(vehicleId))
             {
                 removedFromLineSegmentData.add(vehicleId);
                 lineSegmentDataMap.remove(vehicleId);
