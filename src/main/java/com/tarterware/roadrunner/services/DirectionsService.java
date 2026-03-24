@@ -1,13 +1,11 @@
 package com.tarterware.roadrunner.services;
 
+import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -15,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 import com.tarterware.roadrunner.models.Address;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
+import com.tarterware.roadrunner.ports.DirectionsCache;
 import com.tarterware.roadrunner.utilities.StringUtilities;
 
 @Service
@@ -26,70 +25,62 @@ public class DirectionsService
     @Value("${mapbox.api.key}")
     private String _mapBoxApiKey;
 
-    @Autowired
-    RestTemplate restTemplate;
-
-    @Autowired
-    RedisTemplate<String, Object> redisTemplate;
-
-    @Autowired
-    GeocodingService geocodingService;
+    private final RestTemplate restTemplate;
+    private final GeocodingService geocodingService;
+    private final DirectionsCache directionsCache;
 
     private static final Logger logger = LoggerFactory.getLogger(DirectionsService.class);
 
+    public DirectionsService(
+            RestTemplate restTemplate,
+            GeocodingService geocodingService,
+            DirectionsCache directionsCache)
+    {
+        this.restTemplate = restTemplate;
+        this.geocodingService = geocodingService;
+        this.directionsCache = directionsCache;
+    }
+
     public Directions getDirections(List<Address> listAddresses)
     {
-        Directions directions = null;
-
         StringBuilder sb = new StringBuilder(_mapBoxApiUrl);
 
-        // Add path separator if it is needed.
         if (!_mapBoxApiUrl.endsWith("/"))
         {
             sb.append("/");
         }
 
-        // The key used for caching the Directions is a subset of the URL.
-        // Calling "getCacheKey()" builds the next part of the URL for us.
         String directionsCacheKey = getCacheKey(listAddresses);
         sb.append(directionsCacheKey);
 
-        Directions redisDirections = (Directions) redisTemplate.opsForValue().get(directionsCacheKey);
+        return directionsCache.get(directionsCacheKey)
+                .map(cached ->
+                {
+                    logger.info("Direction via cache: {}", directionsCacheKey);
+                    return cached;
+                })
+                .orElseGet(() ->
+                {
+                    logger.info("Direction via REST: {}", sb);
 
-        if (redisDirections != null)
-        {
-            // Directions found in cache. Report it and set return directions to the cached
-            // value
-            logger.info("Direction via redis cache: " + directionsCacheKey);
+                    sb.append("&access_token=");
+                    sb.append(_mapBoxApiKey);
 
-            directions = redisDirections;
-        }
-        else
-        {
-            // Nothing found in cache
-            // Log the URL used to get the Direction record, without token
-            logger.info("Direction via REST: " + sb.toString());
+                    Directions directions = null;
+                    try
+                    {
+                        ResponseEntity<Directions> response = restTemplate.getForEntity(sb.toString(),
+                                Directions.class);
+                        directions = response.getBody();
+                    }
+                    catch (Exception e)
+                    {
+                        logger.error("Unable to create Directions", e);
+                    }
 
-            // Now, add the MapBox API key, or the endpoint will tell us to frig off.
-            sb.append("&access_token=");
-            sb.append(_mapBoxApiKey);
-
-            try
-            {
-                ResponseEntity<Directions> respDirections = restTemplate.getForEntity(sb.toString(), Directions.class);
-
-                directions = respDirections.getBody();
-            }
-            catch (Exception e)
-            {
-                logger.error("Unable to create Directions", e);
-            }
-
-            // Persist the newly read Object to the cache
-            redisTemplate.opsForValue().set(directionsCacheKey, directions, 100, TimeUnit.HOURS);
-        }
-
-        return directions;
+                    directionsCache.put(directionsCacheKey, directions, Duration.ofHours(100));
+                    return directions;
+                });
     }
 
     public Directions getDirectionsForTripPlan(TripPlan tripPlan)
