@@ -1,12 +1,11 @@
 package com.tarterware.roadrunner.services;
 
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -14,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 import com.tarterware.roadrunner.models.Address;
 import com.tarterware.roadrunner.models.mapbox.Feature;
 import com.tarterware.roadrunner.models.mapbox.FeatureCollection;
+import com.tarterware.roadrunner.ports.FeatureCollectionCache;
 import com.tarterware.roadrunner.utilities.StringUtilities;
 
 @Service
@@ -25,13 +25,19 @@ public class GeocodingService
     @Value("${mapbox.api.key}")
     private String _mapBoxApiKey;
 
-    @Autowired
-    RestTemplate restTemplate;
+    private RestTemplate restTemplate;
 
-    @Autowired
-    RedisTemplate<String, Object> redisTemplate;
+    private FeatureCollectionCache featureCollectionCache;
 
     private static final Logger logger = LoggerFactory.getLogger(GeocodingService.class);
+
+    public GeocodingService(
+            RestTemplate restTemplate,
+            FeatureCollectionCache featureCollectionCache)
+    {
+        this.restTemplate = restTemplate;
+        this.featureCollectionCache = featureCollectionCache;
+    }
 
     public void setPositionFromAddress(Address address)
     {
@@ -104,16 +110,14 @@ public class GeocodingService
         String geocodingCacheKey = sb.toString().substring(_mapBoxApiUrl.length());
 
         FeatureCollection featureCollection = null;
-        FeatureCollection redisFeatureCollection = (FeatureCollection) redisTemplate.opsForValue()
-                .get(geocodingCacheKey);
-
-        if (redisFeatureCollection != null)
+        Optional<FeatureCollection> cacheFeatureCollection = featureCollectionCache.get(geocodingCacheKey);
+        if (cacheFeatureCollection.isPresent())
         {
             // FeatureCollection found in cache. Report it and set return featureCollection
             // to the cached value
             logger.info("FeatureCollection via cache: " + geocodingCacheKey);
 
-            featureCollection = redisFeatureCollection;
+            featureCollection = cacheFeatureCollection.get();
         }
         else
         {
@@ -131,7 +135,7 @@ public class GeocodingService
             featureCollection = respFc.getBody();
 
             // Persist the newly read Object to the cache
-            redisTemplate.opsForValue().set(geocodingCacheKey, featureCollection, 100, TimeUnit.HOURS);
+            featureCollectionCache.put(geocodingCacheKey, featureCollection, Duration.ofHours(100));
         }
 
         if (featureCollection != null)

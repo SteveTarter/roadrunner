@@ -1,12 +1,11 @@
 package com.tarterware.roadrunner.services;
 
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.tarterware.roadrunner.models.Address;
 import com.tarterware.roadrunner.models.mapbox.Isochrone;
+import com.tarterware.roadrunner.ports.IsochroneCache;
 
 @Service
 public class IsochroneService
@@ -24,13 +24,18 @@ public class IsochroneService
     @Value("${mapbox.api.key}")
     private String _mapBoxApiKey;
 
-    @Autowired
-    RestTemplate restTemplate;
-
-    @Autowired
-    RedisTemplate<String, Object> redisTemplate;
+    private RestTemplate restTemplate;
+    private IsochroneCache isochroneCache;
 
     private static final Logger logger = LoggerFactory.getLogger(IsochroneService.class);
+
+    public IsochroneService(
+            RestTemplate restTemplate,
+            IsochroneCache isochroneCache)
+    {
+        this.restTemplate = restTemplate;
+        this.isochroneCache = isochroneCache;
+    }
 
     public Isochrone setIsochroneFromAddress(Address address, String isochroneType, int isochroneParameterValue)
     {
@@ -103,15 +108,15 @@ public class IsochroneService
         String isochroneCacheKey = sb.toString().substring(_mapBoxApiUrl.length());
 
         Isochrone isochrone = null;
-        Isochrone redisIsochrone = (Isochrone) redisTemplate.opsForValue().get(isochroneCacheKey);
+        Optional<Isochrone> cacheIsochrone = isochroneCache.get(isochroneCacheKey);
 
-        if (redisIsochrone != null)
+        if (cacheIsochrone.isPresent())
         {
             // Isochrone found in cache. Report it and set return isochrone to the cached
             // value
             logger.info("Isochrone via cache: " + isochroneCacheKey);
 
-            isochrone = redisIsochrone;
+            isochrone = cacheIsochrone.get();
         }
         else
         {
@@ -128,7 +133,7 @@ public class IsochroneService
             isochrone = respIsochrome.getBody();
 
             // Persist the newly read Object to the cache
-            redisTemplate.opsForValue().set(isochroneCacheKey, isochrone, 1, TimeUnit.HOURS);
+            isochroneCache.put(isochroneCacheKey, isochrone, Duration.ofHours(100));
         }
 
         return isochrone;
