@@ -23,6 +23,18 @@ resource "helm_release" "redis" {
     {
       name  = "replica.persistence.enabled"
       value = false
+    },
+    {
+      name  = "replica.readinessProbe.timeoutSeconds"
+      value = "5"
+    },
+    {
+      name  = "replica.readinessProbe.failureThreshold"
+      value = "10"
+    },
+    {
+      name  = "replica.readinessProbe.initialDelaySeconds"
+      value = "20"
     }
   ]
 
