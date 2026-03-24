@@ -45,6 +45,14 @@ The following variables need to be set in the `application.properties` file for 
   Active Spring profile.  Should be 'eks' for AWS builds.  
   Example: `eks`
 
+- `roadrunner.messaging.kafka.enabled`  
+  Enable Vehicle update messages using Kafka.  
+  Example: true
+
+- `roadrunner.messaging.redis.enabled`  
+  Enable Vehicle update messages using Redis.  
+  Example: true
+
 - `com.tarterware.roadrunner.vehicle-update-period`  
   How often each vehicle should be updated.  
   Example: `250ms`
@@ -61,44 +69,44 @@ The following variables need to be set in the `application.properties` file for 
   Namespace of secret for prometheus to obtain Bearer token.  
   Example: `prometheus-token-secret`
  
-- `spring.kafka.bootstrap-servers`
-  Location of Kafka bootstrap servers.
+- `spring.kafka.bootstrap-servers`  
+  Location of Kafka bootstrap servers.  
   Example: localhost:9094
 
-- `spring.kafka.consumer.group-id`
-  Kafka consumer group ID.
+- `spring.kafka.consumer.group-id`  
+  Kafka consumer group ID.  
   Example: roadrunner-debug-consumer
 
-- `spring.kafka.producer.acks`
-  Kafka Producer messages to acknowledge.
+- `spring.kafka.producer.acks`  
+  Kafka Producer messages to acknowledge.  
   Example: all
 
-- `spring.kafka.producer.properties.enable.idempotence`
-  Idempotence enabled for Kafka
+- `spring.kafka.producer.properties.enable.idempotence`  
+  Idempotence enabled for Kafka  
   Example: true
 
-- `spring.kafka.producer.key-serializer`
-  Class for Kafka Producer to use for key serialization.
+- `spring.kafka.producer.key-serializer`  
+  Class for Kafka Producer to use for key serialization.  
   Example: org.apache.kafka.common.serialization.StringSerializer
 
-- `spring.kafka.producer.value-serializer`
-  Class for Kafka Producer to use for value serialization.
+- `spring.kafka.producer.value-serializer`  
+  Class for Kafka Producer to use for value serialization.  
   Example: org.springframework.kafka.support.serializer.JsonSerializer
 
-- `spring.kafka.consumer.properties.spring.json.trusted.packages`
-  Packages that Kafka can trust.
+- `spring.kafka.consumer.properties.spring.json.trusted.packages`  
+  Packages that Kafka can trust.  
   Example: com.tarterware.roadrunner.*
 
-- `spring.kafka.consumer.properties.spring.json.use.type.headers`
-  Kafka Consumer should use type headers with JSON.
+- `spring.kafka.consumer.properties.spring.json.use.type.headers`  
+  Kafka Consumer should use type headers with JSON.  
   Example: false
 
-- `spring.kafka.consumer.properties.spring.json.value.default.type`
-  Kafka Consumer JSON value default type.
+- `spring.kafka.consumer.properties.spring.json.value.default.type`  
+  Kafka Consumer JSON value default type.  
   Example: com.tarterware.roadrunner.messaging.VehiclePositionEvent
 
-- `roadrunner.kafka.topic.vehicle-position`
-  Roadrunner Kafka topic for VehiclePosition.
+- `roadrunner.kafka.topic.vehicle-position`  
+  Roadrunner Kafka topic for VehiclePosition.  
   Example: vehicle.position.v1
 
 ## 'Secret' Properties Configuration

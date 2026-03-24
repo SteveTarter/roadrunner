@@ -3,11 +3,13 @@ package com.tarterware.roadrunner.messaging;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
 
 @Component
+@ConditionalOnProperty(prefix = "roadrunner.messaging.kafka", name = "enabled", havingValue = "true")
 public class KafkaConnectionInfoLogger
 {
 
@@ -22,6 +24,7 @@ public class KafkaConnectionInfoLogger
     @PostConstruct
     void logConfig()
     {
+        log.info("Kafka messaging has been enabled");
         log.info("Kafka bootstrap servers: {}", bootstrapServers);
         log.info("Kafka vehicle-position topic: {}", topic);
     }
