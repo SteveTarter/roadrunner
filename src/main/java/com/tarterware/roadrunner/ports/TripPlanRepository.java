@@ -20,7 +20,6 @@ public interface TripPlanRepository
      *
      * @param uuid     The UUID of the Vehicle.
      * @param tripPlan TripPlan to save
-     * @return The corresponding TripPlan, or null if not found.
      */
     void saveTripPlan(UUID vehicleId, TripPlan tripPlan);
 

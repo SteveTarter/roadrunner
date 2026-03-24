@@ -145,13 +145,15 @@ public class VehicleManager
     /**
      * Constructor to initialize the VehicleManager with a DirectionsService.
      *
-     * @param directionsService The service to retrieve directions for trip plans.
-     * @param redisTemplate     RedisTemplate for performing Redis operations, such
-     *                          as storing and retrieving data. Keys are Strings,
-     *                          and values are serialized Java objects.
-     * @param meterRegistry     Creates and manages application's set of meters.
-     * @param environment       Interface representing the environment in which the
-     *                          current application is running.
+     * @param directionsService     The service to retrieve directions for trip
+     *                              plans.
+     * @param vehicleStateStore     Interface to save, retrieve, and list active
+     *                              Vehicles.
+     * @param tripPlanRepository    Interface to save and retrieve TripPlans.
+     * @param vehicleEventPublisher Interface to publish Vehicle events.
+     * @param meterRegistry         Creates and manages application's set of meters.
+     * @param environment           Interface representing the environment in which
+     *                              the current application is running.
      */
     public VehicleManager(
             DirectionsService directionsService,
