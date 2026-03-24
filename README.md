@@ -45,16 +45,12 @@ The following variables need to be set in the `application.properties` file for 
   Active Spring profile.  Should be 'eks' for AWS builds.  
   Example: `eks`
 
-- `com.tarterware.roadrunner.vehicle-polling-period`  
-  How often to poll the ready list for vehicles  
-  Example: `100ms`
-
 - `com.tarterware.roadrunner.vehicle-update-period`  
   How often each vehicle should be updated.  
   Example: `250ms`
 
 - `com.tarterware.roadrunner.jitter-stat-capacity`  
-  Number of reading to consider in jitter statistics  
+  Number of reading to consider in jitter statistics. 
   Example: `200`
 
 - `prometheus.secret.namespace`  
@@ -65,6 +61,45 @@ The following variables need to be set in the `application.properties` file for 
   Namespace of secret for prometheus to obtain Bearer token.  
   Example: `prometheus-token-secret`
  
+- `spring.kafka.bootstrap-servers`
+  Location of Kafka bootstrap servers.
+  Example: localhost:9094
+
+- `spring.kafka.consumer.group-id`
+  Kafka consumer group ID.
+  Example: roadrunner-debug-consumer
+
+- `spring.kafka.producer.acks`
+  Kafka Producer messages to acknowledge.
+  Example: all
+
+- `spring.kafka.producer.properties.enable.idempotence`
+  Idempotence enabled for Kafka
+  Example: true
+
+- `spring.kafka.producer.key-serializer`
+  Class for Kafka Producer to use for key serialization.
+  Example: org.apache.kafka.common.serialization.StringSerializer
+
+- `spring.kafka.producer.value-serializer`
+  Class for Kafka Producer to use for value serialization.
+  Example: org.springframework.kafka.support.serializer.JsonSerializer
+
+- `spring.kafka.consumer.properties.spring.json.trusted.packages`
+  Packages that Kafka can trust.
+  Example: com.tarterware.roadrunner.*
+
+- `spring.kafka.consumer.properties.spring.json.use.type.headers`
+  Kafka Consumer should use type headers with JSON.
+  Example: false
+
+- `spring.kafka.consumer.properties.spring.json.value.default.type`
+  Kafka Consumer JSON value default type.
+  Example: com.tarterware.roadrunner.messaging.VehiclePositionEvent
+
+- `roadrunner.kafka.topic.vehicle-position`
+  Roadrunner Kafka topic for VehiclePosition.
+  Example: vehicle.position.v1
 
 ## 'Secret' Properties Configuration
 
@@ -77,18 +112,6 @@ The following variables should be set in a 'secrets.properties' file that is pee
 - `spring.security.oauth2.resourceserver.jwt.issuer-uri`  
   OAuth2 JWT issuer  
   Example: `https://dev-PROJECTID.us.auth0.com/`
-
-- `auth0.api.audience`  
-  OAuth2 JWT issuer  
-  Example: `https://auth.PROJECTED.com/`
-
-- `auth0.api.client-id`  
-  Auth0 Client ID  
-  Example: `a-client-id-but-not-this`
-
-- `auth0.api.client-secret`  
-  Auth0 Client Secret  
-  Example: `nunyabiznezz`
 
 - `cognito.app-client-id`  
   Cognito Client ID  
@@ -184,9 +207,10 @@ The following variables should be set in a 'secrets.properties' file that is pee
 
 ##### Parameters
 
-> | name      |  type     | data type               | description                                                           |
+> | name      |  type     | data type               | description                 | default                                 |
 > |-----------|-----------|-------------------------|-----------------------------------------------------------------------|
-> | vehicleId |  required | string                  | ID of vehicle to retrieve |
+> | page      |  optional | integer                 | Page to retrieve            |  0                                      |
+> | pageSize  |  optional | integer                 | Number of Vehicles per page | 10                                      |
 
 ##### Responses
 

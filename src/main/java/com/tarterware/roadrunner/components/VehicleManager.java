@@ -77,16 +77,8 @@ public class VehicleManager
     @Value("${com.tarterware.roadrunner.vehicle-update-period:250ms}")
     private String msUpdatePeriodString;
 
-    // Target interval between polling for vehicles that need updating. Should be
-    // lower than update period.
-    @Value("${com.tarterware.roadrunner.vehicle-polling-period:100ms}")
-    private String msPollingPeriodString;
-
     @Value("${com.tarterware.roadrunner.jitter-stat-capacity:200}")
     private int jitterStatCapacity;
-
-    // Polling period in milliseconds.
-    private long msPollingPeriod;
 
     // Update period in milliseconds.
     private long msUpdatePeriod;
@@ -195,17 +187,13 @@ public class VehicleManager
 
         // DurationStyle.detect() determines the style (e.g., SIMPLE, ISO-8601) based on
         // the string
-        Duration duration = DurationStyle.detect(msPollingPeriodString).parse(msPollingPeriodString);
-        msPollingPeriod = duration.toMillis();
-
-        duration = DurationStyle.detect(msUpdatePeriodString).parse(msUpdatePeriodString);
+        Duration duration = DurationStyle.detect(msUpdatePeriodString).parse(msUpdatePeriodString);
         msUpdatePeriod = duration.toMillis();
 
         // Create the statistics collector to aid in publishing metrics.
         this.statisticsCollector = new JitterStatisticsCollector(jitterStatCapacity);
 
-        logger.info("VehicleManager starting with polling period of {} ms; update Period {} ms.", msPollingPeriod,
-                msUpdatePeriod);
+        logger.info("VehicleManager starting with update Period {} ms.", msUpdatePeriod);
     }
 
     /**
@@ -544,7 +532,7 @@ public class VehicleManager
      * After processing all vehicles, the method cleans up deleted vehicles and
      * updates the jitter statistics for monitoring performance.
      */
-    @Scheduled(fixedRateString = "${com.tarterware.roadrunner.vehicle-polling-period}")
+    @Scheduled(fixedRateString = "${com.tarterware.roadrunner.vehicle-update-period}")
     public void updateVehicles()
     {
         long currentEpochMillis = Instant.now().toEpochMilli();
@@ -588,15 +576,12 @@ public class VehicleManager
                                 long msSinceLastRun = Instant.now().toEpochMilli()
                                         - vehicle.getLastCalculationEpochMillis();
 
-                                if (msSinceLastRun > msPollingPeriod)
-                                {
-                                    updated = vehicle.update();
+                                updated = vehicle.update();
 
-                                    // If the vehicle was updated, update it's statistics.
-                                    if (updated)
-                                    {
-                                        msJitter = msSinceLastRun - msUpdatePeriod;
-                                    }
+                                // If the vehicle was updated, update it's statistics.
+                                if (updated)
+                                {
+                                    msJitter = msSinceLastRun - msUpdatePeriod;
                                 }
 
                                 // FIXME - There must be a better way.
