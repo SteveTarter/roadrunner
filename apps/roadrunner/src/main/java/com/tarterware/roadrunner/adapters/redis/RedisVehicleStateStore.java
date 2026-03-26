@@ -19,7 +19,7 @@ import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.ports.VehicleStateStore;
 
 @Component
-@ConditionalOnProperty(prefix = "roadrunner.messaging.redis", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.redis", name = "enabled", havingValue = "true")
 public class RedisVehicleStateStore implements VehicleStateStore
 {
 
