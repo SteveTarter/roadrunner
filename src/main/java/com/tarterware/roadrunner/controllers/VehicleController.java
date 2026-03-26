@@ -1,13 +1,13 @@
 package com.tarterware.roadrunner.controllers;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -29,20 +29,30 @@ import com.tarterware.roadrunner.models.CrissCrossPlan;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.models.mapbox.Directions;
+import com.tarterware.roadrunner.ports.VehicleStateStore;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 @RestController
 @RequestMapping("/api/vehicle")
 public class VehicleController
 {
-    @Autowired
-    VehicleManager vehicleManager;
+    private VehicleManager vehicleManager;
+
+    private VehicleStateStore vehicleStateStore;
+
+    VehicleController(VehicleManager vehicleManager, VehicleStateStore vehicleStateStore)
+    {
+        this.vehicleManager = vehicleManager;
+        this.vehicleStateStore = vehicleStateStore;
+    }
 
     @PostMapping("/create-new")
     ResponseEntity<VehicleState> getNewVehicle(@RequestBody TripPlan tripPlan)
     {
         Vehicle vehicle = vehicleManager.createVehicle(tripPlan);
-        VehicleState vehicleState = createVehicleStateFor(vehicle);
+        VehicleState vehicleState = vehicle.getVehicleState();
+        vehicleStateStore.saveVehicle(vehicleState);
+        vehicleStateStore.addActiveVehicle(vehicle.getId());
 
         return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
     }
@@ -88,7 +98,7 @@ public class VehicleController
             tripPlan.setListStops(listStops);
 
             Vehicle vehicle = vehicleManager.createVehicle(tripPlan);
-            VehicleState vehicleState = createVehicleStateFor(vehicle);
+            VehicleState vehicleState = vehicle.getVehicleState();
 
             listVehicleStates.add(vehicleState);
 
@@ -101,12 +111,11 @@ public class VehicleController
     @GetMapping("/get-vehicle-state/{vehicleId}")
     ResponseEntity<VehicleState> getVehicleStateFor(@PathVariable String vehicleId)
     {
-        Vehicle vehicle = vehicleManager.getVehicle(UUID.fromString(vehicleId));
-        if (vehicle == null)
+        VehicleState vehicleState = vehicleStateStore.getVehicle(UUID.fromString(vehicleId));
+        if (vehicleState == null)
         {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
-        VehicleState vehicleState = createVehicleStateFor(vehicle.getId());
 
         return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
     }
@@ -128,13 +137,13 @@ public class VehicleController
             @RequestParam(defaultValue = "10") int pageSize)
     {
         // Get the vehicles for the current page
-        Map<UUID, Vehicle> vehicleMap = vehicleManager.getVehicleMap(page, pageSize);
-        List<VehicleState> listVehicleStates = vehicleMap.values().stream().map(this::createVehicleStateFor)
+        Map<UUID, VehicleState> vehicleMap = getVehicleMap(page, pageSize);
+        List<VehicleState> listVehicleStates = vehicleMap.values().stream()
                 .collect(Collectors.toList());
 
         // Create a Page object
         Page<VehicleState> vehicleStatePage = new PageImpl<>(listVehicleStates, PageRequest.of(page, pageSize),
-                vehicleManager.getVehicleCount());
+                vehicleStateStore.getActiveVehicleCount());
 
         // Create a PagedModel object
         PagedModel<VehicleState> pagedModel = PagedModel.of(vehicleStatePage.getContent(), new PagedModel.PageMetadata(
@@ -151,41 +160,43 @@ public class VehicleController
         return new ResponseEntity<List<VehicleState>>(new ArrayList<VehicleState>(), HttpStatus.OK);
     }
 
-    private VehicleState createVehicleStateFor(UUID vehicleId)
+    /**
+     * Gets a paginated map of Vehicles.
+     *
+     * @param page     page number to retrieve.
+     * @param pageSize number of Vehicles in each page.
+     * @return A Map of Vehicles by their UUIDs.
+     */
+    public Map<UUID, VehicleState> getVehicleMap(int page, int pageSize)
     {
-        Vehicle vehicle = vehicleManager.getVehicle(vehicleId);
+        // Create a Map of Vehicles to return
+        Map<UUID, VehicleState> vMap = new HashMap<>();
 
-        if (vehicle == null)
+        int size = (int) this.vehicleStateStore.getActiveVehicleCount();
+        if (size == 0)
         {
-            throw new IllegalArgumentException("Unable to find vehicle with ID " + vehicleId);
+            return vMap;
         }
 
-        return createVehicleStateFor(vehicle);
-    }
-
-    private VehicleState createVehicleStateFor(Vehicle vehicle)
-    {
-        if (vehicle == null)
+        int index = page * pageSize;
+        if (index > size)
         {
-            throw new IllegalArgumentException("vehicle cannot be null!");
+            throw new IllegalArgumentException(
+                    "Page " + page + " of page size " + pageSize + " outside " + size + " bounds!");
         }
 
-        VehicleState vehicleState = new VehicleState();
-        vehicleState.setId(vehicle.getId());
-        vehicleState.setDegLatitude(vehicle.getDegLatitude());
-        vehicleState.setDegLongitude(vehicle.getDegLongitude());
-        vehicleState.setMetersOffset(vehicle.getMetersOffset());
-        vehicleState.setMetersPerSecond(vehicle.getMetersPerSecond());
-        vehicleState.setMetersPerSecondDesired(vehicle.getMetersPerSecondDesired());
-        vehicleState.setMssAcceleration(vehicle.getMssAcceleration());
-        vehicleState.setPositionLimited(vehicle.isPositionLimited());
-        vehicleState.setPositionValid(vehicle.isPositionValid());
-        vehicleState.setDegBearing(vehicle.getDegBearing());
-        vehicleState.setColorCode(vehicle.getColorCode());
-        vehicleState.setManagerHost(vehicle.getManagerHost());
-        vehicleState.setMsEpochLastRun(vehicle.getLastCalculationEpochMillis());
-        vehicleState.setNsLastExec(vehicle.getLastNsExecutionTime());
+        // Now, loop through the cursor, filling up to "pageSize" vehicleId elements.
+        int recordsToFill = pageSize;
+        List<UUID> idList = new ArrayList<>();
+        List<UUID> activeIdsList = this.vehicleStateStore.getActiveVehicleIds().stream().toList();
+        while ((recordsToFill > 0) && (index < size))
+        {
+            UUID vehicleId = activeIdsList.get(index++);
+            idList.add(vehicleId);
+            recordsToFill--;
+        }
 
-        return vehicleState;
+        return this.vehicleStateStore.getVehicles(idList);
     }
+
 }

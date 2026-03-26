@@ -11,13 +11,15 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
-import com.tarterware.roadrunner.components.Vehicle;
+import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.ports.VehicleStateStore;
 
 @Component
+@ConditionalOnProperty(prefix = "roadrunner.messaging.redis", name = "enabled", havingValue = "true")
 public class RedisVehicleStateStore implements VehicleStateStore
 {
 
@@ -34,14 +36,14 @@ public class RedisVehicleStateStore implements VehicleStateStore
     }
 
     @Override
-    public Vehicle getVehicle(UUID vehicleId)
+    public VehicleState getVehicle(UUID vehicleId)
     {
         Object value = redisTemplate.opsForValue().get(getVehicleKey(vehicleId));
-        return (value instanceof Vehicle vehicle) ? vehicle : null;
+        return (value instanceof VehicleState vehicleState) ? vehicleState : null;
     }
 
     @Override
-    public Map<UUID, Vehicle> getVehicles(Collection<UUID> vehicleIds)
+    public Map<UUID, VehicleState> getVehicles(Collection<UUID> vehicleIds)
     {
         if (vehicleIds == null || vehicleIds.isEmpty())
         {
@@ -60,13 +62,13 @@ public class RedisVehicleStateStore implements VehicleStateStore
             return Collections.emptyMap();
         }
 
-        Map<UUID, Vehicle> result = new HashMap<>();
+        Map<UUID, VehicleState> result = new HashMap<>();
         for (int i = 0; i < orderedIds.size(); i++)
         {
             Object value = values.get(i);
-            if (value instanceof Vehicle vehicle)
+            if (value instanceof VehicleState vehicleState)
             {
-                result.put(orderedIds.get(i), vehicle);
+                result.put(orderedIds.get(i), vehicleState);
             }
         }
 
@@ -74,14 +76,14 @@ public class RedisVehicleStateStore implements VehicleStateStore
     }
 
     @Override
-    public void saveVehicle(Vehicle vehicle)
+    public void saveVehicle(VehicleState vehicleState)
     {
-        if (vehicle == null || vehicle.getId() == null)
+        if (vehicleState == null || vehicleState.getId() == null)
         {
-            throw new IllegalArgumentException("vehicle and vehicle.id must not be null");
+            throw new IllegalArgumentException("vehicleState and vVhicleState.id must not be null");
         }
 
-        redisTemplate.opsForValue().set(getVehicleKey(vehicle.getId()), vehicle);
+        redisTemplate.opsForValue().set(getVehicleKey(vehicleState.getId()), vehicleState);
     }
 
     @Override
