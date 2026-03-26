@@ -5,61 +5,61 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import com.tarterware.roadrunner.components.Vehicle;
+import com.tarterware.roadrunner.models.VehicleState;
 
 public interface VehicleStateStore
 {
 
     /**
-     * Retrieve a specific Vehicle by its UUID.
+     * Retrieve a specific VehicleState by its UUID.
      *
-     * @param uuid The UUID of the Vehicle.
-     * @return The corresponding Vehicle, or null if not found.
+     * @param uuid The UUID of the VehicleState.
+     * @return The corresponding VehicleState, or null if not found.
      */
-    Vehicle getVehicle(UUID vehicleId);
+    VehicleState getVehicle(UUID vehicleId);
 
     /**
-     * Get a map of specified Vehicles.
+     * Get a map of specified VehicleStates.
      *
-     * @param vehicleIds Collection of Vehicle UUIDs to retrieve.
-     * @return A Map of Vehicles by their UUIDs.
+     * @param vehicleStateIds Collection of VehicleState UUIDs to retrieve.
+     * @return A Map of VehicleStates by their UUIDs.
      */
-    Map<UUID, Vehicle> getVehicles(Collection<UUID> vehicleIds);
+    Map<UUID, VehicleState> getVehicles(Collection<UUID> vehicleIds);
 
     /**
-     * Save Vehicle to the VehicleStateStore.
+     * Save VehicleState to the VehicleStateStore.
      *
-     * @param vehicle Vehicle to save.
+     * @param vehicleState VehicleState to save.
      */
-    void saveVehicle(Vehicle vehicle);
+    void saveVehicle(VehicleState vehicleState);
 
     /**
-     * Delete Vehicle from the VehicleStateStore.
+     * Delete VehicleState from the VehicleStateStore.
      *
-     * @param vehicle Vehicle to save.
+     * @param vehicleId UUID of VehicleState to delete.
      */
     void deleteVehicle(UUID vehicleId);
 
     /**
-     * Get a set of active Vehicle UUIDs.
+     * Get a set of active VehicleState UUIDs.
      *
-     * @return A Set of active Vehicle UUIDs.
+     * @return A Set of active VehicleState UUIDs.
      */
     Set<UUID> getActiveVehicleIds();
 
     /**
-     * Add Vehicle UUID to active vehicle set.
+     * Add VehicleState UUID to active vehicleState set.
      *
-     * @param vehicleId UUID of Vehicle to save.
+     * @param vehicleState UUID of VehicleState to save.
      */
     void addActiveVehicle(UUID vehicleId);
 
     /**
-     * Remove Vehicle UUID from active vehicle set.
+     * Remove VehicleState UUID from active vehicleState set.
      *
-     * @param vehicleId UUID of Vehicle to remove.
+     * @param vehicleState UUID of VehicleState to remove.
      */
-    void removeActiveVehicle(UUID vehicleId);
+    void removeActiveVehicle(UUID vehicleStateId);
 
     /**
      * Acquire a per-vehicle update lock.
