@@ -16,7 +16,7 @@ import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.ports.VehicleStateStore;
 
 @Component
-@ConditionalOnProperty(prefix = "roadrunner.messaging.kafka", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.kafka", name = "enabled", havingValue = "true")
 public class KafkaVehicleStateStore implements VehicleStateStore
 {
     private Set<UUID> activeVehicleSet = ConcurrentHashMap.newKeySet();
