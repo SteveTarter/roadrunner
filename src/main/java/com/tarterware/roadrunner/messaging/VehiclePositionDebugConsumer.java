@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,8 +17,22 @@ public class VehiclePositionDebugConsumer
     @KafkaListener(
             topics = "${com.tarterware.roadrunner.kafka.topic.vehicle-position}",
             groupId = "${spring.kafka.consumer.group-id}")
-    public void receive(String payload)
+    public void receive(@Payload
+    VehiclePositionEvent event)
     {
-        log.info("Kafka raw vehicle event received: {}", payload);
+        log.info("Kafka Event [{}]: Vehicle {} is at ({}, {}) heading {} degrees at {} m/s. Sequence: {}",
+                event.status(),
+                event.vehicleId(),
+                event.latitude(),
+                event.longitude(),
+                event.heading(),
+                event.speed(),
+                event.sequenceNumber());
+
+        // Additional debug logic for terminal events
+        if ("DELETED".equals(event.status()))
+        {
+            log.info("Vehicle {} has been decommissioned.", event.vehicleId());
+        }
     }
 }
