@@ -10,7 +10,7 @@ public record VehiclePositionEvent(
         double longitude,
         double heading,
         double speed,
-        String status
+        String status // Use: "CREATED", "MOVING", "ARRIVED", "DELETED"
 )
 {
 }
