@@ -19,7 +19,9 @@ import com.tarterware.roadrunner.ports.VehicleEventPublisher;
         properties =
             {
                     "com.tarterware.roadrunner.messaging.kafka.enabled=false",
-                    "com.tarterware.roadrunner.messaging.redis.enabled=true"
+                    "com.tarterware.roadrunner.messaging.redis.enabled=true",
+                    "com.tarterware.redis.password=dummy-password",
+                    "mapbox.api.key=dummy-key"
             },
         // Exclude the classes that try to connect to real brokers
         classes = RoadrunnerApplication.class)
