@@ -14,6 +14,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.tarterware.roadrunner.RoadrunnerApplication;
+import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 
@@ -22,9 +23,7 @@ import com.tarterware.roadrunner.ports.VehicleEventPublisher;
             {
                     "com.tarterware.roadrunner.messaging.kafka.enabled=true",
                     "com.tarterware.roadrunner.messaging.redis.enabled=false",
-                    "com.tarterware.redis.password=dummy-password",
-                    "mapbox.api.key=dummy-key",
-                    "spring.security.oauth2.resourceserver.jwt.issuer-uri=http://localhost:8080"
+                    "mapbox.api.key=dummy-key"
             },
         // Exclude the classes that try to connect to real brokers
         classes = RoadrunnerApplication.class)
@@ -36,6 +35,9 @@ import com.tarterware.roadrunner.ports.VehicleEventPublisher;
     })
 public class KafkaModeActiveTest
 {
+    @MockitoBean
+    private SecurityConfig securityConfig;
+
     @MockitoBean
     private RedisTemplate<String, Object> redisTemplate;
 
