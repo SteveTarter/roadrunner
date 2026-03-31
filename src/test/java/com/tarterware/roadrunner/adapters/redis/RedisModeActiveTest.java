@@ -13,6 +13,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.tarterware.roadrunner.RoadrunnerApplication;
+import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 
 @SpringBootTest(
@@ -20,9 +21,7 @@ import com.tarterware.roadrunner.ports.VehicleEventPublisher;
             {
                     "com.tarterware.roadrunner.messaging.kafka.enabled=false",
                     "com.tarterware.roadrunner.messaging.redis.enabled=true",
-                    "com.tarterware.redis.password=dummy-password",
-                    "mapbox.api.key=dummy-key",
-                    "spring.security.oauth2.resourceserver.jwt.issuer-uri=http://localhost:8080"
+                    "mapbox.api.key=dummy-key"
             },
         // Exclude the classes that try to connect to real brokers
         classes = RoadrunnerApplication.class)
@@ -34,6 +33,9 @@ import com.tarterware.roadrunner.ports.VehicleEventPublisher;
     })
 public class RedisModeActiveTest
 {
+    @MockitoBean
+    private SecurityConfig securityConfig;
+
     @MockitoBean
     private RedisTemplate<String, Object> redisTemplate;
 

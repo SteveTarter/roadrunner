@@ -18,7 +18,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.tarterware.roadrunner.components.Vehicle;
@@ -71,6 +73,9 @@ public class KafkaVehicleEventPublisherTest
 
     @Mock
     private KafkaTemplate<String, VehiclePositionEvent> kafkaTemplate;
+
+    @MockitoBean
+    private RedisTemplate<String, Object> redisTemplate;
 
     @InjectMocks
     private KafkaVehicleEventPublisher kafkaPublisher;
