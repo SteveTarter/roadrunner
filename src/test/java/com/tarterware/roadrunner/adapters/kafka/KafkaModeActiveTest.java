@@ -23,7 +23,8 @@ import com.tarterware.roadrunner.ports.VehicleEventPublisher;
                     "com.tarterware.roadrunner.messaging.kafka.enabled=true",
                     "com.tarterware.roadrunner.messaging.redis.enabled=false",
                     "com.tarterware.redis.password=dummy-password",
-                    "mapbox.api.key=dummy-key"
+                    "mapbox.api.key=dummy-key",
+                    "spring.security.oauth2.resourceserver.jwt.issuer-uri=http://localhost:8080"
             },
         // Exclude the classes that try to connect to real brokers
         classes = RoadrunnerApplication.class)
