@@ -20,7 +20,7 @@ public class VehiclePositionDebugConsumer
     public void receive(@Payload
     VehiclePositionEvent event)
     {
-        log.info("Kafka Event [{}]: Vehicle {} is at ({}, {}) heading {} degrees at {} m/s. Sequence: {}",
+        log.debug("Kafka Event [{}]: Vehicle {} is at ({}, {}) heading {} degrees at {} m/s. Sequence: {}",
                 event.status(),
                 event.vehicleId(),
                 event.latitude(),
@@ -32,7 +32,7 @@ public class VehiclePositionDebugConsumer
         // Additional debug logic for terminal events
         if ("DELETED".equals(event.status()))
         {
-            log.info("Vehicle {} has been decommissioned.", event.vehicleId());
+            log.debug("Vehicle {} has been decommissioned.", event.vehicleId());
         }
     }
 }
