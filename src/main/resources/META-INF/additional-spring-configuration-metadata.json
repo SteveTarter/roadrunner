@@ -55,8 +55,18 @@
     "description": "A description for 'com.tarterware.roadrunner.vehicle-polling-period'"
   },
   {
-    "name": "roadrunner.kafka.topic.vehicle-position",
+    "name": "com.tarterware.roadrunner.messaging.kafka.enabled",
     "type": "java.lang.String",
-    "description": "A description for 'roadrunner.kafka.topic.vehicle-position'"
+    "description": "A description for 'com.tarterware.roadrunner.messaging.kafka.enabled'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.messaging.redis.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.messaging.redis.enabled'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.kafka.topic.vehicle-position",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.kafka.topic.vehicle-position'"
   }
 ]}

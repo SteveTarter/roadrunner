@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 
 @Component
-@ConditionalOnProperty(prefix = "roadrunner.messaging.kafka", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.kafka", name = "enabled", havingValue = "true")
 public class KafkaConnectionInfoLogger
 {
 
@@ -18,7 +18,7 @@ public class KafkaConnectionInfoLogger
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
-    @Value("${roadrunner.kafka.topic.vehicle-position}")
+    @Value("${com.tarterware.roadrunner.kafka.topic.vehicle-position}")
     private String topic;
 
     @PostConstruct

@@ -5,10 +5,8 @@ import java.net.UnknownHostException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,6 +33,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.tarterware.roadrunner.models.TripPlan;
+import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.models.mapbox.RouteLeg;
 import com.tarterware.roadrunner.models.mapbox.RouteStep;
@@ -97,6 +96,9 @@ public class VehicleManager
 
     // Thread‑safe map to keep track of vehicles currently loading directions.
     private final ConcurrentMap<UUID, Future<Directions>> directionsLoadingMap = new ConcurrentHashMap<>();
+
+    // Thread‑safe map of vehicles.
+    private ConcurrentHashMap<UUID, Vehicle> vehicleMap = new ConcurrentHashMap<UUID, Vehicle>();
 
     private CopyOnWriteArrayList<UUID> activeIdsList = new CopyOnWriteArrayList<UUID>();
 
@@ -207,44 +209,6 @@ public class VehicleManager
     }
 
     /**
-     * Gets a paginated map of Vehicles.
-     *
-     * @param page     page number to retrieve.
-     * @param pageSize number of Vehicles in each page.
-     * @return A Map of Vehicles by their UUIDs.
-     */
-    public Map<UUID, Vehicle> getVehicleMap(int page, int pageSize)
-    {
-        // Create a Map of Vehicles to return
-        Map<UUID, Vehicle> vMap = new HashMap<>();
-
-        int size = activeIdsList.size();
-        if (size == 0)
-        {
-            return vMap;
-        }
-
-        int index = page * pageSize;
-        if (index > size)
-        {
-            throw new IllegalArgumentException(
-                    "Page " + page + " of page size " + pageSize + " outside " + size + " bounds!");
-        }
-
-        // Now, loop through the cursor, filling up to "pageSize" vehicleId elements.
-        int recordsToFill = pageSize;
-        List<UUID> idList = new ArrayList<>();
-        while ((recordsToFill > 0) && (index < size))
-        {
-            UUID vehicleId = activeIdsList.get(index++);
-            idList.add(vehicleId);
-            recordsToFill--;
-        }
-
-        return this.vehicleStateStore.getVehicles(idList);
-    }
-
-    /**
      * Resets the simulation by clearing all vehicle data and related information
      * from Redis. This method deletes the following keys and their associated
      * values:
@@ -273,7 +237,7 @@ public class VehicleManager
      * @param uuid The UUID of the Vehicle.
      * @return The corresponding Vehicle, or null if not found.
      */
-    public Vehicle getVehicle(UUID uuid)
+    public VehicleState getVehicle(UUID uuid)
     {
         return this.vehicleStateStore.getVehicle(uuid);
     }
@@ -319,7 +283,8 @@ public class VehicleManager
         // Add a marker that this manager calculated the vehicle state.
         vehicle.setManagerHost(hostName);
 
-        this.vehicleStateStore.saveVehicle(vehicle);
+        this.vehicleMap.put(vehicle.getId(), vehicle);
+        this.vehicleStateStore.saveVehicle(vehicle.getVehicleState());
         this.vehicleStateStore.addActiveVehicle(vehicle.getId());
         this.vehicleEventPublisher.publishVehicleCreated(vehicle);
 
@@ -563,12 +528,13 @@ public class VehicleManager
                     {
                         try
                         {
-                            Vehicle vehicle = (Vehicle) this.vehicleStateStore.getVehicle(vehicleId);
+                            Vehicle vehicle = vehicleMap.get(vehicleId);
                             if (vehicle != null)
                             {
                                 long msJitter = 0;
                                 boolean updated = false;
 
+                                vehicle.setVehicleState(vehicleStateStore.getVehicle(vehicleId));
                                 vehicle.setDirections(vehicleDirections);
                                 vehicle.setListLineSegmentData(lineSegmentDataMap.get(vehicleId));
 
@@ -603,7 +569,7 @@ public class VehicleManager
                                 // Mark that this manager calculated the vehicle state.
                                 vehicle.setManagerHost(hostName);
 
-                                this.vehicleStateStore.saveVehicle(vehicle);
+                                this.vehicleStateStore.saveVehicle(vehicle.getVehicleState());
                                 this.vehicleEventPublisher.publishVehicleUpdated(vehicle);
 
                                 // If the vehicle was not updated, see if it has reached timeout.
@@ -679,14 +645,11 @@ public class VehicleManager
      */
     private void cleanupDeletedVehicles(Set<UUID> deletionSet)
     {
-        // Remove the vehicle states from Redis
-        deletionSet.forEach(vehicleID ->
-        {
-            this.vehicleStateStore.removeActiveVehicle(vehicleID);
-        });
-
+        // Remove the Vehicle and vehicle states
         deletionSet.forEach(vehicleId ->
         {
+            this.vehicleMap.remove(vehicleId);
+            this.vehicleStateStore.removeActiveVehicle(vehicleId);
             this.vehicleStateStore.deleteVehicle(vehicleId);
             this.vehicleEventPublisher.publishVehicleDeleted(vehicleId);
         });

@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.models.mapbox.Annotation;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.models.mapbox.RouteLeg;
@@ -393,6 +394,50 @@ public class Vehicle
         }
 
         return updated;
+    }
+
+    /**
+     * Get this Vehicle's VehicleState
+     * 
+     * @return VehicleState
+     */
+    public VehicleState getVehicleState()
+    {
+        VehicleState vehicleState = new VehicleState();
+        vehicleState.setId(getId());
+        vehicleState.setDegLatitude(getDegLatitude());
+        vehicleState.setDegLongitude(getDegLongitude());
+        vehicleState.setMetersOffset(getMetersOffset());
+        vehicleState.setMetersPerSecond(getMetersPerSecond());
+        vehicleState.setMetersPerSecondDesired(getMetersPerSecondDesired());
+        vehicleState.setMssAcceleration(getMssAcceleration());
+        vehicleState.setPositionLimited(isPositionLimited());
+        vehicleState.setPositionValid(isPositionValid());
+        vehicleState.setDegBearing(getDegBearing());
+        vehicleState.setColorCode(getColorCode());
+        vehicleState.setManagerHost(getManagerHost());
+        vehicleState.setMsEpochLastRun(getLastCalculationEpochMillis());
+        vehicleState.setNsLastExec(getLastNsExecutionTime());
+
+        return vehicleState;
+    }
+
+    public void setVehicleState(VehicleState vehicleState)
+    {
+        id = vehicleState.getId();
+        degLatitude = vehicleState.getDegLatitude();
+        degLongitude = vehicleState.getDegLongitude();
+        metersOffset = vehicleState.getMetersOffset();
+        metersPerSecond = vehicleState.getMetersPerSecond();
+        metersPerSecondDesired = vehicleState.getMetersPerSecondDesired();
+        mssAcceleration = vehicleState.getMssAcceleration();
+        positionLimited = vehicleState.isPositionLimited();
+        positionValid = vehicleState.isPositionValid();
+        degBearing = vehicleState.getDegBearing();
+        colorCode = vehicleState.getColorCode();
+        managerHost = vehicleState.getManagerHost();
+        lastCalculationEpochMillis = vehicleState.getMsEpochLastRun();
+        lastNsExecutionTime = vehicleState.getNsLastExec();
     }
 
     private double _getBearingBetween(ProjCoordinate projGeoPoint1, ProjCoordinate projGeoPoint2)
