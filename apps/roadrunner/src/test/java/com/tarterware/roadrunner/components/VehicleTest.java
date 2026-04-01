@@ -14,9 +14,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.HashOperations;
@@ -25,8 +24,8 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import com.tarterware.roadrunner.configs.NoOpSchedulerConfig;
 import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.models.TripPlan;
@@ -44,6 +43,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 @ExtendWith(MockitoExtension.class)
+@Import(NoOpSchedulerConfig.class)
 class VehicleTest
 {
     @Mock
@@ -55,19 +55,19 @@ class VehicleTest
     @Mock
     private IsochroneService isochroneService;
 
-    @MockitoBean
+    @Mock
     private SecurityConfig securityConfig;
 
-    @MockitoBean
+    @Mock
     private RedisConfig redisConfig;
 
-    @MockitoBean
+    @Mock
     private LettuceConnectionFactory redisStandAloneConnectionFactory;
 
-    @MockitoBean
+    @Mock
     private SecurityFilterChain filterChain;
 
-    @MockitoBean
+    @Mock
     private JwtDecoder jwtDecoder;
 
     @Mock
@@ -79,7 +79,7 @@ class VehicleTest
     @Mock
     private VehicleEventPublisher vehicleEventPublisher;
 
-    @MockitoBean
+    @Mock
     private KubernetesClient kubernetesClient;
 
     @Mock
@@ -104,19 +104,17 @@ class VehicleTest
 
     private Directions mockDirections;
 
-    @Autowired
+    @Mock
     private Environment environment;
 
     @BeforeEach
     void setup() throws IOException
     {
-        // Initialize mocks
-        MockitoAnnotations.openMocks(this);
-
         // Mock DirectionsService
         mockTripPlan = mock(TripPlan.class);
         mockDirections = TestUtils.loadMockDirections("src/test/resources/test_directions.json");
 
+        org.mockito.Mockito.lenient().when(vehicleStateStore.getActiveVehicleCount()).thenReturn(1L);
         when(directionsService.getDirectionsForTripPlan(any())).thenReturn(mockDirections);
 
         meterRegistry = new SimpleMeterRegistry();
