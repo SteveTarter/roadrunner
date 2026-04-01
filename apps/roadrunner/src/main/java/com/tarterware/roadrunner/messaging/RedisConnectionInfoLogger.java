@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 
 @Component
-@ConditionalOnProperty(prefix = "roadrunner.messaging.redis", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.redis", name = "enabled", havingValue = "true")
 public class RedisConnectionInfoLogger
 {
 

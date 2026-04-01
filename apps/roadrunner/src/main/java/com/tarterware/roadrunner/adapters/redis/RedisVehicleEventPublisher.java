@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +12,7 @@ import com.tarterware.roadrunner.components.Vehicle;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 
 @Component
+@ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.redis", name = "enabled", havingValue = "true")
 public class RedisVehicleEventPublisher implements VehicleEventPublisher
 {
     @SuppressWarnings("unused")
