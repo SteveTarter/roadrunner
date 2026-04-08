@@ -11,15 +11,11 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Component;
 
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.ports.VehicleStateStore;
 
-@Component
-@ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.redis", name = "enabled", havingValue = "true")
 public class RedisVehicleStateStore implements VehicleStateStore
 {
 
@@ -177,7 +173,7 @@ public class RedisVehicleStateStore implements VehicleStateStore
     @Override
     public void reset()
     {
-        logger.info("Resetting the Redis variables");
+        logger.info("Resetting the variables");
 
         redisTemplate.delete(ACTIVE_VEHICLE_REGISTRY);
         redisTemplate.delete(VEHICLE_UPDATE_LOCK_SET);
