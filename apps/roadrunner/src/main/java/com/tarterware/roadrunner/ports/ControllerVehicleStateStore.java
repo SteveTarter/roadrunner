@@ -15,7 +15,7 @@ package com.tarterware.roadrunner.ports;
  * </p>
  *
  * @see VehicleStateStore
- * @see RunnerVehicleStateStore
+ * @see SimulationVehicleStateStore
  * @see com.tarterware.roadrunner.controllers.VehicleController
  */
 public interface ControllerVehicleStateStore extends VehicleStateStore

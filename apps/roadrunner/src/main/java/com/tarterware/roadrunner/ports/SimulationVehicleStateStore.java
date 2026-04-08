@@ -18,7 +18,7 @@ package com.tarterware.roadrunner.ports;
  * @see ControllerVehicleStateStore
  * @see com.tarterware.roadrunner.components.VehicleManager
  */
-public interface RunnerVehicleStateStore extends VehicleStateStore
+public interface SimulationVehicleStateStore extends VehicleStateStore
 {
     // This interface inherits all methods from VehicleStateStore to fulfill
     // the contract required by the simulation runner.

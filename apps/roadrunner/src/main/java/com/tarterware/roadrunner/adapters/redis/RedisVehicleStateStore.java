@@ -40,7 +40,7 @@ import com.tarterware.roadrunner.ports.VehicleStateStore;
  * * @see VehicleStateStore
  * 
  * @see RedisControllerVehicleStateStore
- * @see RedisRunnerVehicleStateStore
+ * @see RedisSimulationVehicleStateStore
  */
 public class RedisVehicleStateStore implements VehicleStateStore
 {

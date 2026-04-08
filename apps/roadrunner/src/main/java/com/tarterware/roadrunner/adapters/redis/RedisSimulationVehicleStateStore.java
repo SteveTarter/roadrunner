@@ -4,10 +4,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
-import com.tarterware.roadrunner.ports.RunnerVehicleStateStore;
+import com.tarterware.roadrunner.ports.SimulationVehicleStateStore;
 
 /**
- * Redis-based implementation of the {@link RunnerVehicleStateStore} port.
+ * Redis-based implementation of the {@link SimulationVehicleStateStore} port.
  *
  * <p>
  * This component provides the simulation runner (e.g.,
@@ -25,15 +25,15 @@ import com.tarterware.roadrunner.ports.RunnerVehicleStateStore;
  * </p>
  *
  * @see RedisVehicleStateStore
- * @see RunnerVehicleStateStore
+ * @see SimulationVehicleStateStore
  * @see com.tarterware.roadrunner.components.VehicleManager
  */
 @Component
 @ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.redis", name = "enabled", havingValue = "true")
-public class RedisRunnerVehicleStateStore extends RedisVehicleStateStore implements RunnerVehicleStateStore
+public class RedisSimulationVehicleStateStore extends RedisVehicleStateStore implements SimulationVehicleStateStore
 {
 
-    public RedisRunnerVehicleStateStore(RedisTemplate<String, Object> redisTemplate)
+    public RedisSimulationVehicleStateStore(RedisTemplate<String, Object> redisTemplate)
     {
         super(redisTemplate);
     }

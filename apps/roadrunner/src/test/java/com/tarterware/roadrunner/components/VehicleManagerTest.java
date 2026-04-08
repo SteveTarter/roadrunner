@@ -20,7 +20,7 @@ import org.springframework.core.env.Environment;
 import com.tarterware.roadrunner.configs.NoOpSchedulerConfig;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
-import com.tarterware.roadrunner.ports.RunnerVehicleStateStore;
+import com.tarterware.roadrunner.ports.SimulationVehicleStateStore;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.services.DirectionsService;
@@ -37,7 +37,7 @@ class VehicleManagerTest
     private DirectionsService directionsService;
 
     @Mock
-    private RunnerVehicleStateStore vehicleStateStore;
+    private SimulationVehicleStateStore vehicleStateStore;
 
     @Mock
     private TripPlanRepository tripPlanRepository;
@@ -72,7 +72,7 @@ class VehicleManagerTest
 
         meterRegistry = new SimpleMeterRegistry();
 
-        vehicleManager = new VehicleManager(directionsService, (RunnerVehicleStateStore) vehicleStateStore,
+        vehicleManager = new VehicleManager(directionsService, (SimulationVehicleStateStore) vehicleStateStore,
                 tripPlanRepository,
                 vehicleEventPublisher, meterRegistry, environment);
 
