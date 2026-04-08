@@ -37,7 +37,7 @@ import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.models.mapbox.RouteLeg;
 import com.tarterware.roadrunner.models.mapbox.RouteStep;
-import com.tarterware.roadrunner.ports.RunnerVehicleStateStore;
+import com.tarterware.roadrunner.ports.SimulationVehicleStateStore;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.services.DirectionsService;
@@ -62,7 +62,7 @@ import jakarta.annotation.PostConstruct;
  * (GPS) and UTM (planar) coordinates and manages transitions between UTM
  * zones.</li>
  * <li><b>State Synchronization:</b> Coordinates with
- * {@link RunnerVehicleStateStore} and {@link VehicleEventPublisher} to
+ * {@link SimulationVehicleStateStore} and {@link VehicleEventPublisher} to
  * broadcast telemetry updates.</li>
  * <li><b>Performance Monitoring:</b> Collects jitter statistics to measure
  * simulation fidelity and exposes metrics via Micrometer.</li>
@@ -109,7 +109,7 @@ public class VehicleManager
     // Service to retrieve directions for trip plans
     private DirectionsService directionsService;
 
-    private RunnerVehicleStateStore vehicleStateStore;
+    private SimulationVehicleStateStore vehicleStateStore;
     private VehicleEventPublisher vehicleEventPublisher;
     private TripPlanRepository tripPlanRepository;
 
@@ -155,7 +155,7 @@ public class VehicleManager
      */
     public VehicleManager(
             DirectionsService directionsService,
-            RunnerVehicleStateStore vehicleStateStore,
+            SimulationVehicleStateStore vehicleStateStore,
             TripPlanRepository tripPlanRepository,
             VehicleEventPublisher vehicleEventPublisher,
             MeterRegistry meterRegistry,

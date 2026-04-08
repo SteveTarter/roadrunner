@@ -31,7 +31,7 @@ import com.tarterware.roadrunner.ports.VehicleStateStore;
  * * @see VehicleStateStore
  * 
  * @see KafkaControllerVehicleStateStore
- * @see KafkaRunnerVehicleStateStore
+ * @see KafkaSimulationVehicleStateStore
  */
 public class KafkaVehicleStateStore implements VehicleStateStore
 {
