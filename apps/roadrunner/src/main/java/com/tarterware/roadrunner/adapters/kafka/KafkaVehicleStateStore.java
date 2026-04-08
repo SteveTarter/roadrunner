@@ -13,9 +13,34 @@ import org.slf4j.LoggerFactory;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.ports.VehicleStateStore;
 
+/**
+ * An in-memory implementation of the {@link VehicleStateStore} designed for use
+ * with the Kafka messaging adapter. *
+ * <p>
+ * This class maintains the current state of all vehicles and the set of active
+ * vehicle IDs using thread-safe collections to ensure data consistency across
+ * multiple Kafka listener threads. Unlike the Redis-based implementation, this
+ * store is volatile and serves as a local cache of the latest telemetry
+ * received from the event stream.
+ * </p>
+ * *
+ * <p>
+ * This component is used as a base for specialized stores that satisfy specific
+ * port requirements in the application runner and controller layers.
+ * </p>
+ * * @see VehicleStateStore
+ * 
+ * @see KafkaControllerVehicleStateStore
+ * @see KafkaRunnerVehicleStateStore
+ */
 public class KafkaVehicleStateStore implements VehicleStateStore
 {
+    /** Set of IDs for vehicles currently active in the simulation. */
     private Set<UUID> activeVehicleSet = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Map containing the latest known state for each vehicle, keyed by vehicle ID.
+     */
     private ConcurrentHashMap<UUID, VehicleState> vehicleStateMap = new ConcurrentHashMap<UUID, VehicleState>();
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaVehicleStateStore.class);

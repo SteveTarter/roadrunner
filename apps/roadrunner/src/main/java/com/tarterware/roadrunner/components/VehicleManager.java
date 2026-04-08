@@ -48,26 +48,30 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 
 /**
- * Manages a collection of Vehicles, their routes, and updates their positions
- * periodically. Vehicles are created based on trip plans and can have their
- * states updated periodically.
- * 
+ * The central simulation engine for the Roadrunner application, responsible for
+ * managing the lifecycle of {@link Vehicle} instances and their real-time
+ * movements. *
  * <p>
- * The {@code VehicleManager} class provides functionality to:
- * <ul>
- * <li>Process a trip plan to initialize route geometry.</li>
- * <li>Manage Vehicle state that is not serializable, such as LineString.
- * <li>Handle transitions between UTM zones dynamically during route
- * traversal.</li>
- * </ul>
+ * The {@code VehicleManager} serves as the primary coordinator between domain
+ * logic and infrastructure ports. It performs the following roles:
  * </p>
- * 
- * <p>
- * Features include:
  * <ul>
- * <li>Geospatial transformations between UTM and WGS84 coordinates.</li>
- * <li>Management of route segment data for efficient spatial calculations.</li>
+ * <li><b>Lifecycle Management:</b> Handles the creation, periodic update, and
+ * timeout-based deletion of vehicles.</li>
+ * <li><b>Geospatial Processing:</b> Transforms route geometry between WGS84
+ * (GPS) and UTM (planar) coordinates and manages transitions between UTM
+ * zones.</li>
+ * <li><b>State Synchronization:</b> Coordinates with
+ * {@link RunnerVehicleStateStore} and {@link VehicleEventPublisher} to
+ * broadcast telemetry updates.</li>
+ * <li><b>Performance Monitoring:</b> Collects jitter statistics to measure
+ * simulation fidelity and exposes metrics via Micrometer.</li>
  * </ul>
+ * *
+ * <p>
+ * This component is designed to run in a distributed environment where multiple
+ * managers can collaborate by sharing state through a centralized store.
+ * </p>
  */
 @Component
 public class VehicleManager
@@ -210,8 +214,8 @@ public class VehicleManager
 
     /**
      * Resets the simulation by clearing all vehicle data and related information
-     * from Redis. This method deletes the following keys and their associated
-     * values:
+     * from from the configured state store and repository. This method deletes the
+     * following keys and their associated values:
      * <ul>
      * <li>{@link #VEHICLE_UPDATE_QUEUE_ZSET}: The sorted set containing vehicles to
      * be updated.</li>
@@ -222,8 +226,9 @@ public class VehicleManager
      * <li>All keys starting with "{vehicle}:": These keys store individual vehicle
      * data.</li>
      * </ul>
-     * This method is typically used to clean up the Redis database before starting
-     * a new simulation or to remove all existing vehicle data.
+     * This method is typically used to clean up the configured state store and
+     * repository before starting a new simulation or to remove all existing vehicle
+     * data.
      */
     public void reset()
     {
@@ -243,11 +248,11 @@ public class VehicleManager
     }
 
     /**
-     * Returns the Redis key used to store a Vehicle object. The key is formatted as
-     * "{vehicle}:<vehicleId>".
+     * Returns the standardized storage key used to store a Vehicle object. The key
+     * is formatted as "{vehicle}:<vehicleId>".
      *
      * @param vehicleId The UUID of the Vehicle.
-     * @return The formatted Redis key for the Vehicle.
+     * @return The standardized storage key for the Vehicle.
      */
     public String getVehicleKey(UUID vehicleId)
     {
@@ -489,13 +494,22 @@ public class VehicleManager
      * position if necessary.</li>
      * <li>Records jitter statistics, which measure the deviation from the expected
      * update interval.</li>
-     * <li>Updates the vehicle's state in Redis, including its last execution time
-     * and the manager host that performed the update.</li>
+     * <li>Updates the vehicle's state in the state store, including its last
+     * execution time and the manager host that performed the update.</li>
      * <li>Checks if the vehicle has timed out and marks it for deletion if
      * necessary.</li>
      * </ol>
      * After processing all vehicles, the method cleans up deleted vehicles and
      * updates the jitter statistics for monitoring performance.
+     * <ol>
+     * <li>...</li>
+     * <li><b>Distributed Locking:</b> Uses a lock-per-vehicle pattern via the
+     * {@code vehicleStateStore} to prevent multiple manager instances from updating
+     * the same vehicle simultaneously.</li>
+     * <li><b>Jitter Capping:</b> Implements a "jitter cap" (3x update period) to
+     * prevent outlier execution spikes from triggering aggressive infrastructure
+     * autoscaling.</li>
+     * </ol>
      */
     @Scheduled(fixedRateString = "${com.tarterware.roadrunner.vehicle-update-period}")
     public void updateVehicles()
@@ -631,16 +645,16 @@ public class VehicleManager
     }
 
     /**
-     * Cleans up deleted vehicles by removing their data from Redis and local
-     * caches. This method performs the following actions: *
+     * Cleans up deleted vehicles by removing their data from Redis and local caches
+     * and the configured state store and repository. This method performs the
+     * following actions: *
      * <ul>
-     * <li>Removes the vehicle IDs from the {@link #ACTIVE_VEHICLE_REGISTRY}
-     * set.</li>
+     * <li>Removes the vehicle IDs from the configured state store and
+     * repository.</li>
      * <li>Removes the vehicle's directions and line segment data from the local
      * maps.</li>
-     * <li>Removes the vehicle's state from Redis, including its entry in the
-     * {@link #VEHICLE_UPDATE_QUEUE_ZSET} and the {@link #ACTIVE_VEHICLE_REGISTRY}
-     * set.</li>
+     * <li>Removes the vehicle's state from the configured state store and
+     * repository.</li>
      * </ul>
      * * @param deletionSet The set of vehicle IDs to be deleted.
      */
@@ -666,9 +680,9 @@ public class VehicleManager
 
     /**
      * Periodically reconciles the local caches ({@link #directionsMap} and
-     * {@link #lineSegmentDataMap}) with the active vehicle list in Redis. This
-     * method ensures that the caches do not contain data for vehicles that have
-     * been removed from the active vehicle registry. It also updates the
+     * {@link #lineSegmentDataMap}) with the active vehicle list in the vehicle
+     * store. This method ensures that the caches do not contain data for vehicles
+     * that have been removed from the active vehicle registry. It also updates the
      * {@link #statisticsCollector} to ensure that it has enough capacity to store
      * jitter statistics for the current number of active vehicles.
      */
@@ -727,13 +741,13 @@ public class VehicleManager
     }
 
     /**
-     * Periodically retrieves the current list of active vehicles from Redis and
-     * updates the local cache. This method fetches the members of the
-     * {@link #ACTIVE_VEHICLE_REGISTRY} set from Redis, converts them to a list of
-     * strings, and updates the {@link #activeIdsList} with the new list. The
-     * {@link #activeIdsList} is a thread-safe list that provides a snapshot of the
-     * active vehicles at a specific point in time, allowing other methods to safely
-     * iterate over the list without encountering ConcurrentModificationExceptions.
+     * Periodically retrieves the current list of active vehicles from vehicle store
+     * and updates the local cache. This method fetches the members of the active
+     * vehicles, converts them to a list of strings, and updates the
+     * {@link #activeIdsList} with the new list. The {@link #activeIdsList} is a
+     * thread-safe list that provides a snapshot of the active vehicles at a
+     * specific point in time, allowing other methods to safely iterate over the
+     * list without encountering ConcurrentModificationExceptions.
      */
     @Scheduled(fixedRate = 1000) // every second
     public void getCurrentVehicleList()
