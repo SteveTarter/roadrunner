@@ -30,6 +30,7 @@ import com.tarterware.roadrunner.configs.NoOpSchedulerConfig;
 import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
+import com.tarterware.roadrunner.ports.RunnerVehicleStateStore;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.ports.VehicleStateStore;
@@ -47,7 +48,7 @@ public class KafkaVehicleEventPublisherTest
     private DirectionsService directionsService;
 
     @Mock
-    private VehicleStateStore vehicleStateStore;
+    private RunnerVehicleStateStore vehicleStateStore;
 
     @Mock
     private TripPlanRepository tripPlanRepository;

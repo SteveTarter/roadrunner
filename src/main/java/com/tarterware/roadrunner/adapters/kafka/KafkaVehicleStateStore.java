@@ -9,14 +9,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.ports.VehicleStateStore;
 
-@Component
-@ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.kafka", name = "enabled", havingValue = "true")
 public class KafkaVehicleStateStore implements VehicleStateStore
 {
     private Set<UUID> activeVehicleSet = ConcurrentHashMap.newKeySet();
@@ -116,9 +112,9 @@ public class KafkaVehicleStateStore implements VehicleStateStore
     @Override
     public void reset()
     {
-        logger.info("Resetting the Kafka variables");
+        logger.info("Resetting the variables");
 
-        activeVehicleSet.clear();
+        activeVehicleSet = ConcurrentHashMap.newKeySet();
         vehicleStateMap.clear();
     }
 

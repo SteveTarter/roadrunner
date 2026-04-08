@@ -51,8 +51,11 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
                 vehicleId.toString(),
                 Instant.now(),
                 -1, // Indicator for terminal event
+                -1,
+                false, false,
                 0, 0, 0, 0,
-                "DELETED");
+                "DELETED",
+                "");
 
         sendToKafka(vehicleId.toString(), deleteEvent);
     }
@@ -63,11 +66,15 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
                 vehicle.getId().toString(),
                 Instant.now(),
                 vehicle.getLastCalculationEpochMillis(), // Using timestamp as a sequence proxy
+                vehicle.getLastNsExecutionTime(),
+                vehicle.isPositionValid(),
+                vehicle.isPositionLimited(),
                 vehicle.getDegLatitude(),
                 vehicle.getDegLongitude(),
                 vehicle.getDegBearing(),
                 vehicle.getMetersPerSecond(),
-                status);
+                status,
+                vehicle.getManagerHost());
 
         sendToKafka(vehicle.getId().toString(), event);
     }

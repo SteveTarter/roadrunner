@@ -30,9 +30,9 @@ import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
+import com.tarterware.roadrunner.ports.RunnerVehicleStateStore;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
-import com.tarterware.roadrunner.ports.VehicleStateStore;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.services.IsochroneService;
@@ -74,7 +74,7 @@ class VehicleTest
     private TripPlanRepository tripPlanRepository;
 
     @Mock
-    private VehicleStateStore vehicleStateStore;
+    private RunnerVehicleStateStore vehicleStateStore;
 
     @Mock
     private VehicleEventPublisher vehicleEventPublisher;
@@ -119,7 +119,8 @@ class VehicleTest
 
         meterRegistry = new SimpleMeterRegistry();
 
-        vehicleManager = new VehicleManager(directionsService, vehicleStateStore, tripPlanRepository,
+        vehicleManager = new VehicleManager(directionsService, vehicleStateStore,
+                tripPlanRepository,
                 vehicleEventPublisher, meterRegistry, environment);
 
         // Create the vehicle

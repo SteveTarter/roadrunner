@@ -8,6 +8,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -29,7 +31,7 @@ import com.tarterware.roadrunner.models.CrissCrossPlan;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.models.mapbox.Directions;
-import com.tarterware.roadrunner.ports.VehicleStateStore;
+import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 @RestController
@@ -38,16 +40,21 @@ public class VehicleController
 {
     private VehicleManager vehicleManager;
 
-    private VehicleStateStore vehicleStateStore;
+    private ControllerVehicleStateStore vehicleStateStore;
 
-    VehicleController(VehicleManager vehicleManager, VehicleStateStore vehicleStateStore)
+    private static final Logger log = LoggerFactory.getLogger(VehicleController.class);
+
+    VehicleController(VehicleManager vehicleManager, ControllerVehicleStateStore vehicleStateStore)
     {
         this.vehicleManager = vehicleManager;
         this.vehicleStateStore = vehicleStateStore;
+        log.info("vehicleStateStore is {}", vehicleStateStore);
+
     }
 
     @PostMapping("/create-new")
-    ResponseEntity<VehicleState> getNewVehicle(@RequestBody TripPlan tripPlan)
+    ResponseEntity<VehicleState> getNewVehicle(@RequestBody
+    TripPlan tripPlan)
     {
         Vehicle vehicle = vehicleManager.createVehicle(tripPlan);
         VehicleState vehicleState = vehicle.getVehicleState();
@@ -58,7 +65,8 @@ public class VehicleController
     }
 
     @PostMapping("/create-crisscross")
-    ResponseEntity<List<VehicleState>> createCrissCrossVehicles(@RequestBody CrissCrossPlan crissCrossPlan)
+    ResponseEntity<List<VehicleState>> createCrissCrossVehicles(@RequestBody
+    CrissCrossPlan crissCrossPlan)
     {
         List<VehicleState> listVehicleStates = new ArrayList<VehicleState>();
 
@@ -109,7 +117,8 @@ public class VehicleController
     }
 
     @GetMapping("/get-vehicle-state/{vehicleId}")
-    ResponseEntity<VehicleState> getVehicleStateFor(@PathVariable String vehicleId)
+    ResponseEntity<VehicleState> getVehicleStateFor(@PathVariable
+    String vehicleId)
     {
         VehicleState vehicleState = vehicleStateStore.getVehicle(UUID.fromString(vehicleId));
         if (vehicleState == null)
@@ -121,7 +130,8 @@ public class VehicleController
     }
 
     @GetMapping("/get-vehicle-directions/{vehicleId}")
-    ResponseEntity<Directions> getVehicleDirectionsFor(@PathVariable String vehicleId)
+    ResponseEntity<Directions> getVehicleDirectionsFor(@PathVariable
+    String vehicleId)
     {
         Directions directions = vehicleManager.getVehicleDirections(UUID.fromString(vehicleId), true);
         if (directions == null)
@@ -133,8 +143,10 @@ public class VehicleController
     }
 
     @GetMapping("/get-all-vehicle-states")
-    ResponseEntity<PagedModel<VehicleState>> getAllVehicleStates(@RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int pageSize)
+    ResponseEntity<PagedModel<VehicleState>> getAllVehicleStates(@RequestParam(defaultValue = "0")
+    int page,
+            @RequestParam(defaultValue = "10")
+            int pageSize)
     {
         // Get the vehicles for the current page
         Map<UUID, VehicleState> vehicleMap = getVehicleMap(page, pageSize);
@@ -194,6 +206,7 @@ public class VehicleController
             UUID vehicleId = activeIdsList.get(index++);
             idList.add(vehicleId);
             recordsToFill--;
+            log.info("Retrieving Vehicle {}", vehicleId);
         }
 
         return this.vehicleStateStore.getVehicles(idList);

@@ -37,9 +37,9 @@ import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.models.mapbox.RouteLeg;
 import com.tarterware.roadrunner.models.mapbox.RouteStep;
+import com.tarterware.roadrunner.ports.RunnerVehicleStateStore;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
-import com.tarterware.roadrunner.ports.VehicleStateStore;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.utilities.JitterStatisticsCollector;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
@@ -105,7 +105,7 @@ public class VehicleManager
     // Service to retrieve directions for trip plans
     private DirectionsService directionsService;
 
-    private VehicleStateStore vehicleStateStore;
+    private RunnerVehicleStateStore vehicleStateStore;
     private VehicleEventPublisher vehicleEventPublisher;
     private TripPlanRepository tripPlanRepository;
 
@@ -151,7 +151,7 @@ public class VehicleManager
      */
     public VehicleManager(
             DirectionsService directionsService,
-            VehicleStateStore vehicleStateStore,
+            RunnerVehicleStateStore vehicleStateStore,
             TripPlanRepository tripPlanRepository,
             VehicleEventPublisher vehicleEventPublisher,
             MeterRegistry meterRegistry,
@@ -565,6 +565,7 @@ public class VehicleManager
 
                                 // Update vehicle execution time and store vehicle state
                                 vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
+                                vehicle.setLastCalculationEpochMillis(Instant.now().toEpochMilli());
 
                                 // Mark that this manager calculated the vehicle state.
                                 vehicle.setManagerHost(hostName);
