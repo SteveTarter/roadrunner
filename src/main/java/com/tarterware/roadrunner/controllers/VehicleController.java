@@ -239,6 +239,7 @@ public class VehicleController
     ResponseEntity<List<VehicleState>> resetServer()
     {
         vehicleManager.reset();
+        vehicleStateStore.reset();
 
         return new ResponseEntity<List<VehicleState>>(new ArrayList<VehicleState>(), HttpStatus.OK);
     }
@@ -279,7 +280,6 @@ public class VehicleController
             UUID vehicleId = activeIdsList.get(index++);
             idList.add(vehicleId);
             recordsToFill--;
-            log.info("Retrieving Vehicle {}", vehicleId);
         }
 
         return this.vehicleStateStore.getVehicles(idList);
