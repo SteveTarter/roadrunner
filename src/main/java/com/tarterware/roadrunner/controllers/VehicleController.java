@@ -8,6 +8,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -29,25 +31,61 @@ import com.tarterware.roadrunner.models.CrissCrossPlan;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.models.mapbox.Directions;
-import com.tarterware.roadrunner.ports.VehicleStateStore;
+import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
+/**
+ * REST controller providing API endpoints for vehicle management and state
+ * retrieval.
+ *
+ * <p>
+ * The {@code VehicleController} handles external requests to create new
+ * simulation instances, generate bulk vehicle scenarios, and fetch real-time
+ * telemetry. It acts as a primary user of the
+ * {@link ControllerVehicleStateStore} port to provide a read-optimized view of
+ * the simulation state to the UI.
+ * </p>
+ *
+ * @see VehicleManager
+ * @see ControllerVehicleStateStore
+ * @see VehicleState
+ */
 @RestController
 @RequestMapping("/api/vehicle")
 public class VehicleController
 {
     private VehicleManager vehicleManager;
 
-    private VehicleStateStore vehicleStateStore;
+    private ControllerVehicleStateStore vehicleStateStore;
 
-    VehicleController(VehicleManager vehicleManager, VehicleStateStore vehicleStateStore)
+    private static final Logger log = LoggerFactory.getLogger(VehicleController.class);
+
+    /**
+     * Constructs the controller with the required management and state store
+     * components.
+     *
+     * @param vehicleManager    the service responsible for vehicle lifecycle and
+     *                          domain logic
+     * @param vehicleStateStore the port providing access to the current persisted
+     *                          vehicle states
+     */
+    VehicleController(VehicleManager vehicleManager, ControllerVehicleStateStore vehicleStateStore)
     {
         this.vehicleManager = vehicleManager;
         this.vehicleStateStore = vehicleStateStore;
+        log.info("vehicleStateStore is {}", vehicleStateStore);
+
     }
 
+    /**
+     * Creates a single new vehicle based on the provided trip plan.
+     *
+     * @param tripPlan the plan containing stops and routing information
+     * @return a {@link ResponseEntity} containing the initial {@link VehicleState}
+     */
     @PostMapping("/create-new")
-    ResponseEntity<VehicleState> getNewVehicle(@RequestBody TripPlan tripPlan)
+    ResponseEntity<VehicleState> getNewVehicle(@RequestBody
+    TripPlan tripPlan)
     {
         Vehicle vehicle = vehicleManager.createVehicle(tripPlan);
         VehicleState vehicleState = vehicle.getVehicleState();
@@ -57,8 +95,22 @@ public class VehicleController
         return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
     }
 
+    /**
+     * Generates a "Criss-Cross" simulation scenario with multiple vehicles moving
+     * across a central coordinate.
+     *
+     * <p>
+     * Vehicles are spawned at the perimeter of a circle and assigned trip plans
+     * that pass through the center to the opposite side.
+     * </p>
+     *
+     * @param crissCrossPlan configuration for the scenario, including vehicle count
+     *                       and radius
+     * @return a list of {@link VehicleState} objects for the created vehicles
+     */
     @PostMapping("/create-crisscross")
-    ResponseEntity<List<VehicleState>> createCrissCrossVehicles(@RequestBody CrissCrossPlan crissCrossPlan)
+    ResponseEntity<List<VehicleState>> createCrissCrossVehicles(@RequestBody
+    CrissCrossPlan crissCrossPlan)
     {
         List<VehicleState> listVehicleStates = new ArrayList<VehicleState>();
 
@@ -108,8 +160,16 @@ public class VehicleController
         return new ResponseEntity<List<VehicleState>>(listVehicleStates, HttpStatus.OK);
     }
 
+    /**
+     * Retrieves the current state for a specific vehicle by its ID.
+     *
+     * @param vehicleId the UUID of the vehicle as a string
+     * @return the {@link VehicleState} if found, otherwise
+     *         {@code HttpStatus.NOT_FOUND}
+     */
     @GetMapping("/get-vehicle-state/{vehicleId}")
-    ResponseEntity<VehicleState> getVehicleStateFor(@PathVariable String vehicleId)
+    ResponseEntity<VehicleState> getVehicleStateFor(@PathVariable
+    String vehicleId)
     {
         VehicleState vehicleState = vehicleStateStore.getVehicle(UUID.fromString(vehicleId));
         if (vehicleState == null)
@@ -120,8 +180,17 @@ public class VehicleController
         return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
     }
 
+    /**
+     * Retrieves the Mapbox directions and route geometry associated with a specific
+     * vehicle.
+     *
+     * @param vehicleId the UUID of the vehicle as a string
+     * @return the {@link Directions} if found, otherwise
+     *         {@code HttpStatus.NOT_FOUND}
+     */
     @GetMapping("/get-vehicle-directions/{vehicleId}")
-    ResponseEntity<Directions> getVehicleDirectionsFor(@PathVariable String vehicleId)
+    ResponseEntity<Directions> getVehicleDirectionsFor(@PathVariable
+    String vehicleId)
     {
         Directions directions = vehicleManager.getVehicleDirections(UUID.fromString(vehicleId), true);
         if (directions == null)
@@ -132,9 +201,18 @@ public class VehicleController
         return new ResponseEntity<Directions>(directions, HttpStatus.OK);
     }
 
+    /**
+     * Provides a paginated view of all active vehicle states in the simulation.
+     *
+     * @param page     the zero-based page index to retrieve
+     * @param pageSize the number of records per page
+     * @return a {@link PagedModel} containing the requested slice of vehicle states
+     */
     @GetMapping("/get-all-vehicle-states")
-    ResponseEntity<PagedModel<VehicleState>> getAllVehicleStates(@RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int pageSize)
+    ResponseEntity<PagedModel<VehicleState>> getAllVehicleStates(@RequestParam(defaultValue = "0")
+    int page,
+            @RequestParam(defaultValue = "10")
+            int pageSize)
     {
         // Get the vehicles for the current page
         Map<UUID, VehicleState> vehicleMap = getVehicleMap(page, pageSize);
@@ -152,20 +230,28 @@ public class VehicleController
         return new ResponseEntity<>(pagedModel, HttpStatus.OK);
     }
 
+    /**
+     * Resets the entire simulation server, clearing all vehicles and trip plans.
+     *
+     * @return an empty list and {@code HttpStatus.OK}
+     */
     @GetMapping("/reset-server")
     ResponseEntity<List<VehicleState>> resetServer()
     {
         vehicleManager.reset();
+        vehicleStateStore.reset();
 
         return new ResponseEntity<List<VehicleState>>(new ArrayList<VehicleState>(), HttpStatus.OK);
     }
 
     /**
-     * Gets a paginated map of Vehicles.
+     * Helper method to fetch a paginated map of vehicle states from the state
+     * store.
      *
-     * @param page     page number to retrieve.
-     * @param pageSize number of Vehicles in each page.
-     * @return A Map of Vehicles by their UUIDs.
+     * @param page     zero-based page index
+     * @param pageSize number of records to return
+     * @return a map of vehicle UUIDs to their current {@link VehicleState}
+     * @throws IllegalArgumentException if the requested page is out of bounds
      */
     public Map<UUID, VehicleState> getVehicleMap(int page, int pageSize)
     {

@@ -16,7 +16,7 @@ public class VehiclePositionDebugConsumer
 
     @KafkaListener(
             topics = "${com.tarterware.roadrunner.kafka.topic.vehicle-position}",
-            groupId = "${spring.kafka.consumer.group-id}")
+            groupId = "VehiclePositionDebugConsumer")
     public void receive(@Payload
     VehiclePositionEvent event)
     {
