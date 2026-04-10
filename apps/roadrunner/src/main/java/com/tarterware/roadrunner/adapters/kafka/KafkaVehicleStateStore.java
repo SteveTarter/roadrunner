@@ -137,8 +137,6 @@ public class KafkaVehicleStateStore implements VehicleStateStore
     @Override
     public void reset()
     {
-        logger.info("Resetting the variables");
-
         activeVehicleSet = ConcurrentHashMap.newKeySet();
         vehicleStateMap.clear();
     }

@@ -49,10 +49,6 @@ The following variables need to be set in the `application.properties` file for 
   Enable Vehicle update messages using Kafka.  
   Example: true
 
-- `roadrunner.messaging.redis.enabled`  
-  Enable Vehicle update messages using Redis.  
-  Example: true
-
 - `com.tarterware.roadrunner.vehicle-update-period`  
   How often each vehicle should be updated.  
   Example: `250ms`
@@ -72,10 +68,6 @@ The following variables need to be set in the `application.properties` file for 
 - `spring.kafka.bootstrap-servers`  
   Location of Kafka bootstrap servers.  
   Example: localhost:9094
-
-- `spring.kafka.consumer.group-id`  
-  Kafka consumer group ID.  
-  Example: roadrunner-debug-consumer
 
 - `spring.kafka.producer.acks`  
   Kafka Producer messages to acknowledge.  
