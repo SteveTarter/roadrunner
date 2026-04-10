@@ -52,6 +52,7 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
 
     {
         this.kafkaTemplate = kafkaTemplate;
+        logger.info("KafkaVehicleEventPublisher is ACTIVE");
     }
 
     @Override
