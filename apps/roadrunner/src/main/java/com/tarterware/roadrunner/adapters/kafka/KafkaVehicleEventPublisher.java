@@ -30,7 +30,7 @@ import com.tarterware.roadrunner.ports.VehicleEventPublisher;
  * {@code true}.
  * </p>
  * * @see VehicleEventPublisher
- * 
+ *
  * @see VehiclePositionEvent
  */
 @Component
@@ -52,6 +52,7 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
 
     {
         this.kafkaTemplate = kafkaTemplate;
+        logger.info("KafkaVehicleEventPublisher is ACTIVE");
     }
 
     @Override
@@ -118,7 +119,7 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
      * Kafka partition, thereby guaranteeing ordered delivery to consumers.
      * </p>
      * * @param key the partition key (vehicle ID)
-     * 
+     *
      * @param event the event payload
      */
     private void sendToKafka(String key, VehiclePositionEvent event)
