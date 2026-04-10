@@ -30,20 +30,17 @@ public class RedisVehicleEventPublisher implements VehicleEventPublisher
     public void publishVehicleCreated(Vehicle vehicle)
     {
         logger.info("Vehicle created: {}", vehicle);
-        // TODO Add real implementation
     }
 
     @Override
     public void publishVehicleUpdated(Vehicle vehicle)
     {
-        // TODO Add real implementation
     }
 
     @Override
     public void publishVehicleDeleted(UUID vehicleId)
     {
         logger.info("Vehicle ID {} deleted", vehicleId);
-        // TODO Add real implementation
     }
 
 }
