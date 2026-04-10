@@ -23,6 +23,7 @@ public class RedisVehicleEventPublisher implements VehicleEventPublisher
     public RedisVehicleEventPublisher(RedisTemplate<String, Object> redisTemplate)
     {
         this.redisTemplate = redisTemplate;
+        logger.info("RedisVehicleEventPublisher is ACTIVE");
     }
 
     @Override
