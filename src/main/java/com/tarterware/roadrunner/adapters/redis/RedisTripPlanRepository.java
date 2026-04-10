@@ -54,7 +54,7 @@ public class RedisTripPlanRepository implements TripPlanRepository
     @Override
     public void reset()
     {
-        logger.info("Resetting the Redis variables");
+        logger.info("Resetting the variables");
 
         redisTemplate.delete(TRIP_PLAN_KEY);
     }

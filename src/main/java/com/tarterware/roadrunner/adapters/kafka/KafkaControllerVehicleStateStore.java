@@ -1,5 +1,7 @@
 package com.tarterware.roadrunner.adapters.kafka;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -31,6 +33,16 @@ import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
 @ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.kafka", name = "enabled", havingValue = "true")
 public class KafkaControllerVehicleStateStore extends KafkaVehicleStateStore implements ControllerVehicleStateStore
 {
+    private static final Logger logger = LoggerFactory.getLogger(KafkaControllerVehicleStateStore.class);
+
     // This class inherits all implementation logic from KafkaVehicleStateStore
     // to fulfill the ControllerVehicleStateStore port requirements.
+
+    @Override
+    public void reset()
+    {
+        logger.info("Resetting the variables");
+
+        super.reset();
+    }
 }
