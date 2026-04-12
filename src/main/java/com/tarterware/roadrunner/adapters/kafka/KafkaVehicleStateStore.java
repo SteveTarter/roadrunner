@@ -7,9 +7,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.ports.VehicleStateStore;
 
@@ -42,8 +39,6 @@ public class KafkaVehicleStateStore implements VehicleStateStore
      * Map containing the latest known state for each vehicle, keyed by vehicle ID.
      */
     private ConcurrentHashMap<UUID, VehicleState> vehicleStateMap = new ConcurrentHashMap<UUID, VehicleState>();
-
-    private static final Logger logger = LoggerFactory.getLogger(KafkaVehicleStateStore.class);
 
     @Override
     public VehicleState getVehicle(UUID vehicleId)
