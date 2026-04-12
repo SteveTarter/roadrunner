@@ -1,13 +1,53 @@
 # Roadrunner
-Simulates vehicles travelling along routes between addresses at posted speeds.
+Roadrunner is a high-performance, distributed vehicle simulation engine designed to model real-time movement across complex topologies. It serves as the backend simulation provider for the [Roadrunner Viewer](https://github.com/SteveTarter/roadrunner-viewer).
 
-# Description
+# Overview
 
-Given a starting and ending location, get directions for travelling that route along with the posted speeds for each leg of travel.  The directions are retrieved using a MapBox API.  The starting and ending locations may be specified by street address, or by latitude/longitude.
+Roadrunner simulates vehicle lifecycles, from creation to arrival, by calculating precise geographic movements based on real-world routing data. The system is built using a **Hexagonal Architecture (Ports and Adapters)**, allowing it to remain infrastructure-agnostic while delivering high-velocity telemetry.  The system currently uses Kafka to post position updates to a topic.  A previous implementation utilized Redis.
 
-Vehicle creation, route specification, and status operations are all performed using REST.
+## Key Features
 
-Companion project of the Roadrunner Viewer
+- **Real-World Routing:** Integrates with the **Mapbox Directions API** to retrieve accurate route geometry and posted speed limits for simulation legs.
+
+- **Geospatial Fidelity:** Performs advanced spatial calculations, including coordinate transformations between **WGS84** (GPS) and **UTM** (Planar) projections to maintain accuracy across long-distance travel.
+
+- **Event-Driven Telemetry:** Vehicle positions, status changes, and lifecycle events are broadcast to **Apache Kafka** (e.g. `vehicle.position.v1`), enabling low-latency, asynchronous state updates.
+
+- **Distributed State Management:** Implements an "Event Sourcing" approach where simulation state is maintained in-memory via Kafka stream consumption, ensuring rapid recovery and horizontal scalability.
+
+- **RESTful Control Plane:** Simple API for vehicle creation (by address or coordinate), bulk simulation generation (e.g., "Criss-Cross" patterns), and simulation control.
+
+## Architecture
+
+The project is designed for high concurrency and resilience:
+
+- **The Runner:** A dedicated simulation loop that manages physics and topology calculations with sub-millisecond jitter tracking.
+
+- **The Store:** Pluggable persistence adapters (In-Memory/Kafka or formerly, Redis) that satisfy the `VehicleStateStore` port.
+
+- **The Messaging Layer:** Conditional autoconfiguration for Kafka-based event publishing and consumption.
+
+## Pluggable Infrastructure
+
+Due to the use of the **Ports and Adapters** pattern, the messaging and persistence layers are entirely decoupled from the core simulation logic. While Kafka is the current standard, the system is designed to support:
+
+- **Message Brokers:** Integration with **RabbitMQ**, **NATS**, or **MQTT** for varying throughput requirements.
+
+- **Cloud Streams:** Native support for **Amazon Kinesis** or **Google Pub/Sub**.
+
+- **Distributed Caching:** Leveraging **Hazelcast** or **Ignite** for high-availability state storage across clusters.
+
+## Quick Start
+
+The project requires a running Kafka cluster for messaging and Redis for caching route geometry.
+  
+Configure application properties as specified below.
+
+To run, launch via Maven or as a Spring Boot executable:
+
+```bash
+mvn spring-boot:run
+```
 
 ## Application Properties Configuration
 
