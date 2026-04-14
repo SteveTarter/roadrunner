@@ -33,7 +33,6 @@ import io.fabric8.kubernetes.client.KubernetesClient;
         properties =
             {
                     "com.tarterware.roadrunner.messaging.kafka.enabled=true",
-                    "com.tarterware.roadrunner.messaging.redis.enabled=false",
             })
 @Import(NoOpSchedulerConfig.class)
 public class KafkaVehicleEventConsumerTest
