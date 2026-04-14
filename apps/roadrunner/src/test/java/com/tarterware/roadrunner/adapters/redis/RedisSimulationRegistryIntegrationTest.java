@@ -9,9 +9,13 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -21,10 +25,17 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import com.tarterware.roadrunner.configs.RedisConfig;
+import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.models.SimulationSession;
+import com.tarterware.roadrunner.ports.SimulationVehicleStateStore;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
+import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
+import com.tarterware.roadrunner.services.IsochroneService;
+
+import io.fabric8.kubernetes.client.KubernetesClient;
 
 @SpringBootTest
 @Testcontainers
@@ -65,6 +76,33 @@ public class RedisSimulationRegistryIntegrationTest
 
     @MockitoBean
     private GeocodingService geocodingService;
+
+    @Mock
+    private IsochroneService isochroneService;
+
+    @Mock
+    private SecurityConfig securityConfig;
+
+    @Mock
+    private RedisConfig redisConfig;
+
+    @Mock
+    private LettuceConnectionFactory redisStandAloneConnectionFactory;
+
+    @Mock
+    private SecurityFilterChain filterChain;
+
+    @Mock
+    private JwtDecoder jwtDecoder;
+
+    @Mock
+    private SimulationVehicleStateStore vehicleStateStore;
+
+    @Mock
+    private VehicleEventPublisher vehicleEventPublisher;
+
+    @Mock
+    private KubernetesClient kubernetesClient;
 
     @BeforeEach
     void setUp()
