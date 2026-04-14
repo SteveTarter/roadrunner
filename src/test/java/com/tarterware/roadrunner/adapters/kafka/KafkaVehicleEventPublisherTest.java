@@ -8,8 +8,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -21,9 +24,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.tarterware.roadrunner.adapters.redis.RedisSimulationRegistry;
 import com.tarterware.roadrunner.components.Vehicle;
 import com.tarterware.roadrunner.components.VehicleManager;
 import com.tarterware.roadrunner.configs.NoOpSchedulerConfig;
@@ -32,7 +35,6 @@ import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.ports.SimulationVehicleStateStore;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
-import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.ports.VehicleStateStore;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.utils.TestUtils;
@@ -53,16 +55,19 @@ public class KafkaVehicleEventPublisherTest
     @Mock
     private TripPlanRepository tripPlanRepository;
 
-    @Mock
-    private VehicleEventPublisher vehicleEventPublisher;
+//    @Mock
+//    private VehicleEventPublisher vehicleEventPublisher;
 
     @Mock
     private VehiclePositionEvent vehiclePositionEvent;
 
-    private MeterRegistry meterRegistry;
+    @Mock
+    private RedisSimulationRegistry simulationRegistry;
 
     @Mock
     private VehicleStateStore stateStore;
+
+    private MeterRegistry meterRegistry;
 
     private Vehicle vehicle;
 
@@ -78,11 +83,19 @@ public class KafkaVehicleEventPublisherTest
     @Mock
     private KafkaTemplate<String, VehiclePositionEvent> kafkaTemplate;
 
-    @MockitoBean
+    @Mock
     private RedisTemplate<String, Object> redisTemplate;
 
     @InjectMocks
     private KafkaVehicleEventPublisher kafkaPublisher;
+
+    @BeforeEach
+    void setUp()
+    {
+        meterRegistry = new SimpleMeterRegistry();
+
+        ReflectionTestUtils.setField(kafkaPublisher, "topicName", "vehicle.position.v1");
+    }
 
     @Test
     void shouldMapVehicleToPositionEventCorrectly() throws IOException
@@ -93,14 +106,9 @@ public class KafkaVehicleEventPublisherTest
 
         when(directionsService.getDirectionsForTripPlan(any())).thenReturn(mockDirections);
 
-        // Set the topic name in the kafka publisher
-        ReflectionTestUtils.setField(kafkaPublisher, "topicName", "vehicle.position.v1");
-
         // Return the mocked SendResult in the future
         when(kafkaTemplate.send(any(), any(), any(VehiclePositionEvent.class)))
                 .thenReturn(CompletableFuture.completedFuture(null));
-
-        meterRegistry = new SimpleMeterRegistry();
 
         vehicleManager = new VehicleManager(directionsService, vehicleStateStore, tripPlanRepository,
                 kafkaPublisher, meterRegistry, environment);
@@ -117,5 +125,28 @@ public class KafkaVehicleEventPublisherTest
         assertEquals("CREATED", event.status());
         // Validates the sequence numbering task
         assertEquals(vehicle.getLastCalculationEpochMillis(), event.sequenceNumber());
+    }
+
+    @Test
+    void shouldRecordStartInSimulationRegistryWhenVehicleCreated() throws IOException
+    {
+        // Mock DirectionsService
+        mockTripPlan = mock(TripPlan.class);
+        mockDirections = TestUtils.loadMockDirections("src/test/resources/test_directions.json");
+
+        when(directionsService.getDirectionsForTripPlan(any())).thenReturn(mockDirections);
+
+        // Return the mocked SendResult in the future
+        when(kafkaTemplate.send(any(), any(), any(VehiclePositionEvent.class)))
+                .thenReturn(CompletableFuture.completedFuture(null));
+
+        vehicleManager = new VehicleManager(directionsService, vehicleStateStore, tripPlanRepository,
+                kafkaPublisher, meterRegistry, environment);
+
+        // Create the vehicle
+        vehicle = vehicleManager.createVehicle(mockTripPlan);
+
+        verify(simulationRegistry).recordStart(any(UUID.class), any(Instant.class));
+        verify(kafkaTemplate).send(anyString(), anyString(), any(VehiclePositionEvent.class));
     }
 }
