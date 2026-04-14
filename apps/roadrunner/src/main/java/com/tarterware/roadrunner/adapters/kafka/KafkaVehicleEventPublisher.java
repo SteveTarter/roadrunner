@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import com.tarterware.roadrunner.components.Vehicle;
 import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
+import com.tarterware.roadrunner.ports.SimulationRegistry;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 
 /**
@@ -39,6 +40,8 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
 {
     private final KafkaTemplate<String, VehiclePositionEvent> kafkaTemplate;
 
+    private SimulationRegistry simulationRegistry;
+
     @Value("${com.tarterware.roadrunner.kafka.topic.vehicle-position}")
     private String topicName;
 
@@ -48,16 +51,24 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
      * Constructs the publisher with a provided {@link KafkaTemplate}. * @param
      * kafkaTemplate the template used to execute high-level Kafka operations
      */
-    public KafkaVehicleEventPublisher(KafkaTemplate<String, VehiclePositionEvent> kafkaTemplate)
+    public KafkaVehicleEventPublisher(
+            KafkaTemplate<String, VehiclePositionEvent> kafkaTemplate,
+            SimulationRegistry simulationRegistry)
 
     {
         this.kafkaTemplate = kafkaTemplate;
+        this.simulationRegistry = simulationRegistry;
+
         logger.info("KafkaVehicleEventPublisher is ACTIVE");
     }
 
     @Override
     public void publishVehicleCreated(Vehicle vehicle)
     {
+        simulationRegistry.recordStart(
+                vehicle.getId(),
+                Instant.ofEpochMilli(vehicle.getLastCalculationEpochMillis()));
+
         publishEvent(vehicle, "CREATED");
     }
 
@@ -70,6 +81,8 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
     @Override
     public void publishVehicleDeleted(UUID vehicleId)
     {
+        simulationRegistry.recordEnd(vehicleId, Instant.now());
+
         // For deletion, we send a minimal event with the DELETED status
         VehiclePositionEvent deleteEvent = new VehiclePositionEvent(
                 vehicleId.toString(),
