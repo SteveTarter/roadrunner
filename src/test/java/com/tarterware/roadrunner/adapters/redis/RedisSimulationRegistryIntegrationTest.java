@@ -12,25 +12,57 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import com.tarterware.roadrunner.models.SimulationSession;
+import com.tarterware.roadrunner.ports.TripPlanRepository;
 
 @SpringBootTest
+@Testcontainers
+@ActiveProfiles("test")
 public class RedisSimulationRegistryIntegrationTest
 {
+    @Container
+    public static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine"))
+            .withExposedPorts(6379);
+
+    @DynamicPropertySource
+    static void redisProperties(DynamicPropertyRegistry registry)
+    {
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", redis::getFirstMappedPort);
+    }
+
     @Autowired
     private RedisSimulationRegistry registry;
 
     @Autowired
     private StringRedisTemplate redisTemplate;
 
-    private static final String REDIS_KEY = "roadrunner:simulations";
+    @MockitoBean
+    private RedisDirectionsCache redisDirectionsCache;
+
+    @MockitoBean
+    private TripPlanRepository tripPlanRepository;
+
+    @MockitoBean
+    private RedisFeatureCollectionCache redisFeatureCollectionCache;
+
+    @MockitoBean
+    private RedisIsochroneCache redisIsochroneCache;
 
     @BeforeEach
     void setUp()
     {
-        // Clear the registry before each test to ensure isolation
-        redisTemplate.delete(REDIS_KEY);
+        // Essential: Clear Redis before each test so they are independent
+        redisTemplate.delete("roadrunner:simulations");
     }
 
     @Test
