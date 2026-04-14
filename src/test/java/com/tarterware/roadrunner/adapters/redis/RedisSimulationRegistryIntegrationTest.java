@@ -23,6 +23,8 @@ import org.testcontainers.utility.DockerImageName;
 
 import com.tarterware.roadrunner.models.SimulationSession;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
+import com.tarterware.roadrunner.services.DirectionsService;
+import com.tarterware.roadrunner.services.GeocodingService;
 
 @SpringBootTest
 @Testcontainers
@@ -57,6 +59,12 @@ public class RedisSimulationRegistryIntegrationTest
 
     @MockitoBean
     private RedisIsochroneCache redisIsochroneCache;
+
+    @MockitoBean
+    private DirectionsService directionsService;
+
+    @MockitoBean
+    private GeocodingService geocodingService;
 
     @BeforeEach
     void setUp()
