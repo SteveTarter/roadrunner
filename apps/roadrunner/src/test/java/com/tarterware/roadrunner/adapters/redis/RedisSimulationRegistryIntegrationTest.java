@@ -9,10 +9,8 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -77,31 +75,28 @@ public class RedisSimulationRegistryIntegrationTest
     @MockitoBean
     private GeocodingService geocodingService;
 
-    @Mock
+    @MockitoBean
     private IsochroneService isochroneService;
 
-    @Mock
+    @MockitoBean
     private SecurityConfig securityConfig;
 
-    @Mock
+    @MockitoBean
     private RedisConfig redisConfig;
 
-    @Mock
-    private LettuceConnectionFactory redisStandAloneConnectionFactory;
-
-    @Mock
+    @MockitoBean
     private SecurityFilterChain filterChain;
 
-    @Mock
+    @MockitoBean
     private JwtDecoder jwtDecoder;
 
-    @Mock
+    @MockitoBean
     private SimulationVehicleStateStore vehicleStateStore;
 
-    @Mock
+    @MockitoBean
     private VehicleEventPublisher vehicleEventPublisher;
 
-    @Mock
+    @MockitoBean
     private KubernetesClient kubernetesClient;
 
     @BeforeEach
