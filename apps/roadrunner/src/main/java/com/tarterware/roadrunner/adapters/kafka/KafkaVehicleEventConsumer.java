@@ -5,7 +5,9 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.event.EventListener;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
@@ -93,7 +95,7 @@ public class KafkaVehicleEventConsumer
         {
 
             case "CREATED":
-                log.debug("CREATED");
+                log.debug("CREATED: {}", event.vehicleId());
 
                 // Create a new vehicleState and populate with the event
                 vehicleState = new VehicleState();
@@ -116,12 +118,13 @@ public class KafkaVehicleEventConsumer
                 break;
 
             case "MOVING":
-                log.debug("MOVING");
+                log.debug("MOVING: {}", event.vehicleId());
                 vehicleId = UUID.fromString(event.vehicleId());
                 vehicleState = vehicleStateStore.getVehicle(vehicleId);
                 if (vehicleState == null)
                 {
-                    throw new RuntimeException("No vehicle with ID " + vehicleId);
+                    // throw new RuntimeException("No vehicle with ID " + vehicleId);
+                    vehicleState = new VehicleState();
                 }
 
                 // Ensure this isn't a stale event. The new sequence number should be greater.
@@ -146,7 +149,7 @@ public class KafkaVehicleEventConsumer
                 break;
 
             case "DELETED":
-                log.debug("DELETED");
+                log.debug("DELETED: {}", event.vehicleId());
 
                 vehicleId = UUID.fromString(event.vehicleId());
                 vehicleStateStore.deleteVehicle(vehicleId);
@@ -158,4 +161,9 @@ public class KafkaVehicleEventConsumer
         }
     }
 
+    @EventListener
+    public void handleListenerContainerIdle(ListenerContainerIdleEvent event)
+    {
+        log.info("Consumer is idle and ready on partitions: {}", event.getTopicPartitions());
+    }
 }
