@@ -578,18 +578,20 @@ public class VehicleManager
                                 statisticsCollector.recordMeasurement(msJitter);
 
                                 // Update vehicle execution time and store vehicle state
-                                vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
-                                vehicle.setLastCalculationEpochMillis(Instant.now().toEpochMilli());
-
-                                // Mark that this manager calculated the vehicle state.
-                                vehicle.setManagerHost(hostName);
-
-                                this.vehicleStateStore.saveVehicle(vehicle.getVehicleState());
-                                this.vehicleEventPublisher.publishVehicleUpdated(vehicle);
-
-                                // If the vehicle was not updated, see if it has reached timeout.
-                                if (!updated)
+                                if (updated)
                                 {
+                                    vehicle.setLastNsExecutionTime(System.nanoTime() - nsVehicleStartTime);
+                                    vehicle.setLastCalculationEpochMillis(Instant.now().toEpochMilli());
+
+                                    // Mark that this manager calculated the vehicle state.
+                                    vehicle.setManagerHost(hostName);
+
+                                    this.vehicleStateStore.saveVehicle(vehicle.getVehicleState());
+                                    this.vehicleEventPublisher.publishVehicleUpdated(vehicle);
+                                }
+                                else
+                                {
+                                    // If the vehicle was not updated, see if it has reached timeout.
                                     if (vehicle.getLastCalculationEpochMillis() < msEpochTimeoutTime)
                                     {
                                         deletionSet.add(vehicleId);
