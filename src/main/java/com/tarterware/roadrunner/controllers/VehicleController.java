@@ -28,10 +28,12 @@ import com.tarterware.roadrunner.components.Vehicle;
 import com.tarterware.roadrunner.components.VehicleManager;
 import com.tarterware.roadrunner.models.Address;
 import com.tarterware.roadrunner.models.CrissCrossPlan;
+import com.tarterware.roadrunner.models.SimulationSession;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
+import com.tarterware.roadrunner.ports.SimulationRegistry;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 /**
@@ -54,9 +56,12 @@ import com.tarterware.roadrunner.utilities.TopologyUtilities;
 @RequestMapping("/api/vehicle")
 public class VehicleController
 {
+
     private VehicleManager vehicleManager;
 
     private ControllerVehicleStateStore vehicleStateStore;
+
+    private SimulationRegistry simulationRegistry;
 
     private static final Logger log = LoggerFactory.getLogger(VehicleController.class);
 
@@ -69,12 +74,16 @@ public class VehicleController
      * @param vehicleStateStore the port providing access to the current persisted
      *                          vehicle states
      */
-    VehicleController(VehicleManager vehicleManager, ControllerVehicleStateStore vehicleStateStore)
+    VehicleController(
+            VehicleManager vehicleManager,
+            ControllerVehicleStateStore vehicleStateStore,
+            SimulationRegistry simulationRegistry)
     {
         this.vehicleManager = vehicleManager;
         this.vehicleStateStore = vehicleStateStore;
-        log.info("vehicleStateStore is {}", vehicleStateStore);
+        this.simulationRegistry = simulationRegistry;
 
+        log.info("vehicleStateStore is {}", vehicleStateStore);
     }
 
     /**
@@ -84,8 +93,9 @@ public class VehicleController
      * @return a {@link ResponseEntity} containing the initial {@link VehicleState}
      */
     @PostMapping("/create-new")
-    ResponseEntity<VehicleState> getNewVehicle(@RequestBody
-    TripPlan tripPlan)
+    ResponseEntity<VehicleState> getNewVehicle(
+            @RequestBody
+            TripPlan tripPlan)
     {
         Vehicle vehicle = vehicleManager.createVehicle(tripPlan);
         VehicleState vehicleState = vehicle.getVehicleState();
@@ -109,8 +119,9 @@ public class VehicleController
      * @return a list of {@link VehicleState} objects for the created vehicles
      */
     @PostMapping("/create-crisscross")
-    ResponseEntity<List<VehicleState>> createCrissCrossVehicles(@RequestBody
-    CrissCrossPlan crissCrossPlan)
+    ResponseEntity<List<VehicleState>> createCrissCrossVehicles(
+            @RequestBody
+            CrissCrossPlan crissCrossPlan)
     {
         List<VehicleState> listVehicleStates = new ArrayList<VehicleState>();
 
@@ -168,8 +179,9 @@ public class VehicleController
      *         {@code HttpStatus.NOT_FOUND}
      */
     @GetMapping("/get-vehicle-state/{vehicleId}")
-    ResponseEntity<VehicleState> getVehicleStateFor(@PathVariable
-    String vehicleId)
+    ResponseEntity<VehicleState> getVehicleStateFor(
+            @PathVariable
+            String vehicleId)
     {
         VehicleState vehicleState = vehicleStateStore.getVehicle(UUID.fromString(vehicleId));
         if (vehicleState == null)
@@ -189,8 +201,9 @@ public class VehicleController
      *         {@code HttpStatus.NOT_FOUND}
      */
     @GetMapping("/get-vehicle-directions/{vehicleId}")
-    ResponseEntity<Directions> getVehicleDirectionsFor(@PathVariable
-    String vehicleId)
+    ResponseEntity<Directions> getVehicleDirectionsFor(
+            @PathVariable
+            String vehicleId)
     {
         Directions directions = vehicleManager.getVehicleDirections(UUID.fromString(vehicleId), true);
         if (directions == null)
@@ -209,8 +222,9 @@ public class VehicleController
      * @return a {@link PagedModel} containing the requested slice of vehicle states
      */
     @GetMapping("/get-all-vehicle-states")
-    ResponseEntity<PagedModel<VehicleState>> getAllVehicleStates(@RequestParam(defaultValue = "0")
-    int page,
+    ResponseEntity<PagedModel<VehicleState>> getAllVehicleStates(
+            @RequestParam(defaultValue = "0")
+            int page,
             @RequestParam(defaultValue = "10")
             int pageSize)
     {
@@ -228,6 +242,49 @@ public class VehicleController
                 vehicleStatePage.getSize(), vehicleStatePage.getNumber(), vehicleStatePage.getTotalElements()));
 
         return new ResponseEntity<>(pagedModel, HttpStatus.OK);
+    }
+
+    @GetMapping("/simulation-sessions")
+    ResponseEntity<PagedModel<SimulationSession>> getSimulationSessions(
+            @RequestParam(defaultValue = "0")
+            int page,
+            @RequestParam(defaultValue = "10")
+            int pageSize)
+    {
+        List<SimulationSession> allSessions = simulationRegistry.getAllSessions();
+
+        List<SimulationSession> pageList = new ArrayList<SimulationSession>();
+        int size = allSessions.size();
+
+        if (size > 0)
+        {
+            int start = page * pageSize;
+            if (start > size)
+            {
+                throw new IllegalArgumentException(
+                        "Page " + page + " of page size " + pageSize + " outside " + size + " bounds!");
+            }
+            int end = start + pageSize;
+            if (end > size)
+            {
+                end = size;
+            }
+            pageList = allSessions.subList(start, end);
+        }
+
+        // Create a Page object
+        Page<SimulationSession> simSessionsPage = new PageImpl<>(
+                pageList,
+                PageRequest.of(page, pageSize),
+                size);
+
+        // Create a PagedModel object
+        PagedModel<SimulationSession> pagedModel = PagedModel.of(simSessionsPage.getContent(),
+                new PagedModel.PageMetadata(
+                        simSessionsPage.getSize(), simSessionsPage.getNumber(), simSessionsPage.getTotalElements()));
+
+        return new ResponseEntity<>(pagedModel, HttpStatus.OK);
+
     }
 
     /**
@@ -253,7 +310,9 @@ public class VehicleController
      * @return a map of vehicle UUIDs to their current {@link VehicleState}
      * @throws IllegalArgumentException if the requested page is out of bounds
      */
-    public Map<UUID, VehicleState> getVehicleMap(int page, int pageSize)
+    public Map<UUID, VehicleState> getVehicleMap(
+            int page,
+            int pageSize)
     {
         // Create a Map of Vehicles to return
         Map<UUID, VehicleState> vMap = new HashMap<>();
