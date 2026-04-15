@@ -14,7 +14,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -29,7 +32,16 @@ import com.tarterware.roadrunner.adapters.redis.RedisDirectionsCache;
 import com.tarterware.roadrunner.adapters.redis.RedisFeatureCollectionCache;
 import com.tarterware.roadrunner.adapters.redis.RedisIsochroneCache;
 import com.tarterware.roadrunner.adapters.redis.RedisTripPlanRepository;
+import com.tarterware.roadrunner.configs.RedisConfig;
+import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.ports.SimulationRegistry;
+import com.tarterware.roadrunner.ports.SimulationVehicleStateStore;
+import com.tarterware.roadrunner.ports.VehicleEventPublisher;
+import com.tarterware.roadrunner.services.DirectionsService;
+import com.tarterware.roadrunner.services.GeocodingService;
+import com.tarterware.roadrunner.services.IsochroneService;
+
+import io.fabric8.kubernetes.client.KubernetesClient;
 
 @SpringBootTest
 @Testcontainers
@@ -69,6 +81,39 @@ public class SimulationSessionControllerIntegrationTest
 
     @MockitoBean
     private RedisTripPlanRepository redisTripPlanRepository;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @MockitoBean
+    private DirectionsService directionsService;
+
+    @MockitoBean
+    private GeocodingService geocodingService;
+
+    @MockitoBean
+    private IsochroneService isochroneService;
+
+    @MockitoBean
+    private SecurityConfig securityConfig;
+
+    @MockitoBean
+    private RedisConfig redisConfig;
+
+    @MockitoBean
+    private SecurityFilterChain filterChain;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private SimulationVehicleStateStore vehicleStateStore;
+
+    @MockitoBean
+    private VehicleEventPublisher vehicleEventPublisher;
+
+    @MockitoBean
+    private KubernetesClient kubernetesClient;
 
     @BeforeEach
     void setUp()
