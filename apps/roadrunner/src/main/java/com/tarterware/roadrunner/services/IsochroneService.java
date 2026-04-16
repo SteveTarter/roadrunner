@@ -1,6 +1,5 @@
 package com.tarterware.roadrunner.services;
 
-import java.time.Duration;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -52,7 +51,8 @@ public class IsochroneService
     }
 
     public Isochrone setIsochrone(double latitude, double longitude, String isochroneType,
-            @PathVariable int isochroneParameterValue)
+            @PathVariable
+            int isochroneParameterValue)
     {
         String isochroneParameterName = "";
         switch (isochroneType)
@@ -133,7 +133,7 @@ public class IsochroneService
             isochrone = respIsochrome.getBody();
 
             // Persist the newly read Object to the cache
-            isochroneCache.put(isochroneCacheKey, isochrone, Duration.ofHours(100));
+            isochroneCache.put(isochroneCacheKey, isochrone);
         }
 
         return isochrone;
