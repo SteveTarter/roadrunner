@@ -58,7 +58,6 @@ import com.tarterware.roadrunner.utilities.TopologyUtilities;
 @RequestMapping("/api/vehicle")
 public class VehicleController
 {
-
     private VehicleManager vehicleManager;
 
     private ControllerVehicleStateStore vehicleStateStore;

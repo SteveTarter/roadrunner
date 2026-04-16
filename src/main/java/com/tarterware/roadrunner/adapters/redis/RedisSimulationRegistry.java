@@ -128,6 +128,9 @@ public class RedisSimulationRegistry implements SimulationRegistry
         {
             logger.info("Reset: Evicted {} simulation sessions from Redis", removedCount);
         }
+
+        // Truncate the topic
+        metadataService.truncateTopic(topicName);
     }
 
     /**
