@@ -34,6 +34,8 @@ import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
 import com.tarterware.roadrunner.ports.SimulationRegistry;
+import com.tarterware.roadrunner.services.DirectionsService;
+import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 /**
@@ -63,6 +65,10 @@ public class VehicleController
 
     private SimulationRegistry simulationRegistry;
 
+    private DirectionsService directionsService;
+
+    private GeocodingService geocodingService;
+
     private static final Logger log = LoggerFactory.getLogger(VehicleController.class);
 
     /**
@@ -77,11 +83,15 @@ public class VehicleController
     VehicleController(
             VehicleManager vehicleManager,
             ControllerVehicleStateStore vehicleStateStore,
-            SimulationRegistry simulationRegistry)
+            SimulationRegistry simulationRegistry,
+            DirectionsService directionsService,
+            GeocodingService geocodingService)
     {
         this.vehicleManager = vehicleManager;
         this.vehicleStateStore = vehicleStateStore;
         this.simulationRegistry = simulationRegistry;
+        this.directionsService = directionsService;
+        this.geocodingService = geocodingService;
 
         log.info("vehicleStateStore is {}", vehicleStateStore);
     }
@@ -297,6 +307,9 @@ public class VehicleController
     {
         vehicleManager.reset();
         vehicleStateStore.reset();
+        directionsService.reset();
+        geocodingService.reset();
+        simulationRegistry.reset();
 
         return new ResponseEntity<List<VehicleState>>(new ArrayList<VehicleState>(), HttpStatus.OK);
     }
