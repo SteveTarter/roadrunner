@@ -102,7 +102,7 @@ module "kafka_topics" {
   topics = {
     "vehicle-position-v1" = {
       topic_name = "vehicle.position.v1"
-      partitions = 6
+      partitions = 10 
       replicas   = 1
       config = {
         "retention.ms" = "604800000"   # 7 days

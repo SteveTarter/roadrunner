@@ -74,6 +74,7 @@ resource "kubectl_manifest" "kafka_cluster" {
           }
         ]
         config = {
+          "log.retention.ms"                         = 604800000 # 7 days default
           "offsets.topic.replication.factor"         = 1
           "transaction.state.log.replication.factor" = 1
           "transaction.state.log.min.isr"            = 1
