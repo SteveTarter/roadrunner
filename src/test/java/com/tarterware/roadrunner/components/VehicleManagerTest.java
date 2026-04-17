@@ -24,6 +24,7 @@ import com.tarterware.roadrunner.ports.SimulationVehicleStateStore;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.services.DirectionsService;
+import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 import com.tarterware.roadrunner.utils.TestUtils;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -44,6 +45,9 @@ class VehicleManagerTest
 
     @Mock
     private VehicleEventPublisher vehicleEventPublisher;
+
+    @Mock
+    private KafkaTopicMetadataService kafkaTopicMetadataService;
 
     private MeterRegistry meterRegistry;
 
