@@ -1,6 +1,10 @@
 package com.tarterware.roadrunner;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
 import java.io.IOException;
+import java.time.Duration;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,7 +21,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import com.tarterware.roadrunner.configs.NoOpSchedulerConfig;
@@ -26,6 +29,7 @@ import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.services.IsochroneService;
+import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 
@@ -34,21 +38,16 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 @Testcontainers
 class RoadrunnerApplicationTests
 {
-
+    @SuppressWarnings("resource")
     @Container
     public static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine"))
             .withExposedPorts(6379);
 
-    @Container
-    public static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka-native:3.8.0"));
-
     @DynamicPropertySource
-    static void redisProperties(DynamicPropertyRegistry registry)
+    static void containerProperties(DynamicPropertyRegistry registry)
     {
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", redis::getFirstMappedPort);
-
-        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
     }
 
     @MockitoBean
@@ -81,11 +80,15 @@ class RoadrunnerApplicationTests
     @MockitoBean
     private KubernetesClient kubernetesClient;
 
+    @MockitoBean
+    private KafkaTopicMetadataService kafkaTopicMetadataService;
+
     @BeforeEach
     void setup() throws IOException
     {
         // Initialize mocks
         MockitoAnnotations.openMocks(this);
+        when(kafkaTopicMetadataService.getTopicRetention(anyString())).thenReturn(Duration.ofDays(7));
     }
 
     @Test

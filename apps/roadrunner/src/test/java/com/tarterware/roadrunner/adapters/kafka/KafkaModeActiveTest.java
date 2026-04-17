@@ -1,6 +1,10 @@
 package com.tarterware.roadrunner.adapters.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
+import java.time.Duration;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +15,13 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import com.tarterware.roadrunner.configs.NoOpSchedulerConfig;
 import com.tarterware.roadrunner.configs.RedisConfig;
@@ -21,6 +31,7 @@ import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.services.IsochroneService;
+import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 
@@ -28,11 +39,23 @@ import io.fabric8.kubernetes.client.KubernetesClient;
         properties =
             {
                     "com.tarterware.roadrunner.messaging.kafka.enabled=true",
-                    "com.tarterware.roadrunner.messaging.redis.enabled=false",
             })
 @Import(NoOpSchedulerConfig.class)
+@Testcontainers
 public class KafkaModeActiveTest
 {
+    @SuppressWarnings("resource")
+    @Container
+    public static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine"))
+            .withExposedPorts(6379);
+
+    @DynamicPropertySource
+    static void containerProperties(DynamicPropertyRegistry registry)
+    {
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", redis::getFirstMappedPort);
+    }
+
     @MockitoBean
     private DirectionsService directionsService;
 
@@ -66,12 +89,17 @@ public class KafkaModeActiveTest
     @MockitoBean
     private KafkaTemplate<String, VehiclePositionEvent> kafkaTemplate;
 
+    @MockitoBean
+    private KafkaTopicMetadataService kafkaTopicMetadataService;
+
     @Autowired
     private VehicleEventPublisher publisher;
 
     @Test
     void shouldInjectKafkaImplementation()
     {
+        when(kafkaTopicMetadataService.getTopicRetention(anyString())).thenReturn(Duration.ofDays(7));
+
         assertThat(publisher).isInstanceOf(KafkaVehicleEventPublisher.class);
     }
 }

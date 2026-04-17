@@ -1,11 +1,14 @@
 package com.tarterware.roadrunner.controllers;
 
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -26,7 +29,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import com.tarterware.roadrunner.adapters.redis.RedisDirectionsCache;
@@ -41,6 +43,7 @@ import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.services.IsochroneService;
+import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 
@@ -50,21 +53,16 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 @ActiveProfiles("test")
 public class SimulationSessionControllerIntegrationTest
 {
-
+    @SuppressWarnings("resource")
     @Container
     public static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine"))
             .withExposedPorts(6379);
 
-    @Container
-    public static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka-native:3.8.0"));
-
     @DynamicPropertySource
-    static void redisProperties(DynamicPropertyRegistry registry)
+    static void containerProperties(DynamicPropertyRegistry registry)
     {
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", redis::getFirstMappedPort);
-
-        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
     }
 
     @Autowired
@@ -121,11 +119,13 @@ public class SimulationSessionControllerIntegrationTest
     @MockitoBean
     private KubernetesClient kubernetesClient;
 
+    @MockitoBean
+    private KafkaTopicMetadataService kafkaTopicMetadataService;
+
     @BeforeEach
     void setUp()
     {
-        // Clean the specific key before each test
-        // redisTemplate.delete("roadrunner:simulations");
+        when(kafkaTopicMetadataService.getTopicRetention(anyString())).thenReturn(Duration.ofDays(7));
     }
 
     @Test
