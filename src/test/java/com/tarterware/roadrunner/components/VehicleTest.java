@@ -36,6 +36,7 @@ import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.services.IsochroneService;
+import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 import com.tarterware.roadrunner.utils.TestUtils;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -93,6 +94,9 @@ class VehicleTest
 
     @Mock
     private ZSetOperations<String, Object> zSetOperations;
+
+    @Mock
+    private KafkaTopicMetadataService kafkaTopicMetadataService;
 
     private MeterRegistry meterRegistry;
 

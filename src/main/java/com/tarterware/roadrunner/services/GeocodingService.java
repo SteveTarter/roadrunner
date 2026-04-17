@@ -1,6 +1,5 @@
 package com.tarterware.roadrunner.services;
 
-import java.time.Duration;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -135,7 +134,7 @@ public class GeocodingService
             featureCollection = respFc.getBody();
 
             // Persist the newly read Object to the cache
-            featureCollectionCache.put(geocodingCacheKey, featureCollection, Duration.ofHours(100));
+            featureCollectionCache.put(geocodingCacheKey, featureCollection);
         }
 
         if (featureCollection != null)
@@ -149,5 +148,10 @@ public class GeocodingService
         {
             logger.warn("Unable to get coordinate data for: " + address.toString());
         }
+    }
+
+    public void reset()
+    {
+        featureCollectionCache.reset();
     }
 }

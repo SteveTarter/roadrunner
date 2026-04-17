@@ -2,7 +2,10 @@ package com.tarterware.roadrunner.adapters.redis;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -32,6 +35,7 @@ import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.services.IsochroneService;
+import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 
@@ -40,12 +44,13 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 @ActiveProfiles("test")
 public class RedisSimulationRegistryIntegrationTest
 {
+    @SuppressWarnings("resource")
     @Container
     public static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine"))
             .withExposedPorts(6379);
 
     @DynamicPropertySource
-    static void redisProperties(DynamicPropertyRegistry registry)
+    static void containerProperties(DynamicPropertyRegistry registry)
     {
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", redis::getFirstMappedPort);
@@ -99,11 +104,16 @@ public class RedisSimulationRegistryIntegrationTest
     @MockitoBean
     private KubernetesClient kubernetesClient;
 
+    @MockitoBean
+    private KafkaTopicMetadataService kafkaTopicMetadataService;
+
     @BeforeEach
     void setUp()
     {
         // Essential: Clear Redis before each test so they are independent
         redisTemplate.delete("roadrunner:simulations");
+
+        when(kafkaTopicMetadataService.getTopicRetention(anyString())).thenReturn(Duration.ofDays(7));
     }
 
     @Test
