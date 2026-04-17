@@ -1,7 +1,10 @@
 package com.tarterware.roadrunner.adapters.kafka;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -26,6 +29,7 @@ import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.services.IsochroneService;
+import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 
@@ -76,12 +80,17 @@ public class KafkaVehicleEventConsumerTest
     @Autowired
     private ControllerVehicleStateStore stateStore;
 
+    @MockitoBean
+    private KafkaTopicMetadataService kafkaTopicMetadataService;
+
     @Autowired
     private KafkaVehicleEventConsumer kafkaConsumer;
 
     @Test
     void shouldIgnoreStaleEvents()
     {
+        when(kafkaTopicMetadataService.getTopicRetention(anyString())).thenReturn(Duration.ofDays(7));
+
         UUID id = UUID.randomUUID();
         VehiclePositionEvent inital = new VehiclePositionEvent(
                 id.toString(),

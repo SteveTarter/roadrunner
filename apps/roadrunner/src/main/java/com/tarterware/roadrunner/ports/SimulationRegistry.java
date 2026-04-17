@@ -46,4 +46,9 @@ public interface SimulationRegistry
      *         historical and active simulations.
      */
     List<SimulationSession> getAllSessions();
+
+    /**
+     * Resets the registry, removing all entries
+     */
+    public void reset();
 }

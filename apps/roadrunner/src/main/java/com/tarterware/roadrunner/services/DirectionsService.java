@@ -1,6 +1,5 @@
 package com.tarterware.roadrunner.services;
 
-import java.time.Duration;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -78,7 +77,7 @@ public class DirectionsService
                         logger.error("Unable to create Directions", e);
                     }
 
-                    directionsCache.put(directionsCacheKey, directions, Duration.ofHours(100));
+                    directionsCache.put(directionsCacheKey, directions);
                     return directions;
                 });
     }
@@ -110,6 +109,11 @@ public class DirectionsService
         Directions directions = getDirections(tripPlan.getListStops());
 
         return directions;
+    }
+
+    public void reset()
+    {
+        directionsCache.reset();
     }
 
     public String getCacheKey(List<Address> listAddresses)

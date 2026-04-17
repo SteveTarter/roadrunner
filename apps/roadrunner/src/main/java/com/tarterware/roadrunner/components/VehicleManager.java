@@ -232,6 +232,7 @@ public class VehicleManager
      */
     public void reset()
     {
+        this.directionsService.reset();
         this.vehicleStateStore.reset();
         this.tripPlanRepository.reset();
     }
@@ -670,61 +671,15 @@ public class VehicleManager
             this.vehicleStateStore.deleteVehicle(vehicleId);
             this.vehicleEventPublisher.publishVehicleDeleted(vehicleId);
         });
-
-        // Remove from directionsMap and lineSegmentDataMap (assuming thread-safe maps
-        // or appropriate synchronization)
-        deletionSet.forEach(vehicleID ->
-        {
-            directionsMap.remove(vehicleID);
-            lineSegmentDataMap.remove(vehicleID);
-        });
     }
 
     /**
-     * Periodically reconciles the local caches ({@link #directionsMap} and
-     * {@link #lineSegmentDataMap}) with the active vehicle list in the vehicle
-     * store. This method ensures that the caches do not contain data for vehicles
-     * that have been removed from the active vehicle registry. It also updates the
-     * {@link #statisticsCollector} to ensure that it has enough capacity to store
-     * jitter statistics for the current number of active vehicles.
+     * Update the {@link #statisticsCollector} to ensure that it has enough capacity
+     * to store jitter statistics for the current number of active vehicles.
      */
     @Scheduled(fixedRate = 60000) // every minute
-    public void reconcileLocalCache()
+    public void updateJitterStats()
     {
-        // For directionsMap, create a list of IDs to remove
-        List<UUID> removedFromDirections = new ArrayList<>();
-
-        // Iterate over a copy of the key set to avoid ConcurrentModificationException
-        Set<UUID> directionsKeys = new HashSet<>(directionsMap.keySet());
-        for (UUID vehicleId : directionsKeys)
-        {
-            if (!activeIdsList.contains(vehicleId))
-            {
-                removedFromDirections.add(vehicleId);
-                directionsMap.remove(vehicleId);
-            }
-        }
-        if (!removedFromDirections.isEmpty())
-        {
-            logger.info("Reconciled directionsMap: Removed vehicles: {}", removedFromDirections);
-        }
-
-        // Do the same for lineSegmentDataMap
-        List<UUID> removedFromLineSegmentData = new ArrayList<>();
-        Set<UUID> lineSegmentKeys = new HashSet<>(lineSegmentDataMap.keySet());
-        for (UUID vehicleId : lineSegmentKeys)
-        {
-            if (!activeIdsList.contains(vehicleId))
-            {
-                removedFromLineSegmentData.add(vehicleId);
-                lineSegmentDataMap.remove(vehicleId);
-            }
-        }
-        if (!removedFromLineSegmentData.isEmpty())
-        {
-            logger.info("Reconciled lineSegmentDataMap: Removed vehicles: {}", removedFromLineSegmentData);
-        }
-
         // Update the JitterStatisticsCollector so that the 10 last statistics for each
         // vehicle will be recorded.
 

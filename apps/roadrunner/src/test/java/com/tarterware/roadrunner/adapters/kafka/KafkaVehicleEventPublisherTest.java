@@ -89,12 +89,16 @@ public class KafkaVehicleEventPublisherTest
     @InjectMocks
     private KafkaVehicleEventPublisher kafkaPublisher;
 
+    // @Mock
+    // private KafkaTopicMetadataService kafkaTopicMetadataService;
+
     @BeforeEach
     void setUp()
     {
         meterRegistry = new SimpleMeterRegistry();
 
         ReflectionTestUtils.setField(kafkaPublisher, "topicName", "vehicle.position.v1");
+        // when(kafkaTopicMetadataService.getTopicRetention(anyString())).thenReturn(Duration.ofDays(7));
     }
 
     @Test
