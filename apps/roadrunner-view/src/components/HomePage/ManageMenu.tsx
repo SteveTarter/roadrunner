@@ -5,7 +5,8 @@ import { DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from
 import { CONFIG } from "../../config";
 
 export const ManageMenu = (props: {
-  openCreateVehicle: any
+  openCreateVehicle: any,
+  toggleSimTable: any
 }) => {
   const navigate = useNavigate();
 
@@ -94,6 +95,9 @@ export const ManageMenu = (props: {
     props.openCreateVehicle();
   }
 
+  function handleToggleSimTable() {
+    props.toggleSimTable();
+  }
   return (
     <div className="d-flex justify-content-left align-items-center">
       <UncontrolledDropdown nav inNavbar className="centered-dropdown">
@@ -112,6 +116,12 @@ export const ManageMenu = (props: {
             onClick={() => handleCreateCrissCross()}
           >
             Create criss-cross
+          </DropdownItem>
+          <DropdownItem
+            id="simTable"
+            onClick={() => handleToggleSimTable()}
+          >
+          Toggle Sim Table
           </DropdownItem>
           <DropdownItem
             id="resetServerBtn"

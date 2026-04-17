@@ -12,6 +12,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { Button } from 'react-bootstrap';
 import { CreateVehiclePanel } from './CreateVehiclePanel';
+import { SimulationTable } from './SimulationTable';
 import { fetchAuthSession, signInWithRedirect } from "aws-amplify/auth";
 import { CONFIG } from "../../config";
 
@@ -27,6 +28,7 @@ export const HomePage = () => {
   const [isCreateVehicleActive, setIsCreateVehicleActive] = useState(false)
   const [pageNumber, setPageNumber] = useState(0);
   const [vehicleStateMapVersion, setVehicleStateMapVersion] = useState(0);
+  const [showSimTable, setShowSimTable] = useState(false);
 
   const vehicleStateMapRef = useRef(new MapWrapper<string, VehicleState>());
   const vehicleDisplayMapRef = useRef(new MapWrapper<string, VehicleDisplay>());
@@ -252,6 +254,10 @@ export const HomePage = () => {
     setIsCreateVehicleActive(true);
   }, []);
 
+  const toggleSimTable = useCallback(() => {
+    setShowSimTable(!showSimTable);
+  }, [showSimTable]);
+
   return (
     <>
       <div className="map-container">
@@ -269,7 +275,7 @@ export const HomePage = () => {
           onClick={(event) => onClick(event)}
           onZoom={(viewStateChangeEvent) => onZoom(viewStateChangeEvent)}
         >
-          <AppNavBar additionalMenuItems={<ManageMenu openCreateVehicle={openCreateVehicle} />} />
+          <AppNavBar additionalMenuItems={<ManageMenu openCreateVehicle={openCreateVehicle} toggleSimTable={toggleSimTable} />} />
           {(isDataLoaded && !isTransitioning) ?
             <>
               {isCreateVehicleActive && (
@@ -303,6 +309,7 @@ export const HomePage = () => {
                   <FontAwesomeIcon title="Hide All Routes" icon={faEyeSlash} className="mr-3" />
                 </Button>
               </div>
+              {showSimTable && <SimulationTable />}
               {vehicleStateList.map((vehicleState) => {
                 const vehicleDisplay = vehicleDisplayMapRef.current.get(vehicleState.id);
                 if (vehicleDisplay) {
