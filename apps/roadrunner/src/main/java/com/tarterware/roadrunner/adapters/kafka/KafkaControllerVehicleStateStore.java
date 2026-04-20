@@ -5,13 +5,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import com.tarterware.roadrunner.adapters.InMemoryVehicleStateStore;
 import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
 
 /**
  * A Kafka-specific implementation of the {@link ControllerVehicleStateStore}
  * that provides vehicle state data to the controller layer. *
  * <p>
- * This class extends {@link KafkaVehicleStateStore} and implements the
+ * This class extends {@link InMemoryVehicleStateStore} and implements the
  * {@link ControllerVehicleStateStore} port, allowing the UI and REST
  * controllers to access the current state of vehicles when the application is
  * running in Kafka mode.
@@ -24,14 +25,14 @@ import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
  * layer instead of the Redis-backed equivalent during the Kafka migration
  * phase.
  * </p>
- * * @see KafkaVehicleStateStore
+ * * @see InMemoryVehicleStateStore
  * 
  * @see ControllerVehicleStateStore
  * @see com.tarterware.roadrunner.controllers.VehicleController
  */
 @Component
 @ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.kafka", name = "enabled", havingValue = "true")
-public class KafkaControllerVehicleStateStore extends KafkaVehicleStateStore implements ControllerVehicleStateStore
+public class KafkaControllerVehicleStateStore extends InMemoryVehicleStateStore implements ControllerVehicleStateStore
 {
     private static final Logger logger = LoggerFactory.getLogger(KafkaControllerVehicleStateStore.class);
 

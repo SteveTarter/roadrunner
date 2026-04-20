@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +25,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import com.tarterware.roadrunner.components.Vehicle;
 import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.models.SimulationSession;
@@ -119,14 +119,14 @@ public class RedisSimulationRegistryIntegrationTest
     @Test
     void testRecordStartAndRetrieval()
     {
-        UUID simId = UUID.randomUUID();
+        Vehicle vehicle = new Vehicle();
         Instant startTime = Instant.now();
 
-        registry.recordStart(simId, startTime);
+        registry.recordStart(vehicle, startTime);
 
         List<SimulationSession> sessions = registry.getAllSessions();
         assertEquals(1, sessions.size(), "Should have one session");
-        assertEquals(simId, sessions.get(0).getId());
+        assertEquals(vehicle.getId(), sessions.get(0).getId());
         assertEquals(startTime, sessions.get(0).getStart());
         assertNull(sessions.get(0).getEnd(), "End time should be null for active session");
     }
@@ -134,15 +134,15 @@ public class RedisSimulationRegistryIntegrationTest
     @Test
     void testRecordEndUpdatesExistingSession()
     {
-        UUID simId = UUID.randomUUID();
+        Vehicle vehicle = new Vehicle();
         Instant startTime = Instant.now().minusSeconds(60);
         Instant endTime = Instant.now();
 
         // Start simulation
-        registry.recordStart(simId, startTime);
+        registry.recordStart(vehicle, startTime);
 
         // End simulation
-        registry.recordEnd(simId, endTime);
+        registry.recordEnd(vehicle.getId(), endTime);
 
         // Verify
         List<SimulationSession> sessions = registry.getAllSessions();
@@ -154,18 +154,18 @@ public class RedisSimulationRegistryIntegrationTest
     @Test
     void testChronologicalOrdering()
     {
-        UUID sim1 = UUID.randomUUID();
-        UUID sim2 = UUID.randomUUID();
+        Vehicle vehicle1 = new Vehicle();
+        Vehicle vehicle2 = new Vehicle();
         Instant now = Instant.now();
 
         // Record out of order
-        registry.recordStart(sim2, now); // Newer
-        registry.recordStart(sim1, now.minusSeconds(100)); // Older
+        registry.recordStart(vehicle2, now); // Newer
+        registry.recordStart(vehicle1, now.minusSeconds(100)); // Older
 
         List<SimulationSession> sessions = registry.getAllSessions();
 
         assertEquals(2, sessions.size());
-        assertEquals(sim1, sessions.get(0).getId(), "Older session should be first (ZSet score logic)");
-        assertEquals(sim2, sessions.get(1).getId(), "Newer session should be last");
+        assertEquals(vehicle1.getId(), sessions.get(0).getId(), "Older session should be first (ZSet score logic)");
+        assertEquals(vehicle2.getId(), sessions.get(1).getId(), "Newer session should be last");
     }
 }
