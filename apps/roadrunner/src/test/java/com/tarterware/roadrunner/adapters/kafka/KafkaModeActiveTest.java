@@ -6,12 +6,14 @@ import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -56,6 +58,9 @@ public class KafkaModeActiveTest
         registry.add("spring.data.redis.port", redis::getFirstMappedPort);
     }
 
+    @Autowired
+    private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
+
     @MockitoBean
     private DirectionsService directionsService;
 
@@ -94,6 +99,14 @@ public class KafkaModeActiveTest
 
     @Autowired
     private VehicleEventPublisher publisher;
+
+    @AfterEach
+    void tearDown()
+    {
+        // Stop all background consumers so they don't scream in the logs
+        // while the next test is running.
+        kafkaListenerEndpointRegistry.stop();
+    }
 
     @Test
     void shouldInjectKafkaImplementation()

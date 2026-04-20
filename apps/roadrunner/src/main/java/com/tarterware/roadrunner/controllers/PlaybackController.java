@@ -112,18 +112,18 @@ public class PlaybackController
 
         Map<UUID, VehicleState> latestStates = new HashMap<>();
 
-        // 2. Open a manual consumer
+        // Open a manual consumer
         try (Consumer<String, VehiclePositionEvent> consumer = consumerFactory.createConsumer())
         {
             consumer.assign(partitions);
 
-            // 3. Map startTime to Kafka offsets
+            // Map startTime to Kafka offsets
             Map<TopicPartition, Long> timestampsToSearch = partitions.stream()
                     .collect(Collectors.toMap(tp -> tp, tp -> startTime));
 
             Map<TopicPartition, OffsetAndTimestamp> offsets = consumer.offsetsForTimes(timestampsToSearch);
 
-            // 4. Seek each partition to the found offset
+            // Seek each partition to the found offset
             offsets.forEach((tp, offsetAndTimestamp) ->
             {
                 if (offsetAndTimestamp != null)
@@ -137,7 +137,7 @@ public class PlaybackController
                 }
             });
 
-            // 5. Poll and filter records within the [startTime, endTime] window
+            // Poll and filter records within the [startTime, endTime] window
             boolean processing = true;
             int emptyPolls = 0;
 
