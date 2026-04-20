@@ -6,13 +6,16 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.time.Duration;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -49,6 +52,9 @@ class RoadrunnerApplicationTests
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", redis::getFirstMappedPort);
     }
+
+    @Autowired
+    private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
 
     @MockitoBean
     private DirectionsService directionsService;
@@ -89,6 +95,14 @@ class RoadrunnerApplicationTests
         // Initialize mocks
         MockitoAnnotations.openMocks(this);
         when(kafkaTopicMetadataService.getTopicRetention(anyString())).thenReturn(Duration.ofDays(7));
+    }
+
+    @AfterEach
+    void tearDown()
+    {
+        // Stop all background consumers so they don't scream in the logs
+        // while the next test is running.
+        kafkaListenerEndpointRegistry.stop();
     }
 
     @Test

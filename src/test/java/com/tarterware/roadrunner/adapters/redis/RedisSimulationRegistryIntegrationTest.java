@@ -9,11 +9,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ActiveProfiles;
@@ -58,6 +60,9 @@ public class RedisSimulationRegistryIntegrationTest
 
     @Autowired
     private RedisSimulationRegistry registry;
+
+    @Autowired
+    private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
 
     @Autowired
     private StringRedisTemplate redisTemplate;
@@ -114,6 +119,14 @@ public class RedisSimulationRegistryIntegrationTest
         redisTemplate.delete("roadrunner:simulations");
 
         when(kafkaTopicMetadataService.getTopicRetention(anyString())).thenReturn(Duration.ofDays(7));
+    }
+
+    @AfterEach
+    void tearDown()
+    {
+        // Stop all background consumers so they don't scream in the logs
+        // while the next test is running.
+        kafkaListenerEndpointRegistry.stop();
     }
 
     @Test

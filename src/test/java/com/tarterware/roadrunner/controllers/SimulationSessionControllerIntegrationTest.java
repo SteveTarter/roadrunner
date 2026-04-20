@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.Duration;
 import java.time.Instant;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ActiveProfiles;
@@ -69,6 +71,9 @@ public class SimulationSessionControllerIntegrationTest
     private MockMvc mockMvc;
 
     @Autowired
+    private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
+
+    @Autowired
     private SimulationRegistry simulationRegistry;
 
     // @Autowired
@@ -86,6 +91,7 @@ public class SimulationSessionControllerIntegrationTest
     @MockitoBean
     private RedisTripPlanRepository redisTripPlanRepository;
 
+    @SuppressWarnings("unused")
     @Autowired
     private StringRedisTemplate redisTemplate;
 
@@ -126,6 +132,14 @@ public class SimulationSessionControllerIntegrationTest
     void setUp()
     {
         when(kafkaTopicMetadataService.getTopicRetention(anyString())).thenReturn(Duration.ofDays(7));
+    }
+
+    @AfterEach
+    void tearDown()
+    {
+        // Stop all background consumers so they don't scream in the logs
+        // while the next test is running.
+        kafkaListenerEndpointRegistry.stop();
     }
 
     @Test
