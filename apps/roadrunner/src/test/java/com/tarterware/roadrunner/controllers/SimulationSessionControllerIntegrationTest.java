@@ -131,6 +131,9 @@ public class SimulationSessionControllerIntegrationTest
     @BeforeEach
     void setUp()
     {
+        // Force a clean slate in Redis
+        redisTemplate.delete("roadrunner:simulations");
+
         when(kafkaTopicMetadataService.getTopicRetention(anyString())).thenReturn(Duration.ofDays(7));
     }
 
