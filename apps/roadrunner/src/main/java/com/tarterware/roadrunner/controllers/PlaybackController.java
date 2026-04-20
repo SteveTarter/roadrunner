@@ -2,6 +2,7 @@ package com.tarterware.roadrunner.controllers;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +37,7 @@ import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 
 @RestController
 @RequestMapping("/api/playback")
@@ -52,10 +54,13 @@ public class PlaybackController
     private long msUpdatePeriod;
 
     private int partitionCount;
+    private List<TopicPartition> topicPartitions;
 
-    private KafkaTopicMetadataService kafkaTopicMetadataService;
-
+    private final KafkaTopicMetadataService kafkaTopicMetadataService;
     private final ConsumerFactory<String, VehiclePositionEvent> consumerFactory;
+
+    // The long-lived "hot" resource
+    private Consumer<String, VehiclePositionEvent> playbackConsumer;
 
     private static final String UNSET_VALUE = "Unset";
 
@@ -81,6 +86,30 @@ public class PlaybackController
 
         logger.info("{} topic has {} partitions.", topicName, partitionCount);
         logger.info("Update period is {} ms.", msUpdatePeriod);
+
+        // Pre-cache the partition objects
+        this.topicPartitions = IntStream.range(0, partitionCount)
+                .mapToObj(p -> new TopicPartition(topicName, p))
+                .collect(Collectors.toList());
+
+        // Initialize the consumer immediately
+        this.playbackConsumer = consumerFactory.createConsumer();
+
+        // Manually assign partitions to avoid rebalance overhead
+        this.playbackConsumer.assign(topicPartitions);
+
+        logger.info("PlaybackController initialized. Consumer is 'hot' for topic {} with {} partitions.", topicName,
+                partitionCount);
+    }
+
+    @PreDestroy
+    public void tearDown()
+    {
+        if (playbackConsumer != null)
+        {
+            playbackConsumer.close();
+            logger.info("Playback Consumer closed.");
+        }
     }
 
     @GetMapping("/state")
@@ -92,48 +121,36 @@ public class PlaybackController
             @RequestParam(defaultValue = "10")
             int pageSize)
     {
-        long endTime;
-        if (timestamp.equals(UNSET_VALUE))
-        {
-            // If no end timestamp was specified, use the current time.
-            endTime = Instant.now().toEpochMilli();
-        }
-        else
-        {
-            // Parse the given time
-            endTime = Instant.parse(timestamp).toEpochMilli();
-        }
+        long endTime = timestamp.equals(UNSET_VALUE)
+                ? Instant.now().toEpochMilli()
+                : Instant.parse(timestamp).toEpochMilli();
 
         long startTime = endTime - (2 * msUpdatePeriod);
 
-        List<TopicPartition> partitions = IntStream.range(0, partitionCount)
-                .mapToObj(p -> new TopicPartition(topicName, p))
-                .collect(Collectors.toList());
-
         Map<UUID, VehicleState> latestStates = new HashMap<>();
 
-        // Open a manual consumer
-        try (Consumer<String, VehiclePositionEvent> consumer = consumerFactory.createConsumer())
+        // CRITICAL: Kafka Consumer is not thread-safe.
+        // We must synchronize to allow multiple users to query playback without
+        // crashing.
+        synchronized (playbackConsumer)
         {
-            consumer.assign(partitions);
-
             // Map startTime to Kafka offsets
-            Map<TopicPartition, Long> timestampsToSearch = partitions.stream()
+            Map<TopicPartition, Long> timestampsToSearch = topicPartitions.stream()
                     .collect(Collectors.toMap(tp -> tp, tp -> startTime));
 
-            Map<TopicPartition, OffsetAndTimestamp> offsets = consumer.offsetsForTimes(timestampsToSearch);
+            Map<TopicPartition, OffsetAndTimestamp> offsets = playbackConsumer.offsetsForTimes(timestampsToSearch);
 
             // Seek each partition to the found offset
             offsets.forEach((tp, offsetAndTimestamp) ->
             {
                 if (offsetAndTimestamp != null)
                 {
-                    consumer.seek(tp, offsetAndTimestamp.offset());
+                    playbackConsumer.seek(tp, offsetAndTimestamp.offset());
                 }
                 else
                 {
                     // If timestamp is newer than latest record, seek to end
-                    consumer.seekToEnd(Collections.singleton(tp));
+                    playbackConsumer.seekToEnd(Collections.singleton(tp));
                 }
             });
 
@@ -141,9 +158,9 @@ public class PlaybackController
             boolean processing = true;
             int emptyPolls = 0;
 
-            while (processing && emptyPolls < 3)
+            while (processing && emptyPolls < 2)
             {
-                ConsumerRecords<String, VehiclePositionEvent> records = consumer.poll(Duration.ofMillis(500));
+                ConsumerRecords<String, VehiclePositionEvent> records = playbackConsumer.poll(Duration.ofMillis(100));
                 if (records.isEmpty())
                 {
                     emptyPolls++;
@@ -158,40 +175,41 @@ public class PlaybackController
                         break;
                     }
 
-                    // Convert VehiclePositionEvent to VehicleState
-                    VehiclePositionEvent event = record.value();
-                    VehicleState vehicleState = new VehicleState();
-                    vehicleState.setId(UUID.fromString(event.vehicleId()));
-                    vehicleState.setPositionLimited(event.positionLimited());
-                    vehicleState.setPositionValid(event.positionValid());
-                    vehicleState.setDegLatitude(event.latitude());
-                    vehicleState.setDegLongitude(event.longitude());
-                    vehicleState.setDegBearing(event.heading());
-                    vehicleState.setMetersPerSecond(event.speed());
-                    vehicleState.setColorCode(event.colorCode());
-                    vehicleState.setManagerHost(event.managerHost());
-                    vehicleState.setMsEpochLastRun(event.eventTime().toEpochMilli());
-                    vehicleState.setNsLastExec(event.nsLastExec());
-
-                    // Overwrite with newer state for the same vehicle ID within the window
-                    latestStates.put(vehicleState.getId(), vehicleState);
+                    mapToLatestState(record.value(), latestStates);
                 }
             }
         }
 
-        List<VehicleState> listVehicleStates = latestStates.values().stream()
-                .collect(Collectors.toList());
+        return buildPagedResponse(latestStates, page, pageSize);
+    }
 
-        // ... Pagination logic (sublist based on page/pageSize) ...
-        // Create a Page object
-        Page<VehicleState> vehicleStatePage = new PageImpl<VehicleState>(listVehicleStates,
-                PageRequest.of(page, pageSize),
-                listVehicleStates.size());
+    private void mapToLatestState(VehiclePositionEvent event, Map<UUID, VehicleState> latestStates)
+    {
+        VehicleState vehicleState = new VehicleState();
 
-        // Create a PagedModel object
-        PagedModel<VehicleState> pagedModel = PagedModel.of(vehicleStatePage.getContent(), new PagedModel.PageMetadata(
-                vehicleStatePage.getSize(), vehicleStatePage.getNumber(), vehicleStatePage.getTotalElements()));
+        vehicleState.setId(UUID.fromString(event.vehicleId()));
+        vehicleState.setPositionLimited(event.positionLimited());
+        vehicleState.setPositionValid(event.positionValid());
+        vehicleState.setDegLatitude(event.latitude());
+        vehicleState.setDegLongitude(event.longitude());
+        vehicleState.setDegBearing(event.heading());
+        vehicleState.setMetersPerSecond(event.speed());
+        vehicleState.setColorCode(event.colorCode());
+        vehicleState.setManagerHost(event.managerHost());
+        vehicleState.setMsEpochLastRun(event.eventTime().toEpochMilli());
+        vehicleState.setNsLastExec(event.nsLastExec());
 
-        return new ResponseEntity<>(pagedModel, HttpStatus.OK);
+        latestStates.put(vehicleState.getId(), vehicleState);
+    }
+
+    private ResponseEntity<PagedModel<VehicleState>> buildPagedResponse(
+            Map<UUID, VehicleState> states,
+            int page,
+            int pageSize)
+    {
+        List<VehicleState> list = new ArrayList<>(states.values());
+        Page<VehicleState> vehicleStatePage = new PageImpl<>(list, PageRequest.of(page, pageSize), list.size());
+        return new ResponseEntity<>(PagedModel.of(vehicleStatePage.getContent(),
+                new PagedModel.PageMetadata(pageSize, page, list.size())), HttpStatus.OK);
     }
 }

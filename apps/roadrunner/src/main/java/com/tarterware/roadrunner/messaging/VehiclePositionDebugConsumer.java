@@ -8,7 +8,10 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.kafka", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(
+        prefix = "com.tarterware.roadrunner.messaging.kafka.debug",
+        name = "enabled",
+        havingValue = "true")
 public class VehiclePositionDebugConsumer
 {
 
