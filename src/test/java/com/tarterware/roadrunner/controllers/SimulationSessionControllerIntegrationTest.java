@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +34,7 @@ import com.tarterware.roadrunner.adapters.redis.RedisDirectionsCache;
 import com.tarterware.roadrunner.adapters.redis.RedisFeatureCollectionCache;
 import com.tarterware.roadrunner.adapters.redis.RedisIsochroneCache;
 import com.tarterware.roadrunner.adapters.redis.RedisTripPlanRepository;
+import com.tarterware.roadrunner.components.Vehicle;
 import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.ports.SimulationRegistry;
@@ -132,16 +132,16 @@ public class SimulationSessionControllerIntegrationTest
     void shouldReturnChronologicalSimulationSessions() throws Exception
     {
         // Arrange: Record two sessions in the registry
-        UUID simId1 = UUID.randomUUID();
-        UUID simId2 = UUID.randomUUID();
+        Vehicle vehicle1 = new Vehicle();
+        Vehicle vehicle2 = new Vehicle();
         Instant now = Instant.now();
 
         // Sim 1 started 10 minutes ago and finished 5 minutes ago
-        simulationRegistry.recordStart(simId1, now.minusSeconds(600));
-        simulationRegistry.recordEnd(simId1, now.minusSeconds(300));
+        simulationRegistry.recordStart(vehicle1, now.minusSeconds(600));
+        simulationRegistry.recordEnd(vehicle1.getId(), now.minusSeconds(300));
 
         // Sim 2 started 2 minutes ago and is still active (end is null)
-        simulationRegistry.recordStart(simId2, now.minusSeconds(120));
+        simulationRegistry.recordStart(vehicle2, now.minusSeconds(120));
 
         // Act & Assert
         mockMvc.perform(get("/api/vehicle/simulation-sessions")
@@ -152,11 +152,11 @@ public class SimulationSessionControllerIntegrationTest
                 .andExpect(jsonPath("$._embedded.simulationSessions.length()").value(2))
 
                 // Verify the first session (ID and End time exists)
-                .andExpect(jsonPath("$._embedded.simulationSessions[0].id").value(simId1.toString()))
+                .andExpect(jsonPath("$._embedded.simulationSessions[0].id").value(vehicle1.getId().toString()))
                 .andExpect(jsonPath("$._embedded.simulationSessions[0].end").exists())
 
                 // Verify the second session (ID and End time is null)
-                .andExpect(jsonPath("$._embedded.simulationSessions[1].id").value(simId2.toString()))
+                .andExpect(jsonPath("$._embedded.simulationSessions[1].id").value(vehicle2.getId().toString()))
                 .andExpect(jsonPath("$._embedded.simulationSessions[1].end").value(nullValue()));
     }
 }

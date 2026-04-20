@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tarterware.roadrunner.components.Vehicle;
 import com.tarterware.roadrunner.models.SimulationSession;
 import com.tarterware.roadrunner.ports.SimulationRegistry;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
@@ -75,15 +76,16 @@ public class RedisSimulationRegistry implements SimulationRegistry
     }
 
     @Override
-    public void recordStart(UUID vehicleID, Instant startTime)
+    public void recordStart(Vehicle vehicle, Instant startTime)
     {
         SimulationSession session = new SimulationSession();
-        session.setId(vehicleID);
+        session.setId(vehicle.getId());
+        session.setColorCode(vehicle.getColorCode());
         session.setStart(startTime);
         session.setEnd(null); // Explicitly null for active sessions
 
         saveToZSet(session);
-        logger.info("Recorded start of simulation session: {}", vehicleID);
+        logger.info("Recorded start of simulation session: {}", vehicle.getId());
     }
 
     @Override
