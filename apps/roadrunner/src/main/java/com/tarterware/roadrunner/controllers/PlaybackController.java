@@ -16,16 +16,22 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StoreQueryParameters;
+import org.apache.kafka.streams.kstream.Windowed;
+import org.apache.kafka.streams.state.KeyValueIterator;
+import org.apache.kafka.streams.state.QueryableStoreTypes;
+import org.apache.kafka.streams.state.ReadOnlyWindowStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.convert.DurationStyle;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -46,18 +52,12 @@ public class PlaybackController
     @Value("${com.tarterware.roadrunner.kafka.topic.vehicle-position}")
     private String topicName;
 
-    // Target interval between vehicle updates.
-    @Value("${com.tarterware.roadrunner.vehicle-update-period:250ms}")
-    private String msUpdatePeriodString;
-
-    // Update period in milliseconds.
-    private long msUpdatePeriod;
-
     private int partitionCount;
     private List<TopicPartition> topicPartitions;
 
     private final KafkaTopicMetadataService kafkaTopicMetadataService;
     private final ConsumerFactory<String, VehiclePositionEvent> consumerFactory;
+    private final StreamsBuilderFactoryBean streamsFactory;
 
     // The long-lived "hot" resource
     private Consumer<String, VehiclePositionEvent> playbackConsumer;
@@ -68,24 +68,20 @@ public class PlaybackController
 
     public PlaybackController(
             KafkaTopicMetadataService kafkaTopicMetadataService,
-            ConsumerFactory<String, VehiclePositionEvent> consumerFactory)
+            ConsumerFactory<String, VehiclePositionEvent> consumerFactory,
+            StreamsBuilderFactoryBean streamsFactory)
     {
         this.kafkaTopicMetadataService = kafkaTopicMetadataService;
         this.consumerFactory = consumerFactory;
+        this.streamsFactory = streamsFactory;
     }
 
     @PostConstruct
     public void init()
     {
-        // DurationStyle.detect() determines the style (e.g., SIMPLE, ISO-8601) based on
-        // the string
-        Duration duration = DurationStyle.detect(msUpdatePeriodString).parse(msUpdatePeriodString);
-        msUpdatePeriod = duration.toMillis();
-
         partitionCount = kafkaTopicMetadataService.getPartitionCount(topicName);
 
         logger.info("{} topic has {} partitions.", topicName, partitionCount);
-        logger.info("Update period is {} ms.", msUpdatePeriod);
 
         // Pre-cache the partition objects
         this.topicPartitions = IntStream.range(0, partitionCount)
@@ -125,15 +121,37 @@ public class PlaybackController
                 ? Instant.now().toEpochMilli()
                 : Instant.parse(timestamp).toEpochMilli();
 
-        long startTime = endTime - (2 * msUpdatePeriod);
+        // Expand the window 2 seconds back
+        long startTime = endTime - 2000;
 
+        // Calculate the point in time that the stream runs out
+        long hotThreshold = Instant.now().minus(Duration.ofHours(1)).toEpochMilli();
+
+        if (endTime > hotThreshold)
+        {
+            return queryHotStore(startTime, endTime, page, pageSize);
+        }
+        else
+        {
+            return queryColdStore(startTime, endTime, page, pageSize);
+        }
+    }
+
+    private ResponseEntity<PagedModel<VehicleState>> queryColdStore(
+            long startTime,
+            long endTime,
+            int page,
+            int pageSize)
+    {
         Map<UUID, VehicleState> latestStates = new HashMap<>();
-
         // CRITICAL: Kafka Consumer is not thread-safe.
         // We must synchronize to allow multiple users to query playback without
         // crashing.
         synchronized (playbackConsumer)
         {
+            // Pause all partitions to stop any background fetching
+            // playbackConsumer.pause(topicPartitions);
+
             // Map startTime to Kafka offsets
             Map<TopicPartition, Long> timestampsToSearch = topicPartitions.stream()
                     .collect(Collectors.toMap(tp -> tp, tp -> startTime));
@@ -141,42 +159,93 @@ public class PlaybackController
             Map<TopicPartition, OffsetAndTimestamp> offsets = playbackConsumer.offsetsForTimes(timestampsToSearch);
 
             // Seek each partition to the found offset
-            offsets.forEach((tp, offsetAndTimestamp) ->
+            Map<TopicPartition, Boolean> partitionDone = new HashMap<>();
+            for (TopicPartition tp : topicPartitions)
             {
-                if (offsetAndTimestamp != null)
+                OffsetAndTimestamp oat = offsets.get(tp);
+                if (oat != null)
                 {
-                    playbackConsumer.seek(tp, offsetAndTimestamp.offset());
+                    playbackConsumer.seek(tp, oat.offset());
+                    partitionDone.put(tp, false);
                 }
                 else
                 {
-                    // If timestamp is newer than latest record, seek to end
+                    // No record at or after startTime in this partition
                     playbackConsumer.seekToEnd(Collections.singleton(tp));
+                    partitionDone.put(tp, true);
                 }
-            });
+            }
 
-            // Poll and filter records within the [startTime, endTime] window
-            boolean processing = true;
-            int emptyPolls = 0;
+            // Resume the partitions - THIS triggers a fresh fetch request to the broker
+            // playbackConsumer.resume(topicPartitions);
 
-            while (processing && emptyPolls < 2)
+            long timeoutDeadline = System.currentTimeMillis() + 1000;
+
+            while (partitionDone.values().stream().anyMatch(done -> !done)
+                    && System.currentTimeMillis() < timeoutDeadline)
             {
-                ConsumerRecords<String, VehiclePositionEvent> records = playbackConsumer.poll(Duration.ofMillis(100));
+                // Give broker 100ms to respond.
+                ConsumerRecords<String, VehiclePositionEvent> records = playbackConsumer.poll(Duration.ofMillis(20));
+
                 if (records.isEmpty())
                 {
-                    emptyPolls++;
                     continue;
                 }
 
-                for (ConsumerRecord<String, VehiclePositionEvent> record : records)
+                for (TopicPartition tp : records.partitions())
                 {
-                    if (record.timestamp() > endTime)
+                    if (partitionDone.getOrDefault(tp, false))
                     {
-                        processing = false; // We've moved past our window
-                        break;
+                        continue;
                     }
 
-                    mapToLatestState(record.value(), latestStates);
+                    for (ConsumerRecord<String, VehiclePositionEvent> record : records.records(tp))
+                    {
+                        long recTs = record.timestamp();
+
+                        // Check if this specific record is within the target window
+                        if ((recTs >= startTime) && (recTs <= endTime))
+                        {
+                            mapToLatestState(record.value(), latestStates);
+                        }
+                        else
+                        {
+                            if (recTs > endTime)
+                            {
+                                partitionDone.put(tp, true);
+                                break;
+                            }
+                        }
+                    }
                 }
+            }
+        }
+
+        return buildPagedResponse(latestStates, page, pageSize);
+    }
+
+    private ResponseEntity<PagedModel<VehicleState>> queryHotStore(
+            long startTime,
+            long endTime,
+            int page,
+            int pageSize)
+    {
+        KafkaStreams streams = streamsFactory.getKafkaStreams();
+        ReadOnlyWindowStore<String, VehiclePositionEvent> store = streams.store(
+                StoreQueryParameters.fromNameAndType("hot-playback-store", QueryableStoreTypes.windowStore()));
+
+        Map<UUID, VehicleState> latestStates = new HashMap<>();
+
+        // Fetch all records in the 2-period window
+        try (KeyValueIterator<Windowed<String>, VehiclePositionEvent> iterator = store
+                .fetchAll(Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime)))
+        {
+
+            while (iterator.hasNext())
+            {
+                var next = iterator.next();
+                // Map to VehicleState using your existing helper method
+                mapToLatestState(next.value, latestStates);
             }
         }
 
@@ -185,9 +254,17 @@ public class PlaybackController
 
     private void mapToLatestState(VehiclePositionEvent event, Map<UUID, VehicleState> latestStates)
     {
-        VehicleState vehicleState = new VehicleState();
+        UUID id = UUID.fromString(event.vehicleId());
+        long eventMillis = event.eventTime().toEpochMilli();
 
-        vehicleState.setId(UUID.fromString(event.vehicleId()));
+        VehicleState existing = latestStates.get(id);
+        if (existing != null && existing.getMsEpochLastRun() >= eventMillis)
+        {
+            return;
+        }
+
+        VehicleState vehicleState = new VehicleState();
+        vehicleState.setId(id);
         vehicleState.setPositionLimited(event.positionLimited());
         vehicleState.setPositionValid(event.positionValid());
         vehicleState.setDegLatitude(event.latitude());
@@ -196,10 +273,10 @@ public class PlaybackController
         vehicleState.setMetersPerSecond(event.speed());
         vehicleState.setColorCode(event.colorCode());
         vehicleState.setManagerHost(event.managerHost());
-        vehicleState.setMsEpochLastRun(event.eventTime().toEpochMilli());
+        vehicleState.setMsEpochLastRun(eventMillis);
         vehicleState.setNsLastExec(event.nsLastExec());
 
-        latestStates.put(vehicleState.getId(), vehicleState);
+        latestStates.put(id, vehicleState);
     }
 
     private ResponseEntity<PagedModel<VehicleState>> buildPagedResponse(
@@ -208,8 +285,17 @@ public class PlaybackController
             int pageSize)
     {
         List<VehicleState> list = new ArrayList<>(states.values());
-        Page<VehicleState> vehicleStatePage = new PageImpl<>(list, PageRequest.of(page, pageSize), list.size());
-        return new ResponseEntity<>(PagedModel.of(vehicleStatePage.getContent(),
-                new PagedModel.PageMetadata(pageSize, page, list.size())), HttpStatus.OK);
+
+        int start = Math.min(page * pageSize, list.size());
+        int end = Math.min(start + pageSize, list.size());
+        List<VehicleState> pageContent = list.subList(start, end);
+
+        Page<VehicleState> vehicleStatePage = new PageImpl<>(pageContent, PageRequest.of(page, pageSize), list.size());
+
+        return new ResponseEntity<>(
+                PagedModel.of(
+                        vehicleStatePage.getContent(),
+                        new PagedModel.PageMetadata(pageSize, page, list.size())),
+                HttpStatus.OK);
     }
 }
