@@ -37,11 +37,11 @@ import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 
-@SpringBootTest(
-        properties =
-            {
-                    "com.tarterware.roadrunner.messaging.kafka.enabled=true",
-            })
+@SpringBootTest(properties =
+    {
+            "com.tarterware.roadrunner.messaging.kafka.enabled=true",
+            "spring.kafka.streams.auto-startup=false"
+    })
 @Import(NoOpSchedulerConfig.class)
 @Testcontainers
 public class KafkaModeActiveTest
