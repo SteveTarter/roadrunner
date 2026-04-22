@@ -106,7 +106,7 @@ export const DriverViewPage = () => {
 
     // Get the latest VehicleState
     const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
-    const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-vehicle-state/${vehicleId}`;
+    const getStatesUrl: string = `${restUrlBase}/api/playback/get-vehicle-state?vehicleId=${vehicleId}`;
     fetch(getStatesUrl, {
       method: 'get',
       headers: { Authorization: `Bearer ${token}` },

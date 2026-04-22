@@ -112,7 +112,7 @@ export const HomePage = () => {
     const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
 
     // Add page and pageSize parameters to the query string
-    const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-all-vehicle-states?page=${pageNumber}`;
+    const getStatesUrl: string = `${restUrlBase}/api/playback/state?page=${pageNumber}`;
 
     fetch(getStatesUrl, {
       method: 'get',
