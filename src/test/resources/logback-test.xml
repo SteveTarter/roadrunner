@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <logger name="org.apache.kafka.clients.consumer.ConsumerConfig" level="WARN"/>
+    <logger name="org.apache.kafka.clients.producer.ProducerConfig" level="WARN"/>
+    <logger name="org.apache.kafka.clients.admin.AdminClientConfig" level="WARN"/>
+
+    <logger name="org.apache.kafka.common.utils.AppInfoParser" level="WARN"/>
+
+    <logger name="org.apache.kafka.clients.Metadata" level="WARN"/>
+    <logger name="org.apache.kafka.clients.consumer.internals.ConsumerCoordinator" level="WARN"/>
+    <logger name="org.apache.kafka.clients.consumer.internals.LegacyKafkaConsumer" level="WARN"/>
+    
+    <logger name="org.apache.kafka.clients.NetworkClient" level="ERROR"/>
+    <logger name="org.apache.kafka.clients.consumer.internals.ConsumerCoordinator" level="ERROR"/>
+    <logger name="org.apache.kafka.clients.admin.AdminClientConfig" level="ERROR"/>
+    <logger name="org.apache.kafka.clients.Metadata" level="ERROR"/>
+    
+    <logger name="io.lettuce.core.protocol" level="ERROR"/>
+    
+    <logger name="com.tarterware.roadrunner" level="INFO"/>
+</configuration>

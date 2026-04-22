@@ -66,7 +66,7 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
     public void publishVehicleCreated(Vehicle vehicle)
     {
         simulationRegistry.recordStart(
-                vehicle.getId(),
+                vehicle,
                 Instant.ofEpochMilli(vehicle.getLastCalculationEpochMillis()));
 
         publishEvent(vehicle, "CREATED");

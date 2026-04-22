@@ -68,5 +68,10 @@
     "name": "com.tarterware.roadrunner.kafka.topic.vehicle-position",
     "type": "java.lang.String",
     "description": "A description for 'com.tarterware.roadrunner.kafka.topic.vehicle-position'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.messaging.kafka.debug.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.messaging.kafka.debug.enabled'"
   }
 ]}

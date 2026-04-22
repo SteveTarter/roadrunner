@@ -1,4 +1,4 @@
-package com.tarterware.roadrunner.adapters.kafka;
+package com.tarterware.roadrunner.adapters;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -7,12 +7,14 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.tarterware.roadrunner.adapters.kafka.KafkaControllerVehicleStateStore;
+import com.tarterware.roadrunner.adapters.kafka.KafkaSimulationVehicleStateStore;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.ports.VehicleStateStore;
 
 /**
- * An in-memory implementation of the {@link VehicleStateStore} designed for use
- * with the Kafka messaging adapter. *
+ * An in-memory implementation of the {@link InMemoryVehicleStateStore} designed
+ * for use with the Kafka messaging adapter. *
  * <p>
  * This class maintains the current state of all vehicles and the set of active
  * vehicle IDs using thread-safe collections to ensure data consistency across
@@ -25,12 +27,12 @@ import com.tarterware.roadrunner.ports.VehicleStateStore;
  * This component is used as a base for specialized stores that satisfy specific
  * port requirements in the application runner and controller layers.
  * </p>
- * * @see VehicleStateStore
+ * * @see InMemoryVehicleStateStore
  * 
  * @see KafkaControllerVehicleStateStore
  * @see KafkaSimulationVehicleStateStore
  */
-public class KafkaVehicleStateStore implements VehicleStateStore
+public class InMemoryVehicleStateStore implements VehicleStateStore
 {
     /** Set of IDs for vehicles currently active in the simulation. */
     private Set<UUID> activeVehicleSet = ConcurrentHashMap.newKeySet();

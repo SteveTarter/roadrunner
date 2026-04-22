@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -150,7 +149,7 @@ public class KafkaVehicleEventPublisherTest
         // Create the vehicle
         vehicle = vehicleManager.createVehicle(mockTripPlan);
 
-        verify(simulationRegistry).recordStart(any(UUID.class), any(Instant.class));
+        verify(simulationRegistry).recordStart(any(Vehicle.class), any(Instant.class));
         verify(kafkaTemplate).send(anyString(), anyString(), any(VehiclePositionEvent.class));
     }
 }
