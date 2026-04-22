@@ -45,6 +45,50 @@ import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
+/**
+ * REST controller providing time-based playback access to vehicle state data.
+ *
+ * <p>
+ * This controller supports querying vehicle positions at a specific point in
+ * time by reconstructing state from a Kafka-backed event stream. It uses two
+ * distinct data sources depending on how recent the requested timestamp is:
+ *
+ * <ul>
+ * <li><b>Hot store</b>: A Kafka Streams {@link ReadOnlyWindowStore} used for
+ * recent data (typically within the last hour).</li>
+ * <li><b>Cold store</b>: A direct Kafka consumer replay that scans topic
+ * partitions from a timestamp-derived offset for older data.</li>
+ * </ul>
+ *
+ * <p>
+ * All queries operate on a fixed lookback window (currently 2 seconds) ending
+ * at the requested timestamp. Within that window, the controller returns the
+ * most recent state per vehicle.
+ *
+ * <p>
+ * <b>Thread safety:</b> The Kafka consumer used for cold queries is not
+ * thread-safe. Access is synchronized to allow concurrent HTTP requests without
+ * corrupting consumer state.
+ *
+ * <p>
+ * <b>Endpoints:</b>
+ * <ul>
+ * <li>{@code GET /api/playback/state} – Returns paginated vehicle states for a
+ * timestamp.</li>
+ * <li>{@code GET /api/playback/get-vehicle-state} – Returns a single vehicle's
+ * state at a timestamp.</li>
+ * </ul>
+ *
+ * <p>
+ * <b>Lifecycle:</b>
+ * <ul>
+ * <li>On initialization, a Kafka consumer is created and assigned all
+ * partitions for the configured topic.</li>
+ * <li>On shutdown, the consumer is closed to release resources.</li>
+ * </ul>
+ *
+ * @author
+ */
 @RestController
 @RequestMapping("/api/playback")
 public class PlaybackController
@@ -66,6 +110,16 @@ public class PlaybackController
 
     private static final Logger logger = LoggerFactory.getLogger(PlaybackController.class);
 
+    /**
+     * Constructs a new {@code PlaybackController}.
+     *
+     * @param kafkaTopicMetadataService service used to determine topic partition
+     *                                  metadata
+     * @param consumerFactory           factory for creating Kafka consumers used in
+     *                                  cold queries
+     * @param streamsFactory            factory for accessing Kafka Streams state
+     *                                  stores for hot queries
+     */
     public PlaybackController(
             KafkaTopicMetadataService kafkaTopicMetadataService,
             ConsumerFactory<String, VehiclePositionEvent> consumerFactory,
@@ -76,6 +130,16 @@ public class PlaybackController
         this.streamsFactory = streamsFactory;
     }
 
+    /**
+     * Initializes the controller by:
+     * <ul>
+     * <li>Determining the number of partitions for the configured topic</li>
+     * <li>Creating and assigning a Kafka consumer to all partitions</li>
+     * </ul>
+     *
+     * <p>
+     * This method is invoked automatically after dependency injection.
+     */
     @PostConstruct
     public void init()
     {
@@ -98,6 +162,13 @@ public class PlaybackController
                 partitionCount);
     }
 
+    /**
+     * Cleans up resources by closing the Kafka consumer used for cold playback
+     * queries.
+     *
+     * <p>
+     * This method is invoked automatically during application shutdown.
+     */
     @PreDestroy
     public void tearDown()
     {
@@ -108,6 +179,25 @@ public class PlaybackController
         }
     }
 
+    /**
+     * Retrieves a paginated list of vehicle states for a given timestamp.
+     *
+     * <p>
+     * If no timestamp is provided, the current system time is used. The query
+     * returns the most recent state per vehicle within a 2-second window ending at
+     * the specified timestamp.
+     *
+     * <p>
+     * Data is retrieved from either the hot or cold store depending on how recent
+     * the timestamp is.
+     *
+     * @param timestamp ISO-8601 timestamp string (e.g.,
+     *                  {@code 2026-04-17T21:47:07.113Z}), or "Unset" to use the
+     *                  current time
+     * @param page      zero-based page index
+     * @param pageSize  number of items per page
+     * @return paginated vehicle states wrapped in a {@link PagedModel}
+     */
     @GetMapping("/state")
     ResponseEntity<PagedModel<VehicleState>> getVehicleStatesAtTimestamp(
             @RequestParam(defaultValue = UNSET_VALUE)
@@ -140,6 +230,19 @@ public class PlaybackController
         return buildPagedResponse(latestStates, page, pageSize);
     }
 
+    /**
+     * Retrieves the state of a specific vehicle at a given timestamp.
+     *
+     * <p>
+     * The result is derived from the same 2-second window logic used by the bulk
+     * endpoint. If the vehicle does not have a state within that window, a
+     * {@code 404 NOT FOUND} response is returned.
+     *
+     * @param vehicleId UUID string identifying the vehicle
+     * @param timestamp ISO-8601 timestamp string, or "Unset" to use the current
+     *                  time
+     * @return the vehicle state if found, otherwise {@code 404 NOT FOUND}
+     */
     @GetMapping("/get-vehicle-state")
     ResponseEntity<VehicleState> getVehicleStateFor(
             @RequestParam(defaultValue = UNSET_VALUE)
@@ -177,6 +280,29 @@ public class PlaybackController
         return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
     }
 
+    /**
+     * Performs a cold query by replaying Kafka topic partitions from a
+     * timestamp-derived offset.
+     *
+     * <p>
+     * For each partition:
+     * <ul>
+     * <li>Finds the offset corresponding to {@code startTime}</li>
+     * <li>Seeks the consumer to that offset</li>
+     * <li>Polls records until {@code endTime} is exceeded or a timeout occurs</li>
+     * </ul>
+     *
+     * <p>
+     * The method collects the most recent state per vehicle within the time window.
+     *
+     * <p>
+     * <b>Note:</b> Access to the consumer is synchronized because Kafka consumers
+     * are not thread-safe.
+     *
+     * @param startTime start of the query window (epoch millis)
+     * @param endTime   end of the query window (epoch millis)
+     * @return map of vehicle ID to latest {@link VehicleState} within the window
+     */
     private Map<UUID, VehicleState> queryColdStore(
             long startTime,
             long endTime)
@@ -263,6 +389,17 @@ public class PlaybackController
         return latestStates;
     }
 
+    /**
+     * Performs a hot query using a Kafka Streams window store.
+     *
+     * <p>
+     * This method retrieves all events within the given time window and reduces
+     * them to the most recent state per vehicle.
+     *
+     * @param startTime start of the query window (epoch millis)
+     * @param endTime   end of the query window (epoch millis)
+     * @return map of vehicle ID to latest {@link VehicleState} within the window
+     */
     private Map<UUID, VehicleState> queryHotStore(
             long startTime,
             long endTime)
@@ -289,6 +426,17 @@ public class PlaybackController
         return latestStates;
     }
 
+    /**
+     * Maps a {@link VehiclePositionEvent} to a {@link VehicleState}, keeping only
+     * the most recent event per vehicle.
+     *
+     * <p>
+     * If an existing state is present and has a timestamp greater than or equal to
+     * the incoming event, the update is ignored.
+     *
+     * @param event        the incoming Kafka event
+     * @param latestStates map of vehicle ID to latest known state
+     */
     private void mapToLatestState(VehiclePositionEvent event, Map<UUID, VehicleState> latestStates)
     {
         UUID id = UUID.fromString(event.vehicleId());
@@ -316,6 +464,18 @@ public class PlaybackController
         latestStates.put(id, vehicleState);
     }
 
+    /**
+     * Builds a paginated HTTP response from a collection of vehicle states.
+     *
+     * <p>
+     * This method slices the full result set according to the requested page and
+     * page size, and wraps the result in a {@link PagedModel}.
+     *
+     * @param states   map of vehicle states
+     * @param page     zero-based page index
+     * @param pageSize number of items per page
+     * @return paginated response entity
+     */
     private ResponseEntity<PagedModel<VehicleState>> buildPagedResponse(
             Map<UUID, VehicleState> states,
             int page,
