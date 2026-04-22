@@ -127,21 +127,59 @@ public class PlaybackController
         // Calculate the point in time that the stream runs out
         long hotThreshold = Instant.now().minus(Duration.ofHours(1)).toEpochMilli();
 
+        Map<UUID, VehicleState> latestStates;
         if (endTime > hotThreshold)
         {
-            return queryHotStore(startTime, endTime, page, pageSize);
+            latestStates = queryHotStore(startTime, endTime);
         }
         else
         {
-            return queryColdStore(startTime, endTime, page, pageSize);
+            latestStates = queryColdStore(startTime, endTime);
         }
+
+        return buildPagedResponse(latestStates, page, pageSize);
     }
 
-    private ResponseEntity<PagedModel<VehicleState>> queryColdStore(
+    @GetMapping("/get-vehicle-state")
+    ResponseEntity<VehicleState> getVehicleStateFor(
+            @RequestParam(defaultValue = UNSET_VALUE)
+            String vehicleId,
+            @RequestParam(defaultValue = UNSET_VALUE)
+            String timestamp)
+    {
+        long endTime = timestamp.equals(UNSET_VALUE)
+                ? Instant.now().toEpochMilli()
+                : Instant.parse(timestamp).toEpochMilli();
+
+        // Expand the window 2 seconds back
+        long startTime = endTime - 2000;
+
+        // Calculate the point in time that the stream runs out
+        long hotThreshold = Instant.now().minus(Duration.ofHours(1)).toEpochMilli();
+
+        Map<UUID, VehicleState> latestStates;
+        if (endTime > hotThreshold)
+        {
+            latestStates = queryHotStore(startTime, endTime);
+        }
+        else
+        {
+            latestStates = queryColdStore(startTime, endTime);
+        }
+
+        VehicleState vehicleState = latestStates.get(UUID.fromString(vehicleId));
+
+        if (vehicleState == null)
+        {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
+    }
+
+    private Map<UUID, VehicleState> queryColdStore(
             long startTime,
-            long endTime,
-            int page,
-            int pageSize)
+            long endTime)
     {
         Map<UUID, VehicleState> latestStates = new HashMap<>();
         // CRITICAL: Kafka Consumer is not thread-safe.
@@ -150,7 +188,7 @@ public class PlaybackController
         synchronized (playbackConsumer)
         {
             // Pause all partitions to stop any background fetching
-            // playbackConsumer.pause(topicPartitions);
+            playbackConsumer.pause(topicPartitions);
 
             // Map startTime to Kafka offsets
             Map<TopicPartition, Long> timestampsToSearch = topicPartitions.stream()
@@ -163,6 +201,7 @@ public class PlaybackController
             for (TopicPartition tp : topicPartitions)
             {
                 OffsetAndTimestamp oat = offsets.get(tp);
+
                 if (oat != null)
                 {
                     playbackConsumer.seek(tp, oat.offset());
@@ -177,7 +216,7 @@ public class PlaybackController
             }
 
             // Resume the partitions - THIS triggers a fresh fetch request to the broker
-            // playbackConsumer.resume(topicPartitions);
+            playbackConsumer.resume(topicPartitions);
 
             long timeoutDeadline = System.currentTimeMillis() + 1000;
 
@@ -221,14 +260,12 @@ public class PlaybackController
             }
         }
 
-        return buildPagedResponse(latestStates, page, pageSize);
+        return latestStates;
     }
 
-    private ResponseEntity<PagedModel<VehicleState>> queryHotStore(
+    private Map<UUID, VehicleState> queryHotStore(
             long startTime,
-            long endTime,
-            int page,
-            int pageSize)
+            long endTime)
     {
         KafkaStreams streams = streamsFactory.getKafkaStreams();
         ReadOnlyWindowStore<String, VehiclePositionEvent> store = streams.store(
@@ -249,7 +286,7 @@ public class PlaybackController
             }
         }
 
-        return buildPagedResponse(latestStates, page, pageSize);
+        return latestStates;
     }
 
     private void mapToLatestState(VehiclePositionEvent event, Map<UUID, VehicleState> latestStates)
