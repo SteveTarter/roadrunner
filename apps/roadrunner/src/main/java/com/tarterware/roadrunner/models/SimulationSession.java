@@ -31,6 +31,11 @@ public class SimulationSession
     UUID id;
 
     /**
+     * The color associated with this vehicle
+     */
+    String colorCode;
+
+    /**
      * The precise timestamp when the simulation began.
      */
     Instant start;

@@ -89,4 +89,34 @@ public class KafkaTopicMetadataService
             logger.error("Failed to truncate topic {}", topicName, e);
         }
     }
+
+    /**
+     * Interrogates Kafka to find the current partition count for a given topic.
+     * 
+     * @param topicName The name of the topic to inspect.
+     * @return The number of partitions, or a default (e.g., 1) if the topic doesn't
+     *         exist.
+     */
+    public int getPartitionCount(String topicName)
+    {
+        try (AdminClient client = AdminClient.create(kafkaAdmin.getConfigurationProperties()))
+        {
+            DescribeTopicsResult result = client.describeTopics(Collections.singleton(topicName));
+
+            // Get the description for our specific topic
+            TopicDescription description = result.allTopicNames().get(10, TimeUnit.SECONDS).get(topicName);
+
+            int count = description.partitions().size();
+            logger.info("Topic '{}' has {} partitions.", topicName, count);
+            return count;
+
+        }
+        catch (Exception e)
+        {
+            logger.error("Could not retrieve partition count for topic: {}. Error: {}",
+                    topicName, e.getMessage());
+            // Return a safe default so the app doesn't crash
+            return 1;
+        }
+    }
 }
