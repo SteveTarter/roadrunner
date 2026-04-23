@@ -69,7 +69,7 @@ export const ManageMenu = (props: {
   };
 
   const handleResetServer = async () => {
-    const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/reset-server`;
+    const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/reset-server-INHIBITTED`;
     try {
       const response = await fetch(url, {
         method: 'get',

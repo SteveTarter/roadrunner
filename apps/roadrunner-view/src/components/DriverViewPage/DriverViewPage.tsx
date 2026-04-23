@@ -1,8 +1,9 @@
 import './DriverViewPage.css';
 import { fetchAuthSession } from "aws-amplify/auth";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Map, { FullscreenControl, useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
+import { PlaybackClock } from '../Utils/PlaybackClock';
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Button, Card } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +11,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSatellite, faHome, faMap } from '@fortawesome/free-solid-svg-icons';
 import { ViewControl } from './ViewControl';
 import { CONFIG } from "../../config";
+import { usePlayback } from "../../context/PlaybackContext";
 
 export const DriverViewPage = () => {
   // Get the Vehicle ID from the URL in the window
@@ -27,10 +29,14 @@ export const DriverViewPage = () => {
   // Driver view offset from straight ahead
   const [degViewOffset, setDegViewOffset] = useState(0);
 
+  const { playbackOffset } = usePlayback();
+
   // Map style
   const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
   const [mapStyle, setMapStyle] = useState(MAP_STYLE_SATELLITE);
+
+  const isFetchingRef = useRef(false);
 
   // Conversion from meters per second to miles per hour.
   const MPS_TO_MPH = 2.236936;
@@ -102,11 +108,19 @@ export const DriverViewPage = () => {
   }, [degViewOffset, driverViewPageMap, getCoordinateAtBearingAndRange]);
 
   const fetchVehicleState = useCallback(() => {
-    if (!token) return;
+    if (!token || (playbackOffset === null) || isFetchingRef.current) return;
+
+    isFetchingRef.current = true;
 
     // Get the latest VehicleState
     const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
-    const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-vehicle-state/${vehicleId}`;
+    let getStatesUrl: string = `${restUrlBase}/api/playback/get-vehicle-state?vehicleId=${vehicleId}`;
+    // If we are in playback mode, calculate the target timestamp
+    if (playbackOffset !== 0) {
+      const targetDate = new Date(Date.now() - playbackOffset);
+      const isoTimestamp = targetDate.toISOString();
+      getStatesUrl += `&timestamp=${encodeURIComponent(isoTimestamp)}`;
+    }
     fetch(getStatesUrl, {
       method: 'get',
       headers: { Authorization: `Bearer ${token}` },
@@ -127,8 +141,11 @@ export const DriverViewPage = () => {
         console.error(`Error during fetchVehicleState: ${error.message}`);
         setIsDataLoaded(false);
         gotoHomePage();
+      })
+            .finally(() => {
+        isFetchingRef.current = false;
       });
-  }, [token, vehicleId, gotoHomePage, updateMapView]);
+  }, [token, vehicleId, gotoHomePage, updateMapView, playbackOffset]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -145,7 +162,6 @@ export const DriverViewPage = () => {
 
   const onMapLoad = useCallback(() => {
     const timer = setTimeout(() => {
-      console.log("onMapLoad()");
       const map = driverViewPageMap?.getMap();
       const layers = map?.getStyle()?.layers;
       if (layers) {
@@ -193,6 +209,7 @@ export const DriverViewPage = () => {
             maxZoom={24}
             onLoad={onMapLoad}
           >
+            <PlaybackClock />
             <div style={{ position: "fixed", top: 10, left: 10 }}>
               <Button onClick={gotoHomePage}>
                 <FontAwesomeIcon icon={faHome} className="mr-3" />

@@ -6,6 +6,7 @@ import { VehicleIcon } from './VehicleIcon';
 import { VehicleDisplay } from '../../models/VehicleDisplay';
 import { VehicleState } from '../../models/VehicleState';
 import { MapWrapper } from '../Utils/MapWrapper';
+import { PlaybackClock } from '../Utils/PlaybackClock';
 import { AppNavBar } from '../NavBar/AppNavBar';
 import { ManageMenu } from './ManageMenu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -15,6 +16,7 @@ import { CreateVehiclePanel } from './CreateVehiclePanel';
 import { SimulationTable } from './SimulationTable';
 import { fetchAuthSession, signInWithRedirect } from "aws-amplify/auth";
 import { CONFIG } from "../../config";
+import { usePlayback } from "../../context/PlaybackContext";
 
 export const HomePage = () => {
   const { homePageMap } = useMap();
@@ -32,6 +34,9 @@ export const HomePage = () => {
 
   const vehicleStateMapRef = useRef(new MapWrapper<string, VehicleState>());
   const vehicleDisplayMapRef = useRef(new MapWrapper<string, VehicleDisplay>());
+  const isFetchingRef = useRef(false);
+
+  const { playbackOffset, clearPlayback } = usePlayback();
 
   // Map styles
   const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
@@ -99,20 +104,26 @@ export const HomePage = () => {
   }
 
   const fetchVehicleStateList = useCallback(() => {
-    if (!token || !isMapLoaded) return;
+    if (!token || !isMapLoaded || isFetchingRef.current) return;
 
+    isFetchingRef.current = true;
 
-    // Remove Vehicles from the Map that haven't been updated in SECS_VEHICLE_TIMEOUT seconds
-    const msEpochTimeoutTime = Date.now() - (SECS_VEHICLE_TIMEOUT * 1000);
+    // Timeout vehicles if they haven't updated lately
+    const msEpochTimeoutTime = Date.now() - (SECS_VEHICLE_TIMEOUT * 1000) - playbackOffset;
     vehicleStateMapRef.current = vehicleStateMapRef.current.filter(
       state => state.msEpochLastRun > msEpochTimeoutTime
     );
 
     // Get the latest VehicleStates
     const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
+    let getStatesUrl = `${restUrlBase}/api/playback/state?page=${pageNumber}`;
 
-    // Add page and pageSize parameters to the query string
-    const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-all-vehicle-states?page=${pageNumber}`;
+    // Calculate the target timestamp, if needed
+    if (playbackOffset !== 0) {
+      const targetDate = new Date(Date.now() - playbackOffset);
+      const isoTimestamp = targetDate.toISOString();
+      getStatesUrl += `&timestamp=${encodeURIComponent(isoTimestamp)}`;
+    }
 
     fetch(getStatesUrl, {
       method: 'get',
@@ -142,8 +153,11 @@ export const HomePage = () => {
       .catch(error => {
         console.log(`Error caught during fetch in fetchVehicleStateList: ${error.message}`);
         setIsDataLoaded(false);
+      })
+      .finally(() => {
+        isFetchingRef.current = false;
       });
-  }, [token, isMapLoaded, pageNumber, vehicleSize]);
+  }, [token, isMapLoaded, pageNumber, vehicleSize, playbackOffset]);
 
   useEffect(() => {
     if (!isMapLoaded) return;
@@ -220,7 +234,6 @@ export const HomePage = () => {
   }, []);
 
   const onClick = useCallback((event: any) => {
-    console.log("onClick()");
     let bestVehicle: VehicleDisplay | undefined = {} as VehicleDisplay;
     let bestDistance = 100;
     vehicleStateMapRef.current.forEach((vehicleState: VehicleState) => {
@@ -247,7 +260,6 @@ export const HomePage = () => {
 
   const onLoad = useCallback(() => {
     setIsMapLoaded(true);
-    console.log("Map loaded");
   }, []);
 
   const openCreateVehicle = useCallback(() => {
@@ -257,6 +269,12 @@ export const HomePage = () => {
   const toggleSimTable = useCallback(() => {
     setShowSimTable(!showSimTable);
   }, [showSimTable]);
+
+  const returnToNow = useCallback(() => {
+    clearPlayback();
+    vehicleStateMapRef.current.clear();
+    setVehicleStateMapVersion(v => v + 1);
+  }, [clearPlayback]);
 
   return (
     <>
@@ -278,6 +296,7 @@ export const HomePage = () => {
           <AppNavBar additionalMenuItems={<ManageMenu openCreateVehicle={openCreateVehicle} toggleSimTable={toggleSimTable} />} />
           {(isDataLoaded && !isTransitioning) ?
             <>
+              <PlaybackClock />
               {isCreateVehicleActive && (
                 <CreateVehiclePanel
                   setIsCreateVehicleActive={setIsCreateVehicleActive}
@@ -309,7 +328,7 @@ export const HomePage = () => {
                   <FontAwesomeIcon title="Hide All Routes" icon={faEyeSlash} className="mr-3" />
                 </Button>
               </div>
-              {showSimTable && <SimulationTable />}
+              {showSimTable && <SimulationTable toggleSimTable={toggleSimTable} returnToNow={returnToNow}/>}
               {vehicleStateList.map((vehicleState) => {
                 const vehicleDisplay = vehicleDisplayMapRef.current.get(vehicleState.id);
                 if (vehicleDisplay) {

@@ -4,6 +4,7 @@ import './index.css';
 import { App } from './App';
 import { BrowserRouter } from 'react-router-dom';
 import { MapProvider } from 'react-map-gl';
+import { PlaybackProvider } from './context/PlaybackContext';
 
 import { configureAmplify } from "./amplify-config";
 
@@ -16,7 +17,9 @@ const root = ReactDOM.createRoot(
 root.render(
   <MapProvider>
     <BrowserRouter>
-      <App />
+      <PlaybackProvider>
+        <App />
+      </PlaybackProvider>
     </BrowserRouter>
   </MapProvider>
 );
