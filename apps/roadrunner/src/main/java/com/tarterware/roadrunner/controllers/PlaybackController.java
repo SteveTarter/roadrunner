@@ -18,6 +18,7 @@ import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StoreQueryParameters;
+import org.apache.kafka.streams.errors.InvalidStateStoreException;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
@@ -405,25 +406,40 @@ public class PlaybackController
             long endTime)
     {
         KafkaStreams streams = streamsFactory.getKafkaStreams();
-        ReadOnlyWindowStore<String, VehiclePositionEvent> store = streams.store(
-                StoreQueryParameters.fromNameAndType("hot-playback-store", QueryableStoreTypes.windowStore()));
 
-        Map<UUID, VehicleState> latestStates = new HashMap<>();
-
-        // Fetch all records in the 2-period window
-        try (KeyValueIterator<Windowed<String>, VehiclePositionEvent> iterator = store
-                .fetchAll(Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime)))
+        // Check if the stream is actually ready to be queried
+        if (streams == null || streams.state() != KafkaStreams.State.RUNNING)
         {
+            logger.warn("Hot store not ready (State: {}). Falling back to Cold Store.",
+                    streams != null ? streams.state() : "NULL");
 
-            while (iterator.hasNext())
-            {
-                var next = iterator.next();
-                // Map to VehicleState using your existing helper method
-                mapToLatestState(next.value, latestStates);
-            }
+            // Fallback to the optimized "Cold" logic so the UI doesn't break
+            return queryColdStore(startTime, endTime);
         }
+        try
+        {
+            ReadOnlyWindowStore<String, VehiclePositionEvent> store = streams.store(
+                    StoreQueryParameters.fromNameAndType("hot-playback-store", QueryableStoreTypes.windowStore()));
 
-        return latestStates;
+            Map<UUID, VehicleState> latestStates = new HashMap<>();
+
+            // Fetch all records in the 2-period window
+            try (KeyValueIterator<Windowed<String>, VehiclePositionEvent> iterator = store
+                    .fetchAll(Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime)))
+            {
+
+                while (iterator.hasNext())
+                {
+                    mapToLatestState(iterator.next().value, latestStates);
+                }
+            }
+            return latestStates;
+        }
+        catch (InvalidStateStoreException ex)
+        {
+            logger.warn("State store migrated during query. Falling back to Cold Store.");
+            return queryColdStore(startTime, endTime);
+        }
     }
 
     /**

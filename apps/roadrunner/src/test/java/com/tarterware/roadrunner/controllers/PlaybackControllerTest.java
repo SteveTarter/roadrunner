@@ -130,6 +130,7 @@ class PlaybackControllerTest
 
         when(streamsFactory.getKafkaStreams()).thenReturn(kafkaStreams);
         when(kafkaStreams.store(any())).thenReturn(windowStore);
+        when(kafkaStreams.state()).thenReturn(KafkaStreams.State.RUNNING);
         when(windowStore.fetchAll(any(), any())).thenReturn(iterator);
 
         UUID vehicleId = UUID.randomUUID();
@@ -262,6 +263,7 @@ class PlaybackControllerTest
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void hotStore_shouldKeepLatestEventPerVehicleId()
     {
         when(kafkaTopicMetadataService.getPartitionCount(TOPIC)).thenReturn(1);
@@ -270,6 +272,7 @@ class PlaybackControllerTest
 
         when(streamsFactory.getKafkaStreams()).thenReturn(kafkaStreams);
         when(kafkaStreams.store(any())).thenReturn(windowStore);
+        when(kafkaStreams.state()).thenReturn(KafkaStreams.State.RUNNING);
         when(windowStore.fetchAll(any(), any())).thenReturn(iterator);
 
         UUID vehicleId = UUID.randomUUID();
@@ -298,6 +301,7 @@ class PlaybackControllerTest
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void buildPagedResponse_shouldReturnOnlyRequestedPageContent()
     {
         when(kafkaTopicMetadataService.getPartitionCount(TOPIC)).thenReturn(1);
@@ -306,6 +310,7 @@ class PlaybackControllerTest
 
         when(streamsFactory.getKafkaStreams()).thenReturn(kafkaStreams);
         when(kafkaStreams.store(any())).thenReturn(windowStore);
+        when(kafkaStreams.state()).thenReturn(KafkaStreams.State.RUNNING);
         when(windowStore.fetchAll(any(), any())).thenReturn(iterator);
 
         Instant now = Instant.now();
@@ -398,6 +403,7 @@ class PlaybackControllerTest
                 status);
     }
 
+    @SuppressWarnings("deprecation")
     private ConsumerRecord<String, VehiclePositionEvent> record(
             TopicPartition tp,
             long offset,
