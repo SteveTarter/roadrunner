@@ -139,13 +139,13 @@ export const DriverViewPage = () => {
       })
       .catch(error => {
         console.error(`Error during fetchVehicleState: ${error.message}`);
-        setIsDataLoaded(false);
-        gotoHomePage();
+        //setIsDataLoaded(false);
+        //gotoHomePage();
       })
-            .finally(() => {
+      .finally(() => {
         isFetchingRef.current = false;
       });
-  }, [token, vehicleId, gotoHomePage, updateMapView, playbackOffset]);
+  }, [token, vehicleId, updateMapView, playbackOffset]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
