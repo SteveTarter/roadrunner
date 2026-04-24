@@ -1,7 +1,10 @@
 package com.tarterware.roadrunner.adapters.kafka;
 
+import java.util.Collections;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.clients.admin.AdminClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -14,6 +17,8 @@ import org.springframework.stereotype.Component;
 import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
+
+import jakarta.annotation.PreDestroy;
 
 /**
  * Kafka consumer responsible for processing vehicle telemetry events and
@@ -36,7 +41,8 @@ import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
 @ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.kafka", name = "enabled", havingValue = "true")
 public class KafkaVehicleEventConsumer
 {
-    private ControllerVehicleStateStore vehicleStateStore;
+    private final AdminClient adminClient;
+    private final ControllerVehicleStateStore vehicleStateStore;
 
     private static final Logger log = LoggerFactory.getLogger(KafkaVehicleEventConsumer.class);
 
@@ -45,9 +51,12 @@ public class KafkaVehicleEventConsumer
      * vehicleStateStore the store used to persist the latest vehicle telemetry
      */
     public KafkaVehicleEventConsumer(
+            AdminClient adminClient,
             ControllerVehicleStateStore vehicleStateStore)
     {
+        this.adminClient = adminClient;
         this.vehicleStateStore = vehicleStateStore;
+
         log.info("KafkaVehicleEventConsumer is ACTIVE");
         log.info("vehicleStateStore is {}", vehicleStateStore);
     }
@@ -75,7 +84,7 @@ public class KafkaVehicleEventConsumer
      */
     @KafkaListener(
             topics = "${com.tarterware.roadrunner.kafka.topic.vehicle-position}",
-            groupId = "KafkaVehicleEventConsumer")
+            groupId = "KafkaVehicleEventConsumer-${K8S_POD_NAME:default}")
     public void receive(@Payload
     VehiclePositionEvent event)
     {
@@ -161,6 +170,48 @@ public class KafkaVehicleEventConsumer
         }
     }
 
+    /**
+     * Performs a graceful cleanup of the Kafka consumer group before the
+     * application context is destroyed.
+     * <p>
+     * In a Kubernetes environment, this method ensures that the unique consumer
+     * group associated with this specific pod is explicitly deleted from the Kafka
+     * cluster. This prevents the accumulation of "dead" consumer groups that would
+     * otherwise persist until the broker's offset retention period expires.
+     * </p>
+     * * @see
+     * org.apache.kafka.clients.admin.AdminClient#deleteConsumerGroups(java.util.Collection)
+     */
+    @PreDestroy
+    public void cleanup()
+    {
+        String groupId = "KafkaVehicleEventConsumer-${K8S_POD_NAME:default}";
+        try
+        {
+            // Explicitly delete the unique consumer group on pod exit
+            adminClient.deleteConsumerGroups(Collections.singletonList(groupId))
+                    .all()
+                    .get(5, TimeUnit.SECONDS);
+            System.out.println("Successfully deleted Kafka consumer group: " + groupId);
+        }
+        catch (Exception e)
+        {
+            System.err.println("Failed to delete Kafka consumer group: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Handles {@link ListenerContainerIdleEvent}s emitted by the Kafka message
+     * listener container.
+     * <p>
+     * This method logs information when the consumer becomes idle, indicating that
+     * all currently available messages in the assigned partitions have been
+     * processed and the consumer is ready for new events.
+     * </p>
+     *
+     * @param event the idle event containing details about the idle consumer and
+     *              its assigned {@code TopicPartition}s.
+     */
     @EventListener
     public void handleListenerContainerIdle(ListenerContainerIdleEvent event)
     {
