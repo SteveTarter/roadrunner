@@ -268,6 +268,8 @@ export const HomePage = () => {
 
   const toggleSimTable = useCallback(() => {
     setShowSimTable(!showSimTable);
+    vehicleStateMapRef.current.clear();
+    setVehicleStateMapVersion(v => v + 1);
   }, [showSimTable]);
 
   const returnToNow = useCallback(() => {
