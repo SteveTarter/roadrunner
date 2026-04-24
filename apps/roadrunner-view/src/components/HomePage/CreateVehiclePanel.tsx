@@ -8,7 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { CONFIG } from "../../config";
 
 export const CreateVehiclePanel = (props: {
-  setIsCreateVehicleActive: any
+  setIsCreateVehicleActive: any,
+  returnToNow: any,
 }) => {
   const [token, setToken] = useState("");
 
@@ -70,9 +71,8 @@ export const CreateVehiclePanel = (props: {
       ]
     };
 
-    console.log(formattedData);
-
     const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/create-new`;
+    props.returnToNow();
     try {
       const response = await fetch(url, {
         method: 'post',
@@ -88,9 +88,9 @@ export const CreateVehiclePanel = (props: {
       }
 
       const data = await response.json();
-      console.log("Success:", data);
 
-      // Hop into the vehicle
+      // Hop into the vehicle.  For now, since all new vehicles created through
+      // the "/api/vehicle" API are created in the present time.
       navigate(`/driver-view/${data.id}`);
     } catch (error) {
       console.error("Error creating new vehicle:", error);

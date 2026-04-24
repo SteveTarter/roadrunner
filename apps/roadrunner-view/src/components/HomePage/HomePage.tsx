@@ -295,42 +295,74 @@ export const HomePage = () => {
           onClick={(event) => onClick(event)}
           onZoom={(viewStateChangeEvent) => onZoom(viewStateChangeEvent)}
         >
-          <AppNavBar additionalMenuItems={<ManageMenu openCreateVehicle={openCreateVehicle} toggleSimTable={toggleSimTable} />} />
+          <AppNavBar additionalMenuItems={
+            <ManageMenu
+              openCreateVehicle={openCreateVehicle}
+              toggleSimTable={toggleSimTable}
+            />
+          }
+          />
           {(isDataLoaded && !isTransitioning) ?
             <>
               <PlaybackClock />
               {isCreateVehicleActive && (
                 <CreateVehiclePanel
+                  returnToNow={returnToNow}
                   setIsCreateVehicleActive={setIsCreateVehicleActive}
                 />
               )}
               <div style={{ position: "fixed", top: 100, left: 10 }}>
                 <Button onClick={fitAllOnScreen}>
-                  <FontAwesomeIcon title="Fit All" icon={faUpRightAndDownLeftFromCenter} className="mr-3" />
+                  <FontAwesomeIcon
+                    title="Fit All"
+                    icon={faUpRightAndDownLeftFromCenter}
+                    className="mr-3"
+                  />
                 </Button>
               </div>
               <div style={{ position: "fixed", top: 100, left: 60 }}>
                 <Button onClick={toggleMapStyle}>
                   {(mapStyle === MAP_STYLE_STREET) ?
                     <>
-                      <FontAwesomeIcon title="Satellte Display" icon={faSatellite} className="mr-3" />
+                      <FontAwesomeIcon
+                        title="Satellte Display"
+                        icon={faSatellite}
+                        className="mr-3"
+                      />
                     </>
                     :
-                    <FontAwesomeIcon title="Map Display" icon={faMap} className="mr-3" />
+                    <FontAwesomeIcon
+                      title="Map Display"
+                      icon={faMap}
+                      className="mr-3"
+                    />
                   }
                 </Button>
               </div>
               <div style={{ position: "fixed", top: 100, left: 110 }}>
                 <Button onClick={showAllRoutes}>
-                  <FontAwesomeIcon title="Show All Routes" icon={faEye} className="mr-3" />
+                  <FontAwesomeIcon
+                    title="Show All Routes"
+                    icon={faEye}
+                    className="mr-3"
+                  />
                 </Button>
               </div>
               <div style={{ position: "fixed", top: 100, left: 160 }}>
                 <Button onClick={hideAllRoutes}>
-                  <FontAwesomeIcon title="Hide All Routes" icon={faEyeSlash} className="mr-3" />
+                  <FontAwesomeIcon
+                    title="Hide All Routes"
+                    icon={faEyeSlash}
+                    className="mr-3"
+                  />
                 </Button>
               </div>
-              {showSimTable && <SimulationTable toggleSimTable={toggleSimTable} returnToNow={returnToNow}/>}
+              {showSimTable &&
+                <SimulationTable
+                  toggleSimTable={toggleSimTable}
+                  returnToNow={returnToNow}
+                />
+              }
               {vehicleStateList.map((vehicleState) => {
                 const vehicleDisplay = vehicleDisplayMapRef.current.get(vehicleState.id);
                 if (vehicleDisplay) {
