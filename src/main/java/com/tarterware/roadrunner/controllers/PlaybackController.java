@@ -208,25 +208,7 @@ public class PlaybackController
             @RequestParam(defaultValue = "10")
             int pageSize)
     {
-        long endTime = timestamp.equals(UNSET_VALUE)
-                ? Instant.now().toEpochMilli()
-                : Instant.parse(timestamp).toEpochMilli();
-
-        // Expand the window 2 seconds back
-        long startTime = endTime - 2000;
-
-        // Calculate the point in time that the stream runs out
-        long hotThreshold = Instant.now().minus(Duration.ofHours(1)).toEpochMilli();
-
-        Map<UUID, VehicleState> latestStates;
-        if (endTime > hotThreshold)
-        {
-            latestStates = queryHotStore(startTime, endTime);
-        }
-        else
-        {
-            latestStates = queryColdStore(startTime, endTime);
-        }
+        Map<UUID, VehicleState> latestStates = getStatesForTimestamp(timestamp);
 
         return buildPagedResponse(latestStates, page, pageSize);
     }
@@ -251,25 +233,7 @@ public class PlaybackController
             @RequestParam(defaultValue = UNSET_VALUE)
             String timestamp)
     {
-        long endTime = timestamp.equals(UNSET_VALUE)
-                ? Instant.now().toEpochMilli()
-                : Instant.parse(timestamp).toEpochMilli();
-
-        // Expand the window 2 seconds back
-        long startTime = endTime - 2000;
-
-        // Calculate the point in time that the stream runs out
-        long hotThreshold = Instant.now().minus(Duration.ofHours(1)).toEpochMilli();
-
-        Map<UUID, VehicleState> latestStates;
-        if (endTime > hotThreshold)
-        {
-            latestStates = queryHotStore(startTime, endTime);
-        }
-        else
-        {
-            latestStates = queryColdStore(startTime, endTime);
-        }
+        Map<UUID, VehicleState> latestStates = getStatesForTimestamp(timestamp);
 
         VehicleState vehicleState = latestStates.get(UUID.fromString(vehicleId));
 
@@ -437,7 +401,11 @@ public class PlaybackController
         }
         catch (InvalidStateStoreException ex)
         {
-            logger.warn("State store migrated during query. Falling back to Cold Store.");
+            logger.warn(
+                    "Hot store unavailable during query. streamsState={}. Falling back to Cold Store.",
+                    streams.state(),
+                    ex);
+
             return queryColdStore(startTime, endTime);
         }
     }
@@ -510,5 +478,53 @@ public class PlaybackController
                         vehicleStatePage.getContent(),
                         new PagedModel.PageMetadata(pageSize, page, list.size())),
                 HttpStatus.OK);
+    }
+
+    /**
+     * Resolves vehicle states for a given timestamp by selecting the appropriate
+     * data source.
+     *
+     * <p>
+     * The method interprets the provided timestamp and constructs a fixed 2-second
+     * lookback window ending at that time. It then determines whether the requested
+     * time falls within the "hot" window (recent data) or requires a "cold" query
+     * (historical replay), and delegates accordingly.
+     *
+     * <ul>
+     * <li>If {@code timestamp} is {@code "Unset"}, the current system time is
+     * used.</li>
+     * <li>The query window is defined as {@code [endTime - 2000ms, endTime]}.</li>
+     * <li>If {@code endTime} is within one hour of the current time, the Kafka
+     * Streams window store is queried via {@link #queryHotStore(long, long)}.</li>
+     * <li>Otherwise, a Kafka consumer replay is performed via
+     * {@link #queryColdStore(long, long)}.</li>
+     * </ul>
+     *
+     * <p>
+     * The result contains the most recent {@link VehicleState} per vehicle within
+     * the specified window.
+     *
+     * @param timestamp ISO-8601 timestamp string (e.g.,
+     *                  {@code 2026-04-17T21:47:07.113Z}), or {@code "Unset"} to
+     *                  indicate the current time
+     * @return a map of vehicle IDs to their latest {@link VehicleState} within the
+     *         computed time window
+     * @throws java.time.format.DateTimeParseException if the timestamp is not
+     *                                                 {@code "Unset"} and cannot be
+     *                                                 parsed as a valid ISO-8601
+     *                                                 instant
+     */
+    private Map<UUID, VehicleState> getStatesForTimestamp(String timestamp)
+    {
+        long endTime = timestamp.equals(UNSET_VALUE)
+                ? Instant.now().toEpochMilli()
+                : Instant.parse(timestamp).toEpochMilli();
+
+        long startTime = endTime - 2000;
+        long hotThreshold = Instant.now().minus(Duration.ofHours(1)).toEpochMilli();
+
+        return endTime > hotThreshold
+                ? queryHotStore(startTime, endTime)
+                : queryColdStore(startTime, endTime);
     }
 }
