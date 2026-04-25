@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,11 +27,6 @@ import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.kstream.Windowed;
-import org.apache.kafka.streams.state.KeyValueIterator;
-import org.apache.kafka.streams.state.ReadOnlyWindowStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,10 +35,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.tarterware.roadrunner.adapters.kafka.KafkaControllerVehicleStateStore;
 import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
@@ -59,19 +55,10 @@ class PlaybackControllerTest
     private ConsumerFactory<String, VehiclePositionEvent> consumerFactory;
 
     @Mock
-    private StreamsBuilderFactoryBean streamsFactory;
+    private KafkaControllerVehicleStateStore vehicleStateStore;
 
     @Mock
     private Consumer<String, VehiclePositionEvent> playbackConsumer;
-
-    @Mock
-    private KafkaStreams kafkaStreams;
-
-    @Mock
-    private ReadOnlyWindowStore<String, VehiclePositionEvent> windowStore;
-
-    @Mock
-    private KeyValueIterator<Windowed<String>, VehiclePositionEvent> iterator;
 
     private PlaybackController controller;
 
@@ -81,7 +68,7 @@ class PlaybackControllerTest
         controller = new PlaybackController(
                 kafkaTopicMetadataService,
                 consumerFactory,
-                streamsFactory);
+                vehicleStateStore);
 
         ReflectionTestUtils.setField(controller, "topicName", TOPIC);
     }
@@ -128,20 +115,27 @@ class PlaybackControllerTest
         when(consumerFactory.createConsumer()).thenReturn(playbackConsumer);
         controller.init();
 
-        when(streamsFactory.getKafkaStreams()).thenReturn(kafkaStreams);
-        when(kafkaStreams.store(any())).thenReturn(windowStore);
-        when(kafkaStreams.state()).thenReturn(KafkaStreams.State.RUNNING);
-        when(windowStore.fetchAll(any(), any())).thenReturn(iterator);
-
         UUID vehicleId = UUID.randomUUID();
         Instant now = Instant.now();
 
-        when(iterator.hasNext()).thenReturn(true, false);
-        when(iterator.next()).thenReturn(
-                KeyValue.pair(null,
-                        event(vehicleId, now, 32.75, -97.33, 45.0, 8.2, "#00FF00", "host-a", 1234L, "MOVING")));
+        VehicleState vehicleState = new VehicleState();
+        vehicleState.setId(vehicleId);
+        vehicleState.setPositionLimited(false);
+        vehicleState.setPositionValid(true);
+        vehicleState.setDegLatitude(32.75);
+        vehicleState.setDegLongitude(-97.33);
+        vehicleState.setDegBearing(45.0);
+        vehicleState.setMetersPerSecond(8.2);
+        vehicleState.setColorCode("#00FF00");
+        vehicleState.setManagerHost("host-a");
+        vehicleState.setMsEpochLastRun(now.toEpochMilli());
 
-        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp(now.toString(), 0,
+        Map<UUID, VehicleState> vehicleMap = new HashMap<UUID, VehicleState>();
+        vehicleMap.put(vehicleId, vehicleState);
+
+        when(vehicleStateStore.getVehicles(any())).thenReturn(vehicleMap);
+
+        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp("Unset", 0,
                 10);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -152,11 +146,6 @@ class PlaybackControllerTest
         assertEquals(vehicleId, state.getId());
         assertEquals(now.toEpochMilli(), state.getMsEpochLastRun());
         assertEquals("#00FF00", state.getColorCode());
-
-        verify(streamsFactory).getKafkaStreams();
-        verify(kafkaStreams).store(any());
-        verify(windowStore).fetchAll(any(), any());
-        verify(playbackConsumer, never()).offsetsForTimes(anyMap());
     }
 
     @Test
@@ -213,7 +202,6 @@ class PlaybackControllerTest
         verify(playbackConsumer).seek(eq(tp1), eq(200L));
         verify(playbackConsumer, never()).seekToEnd(any());
         verify(playbackConsumer, times(1)).poll(any());
-        verify(streamsFactory, never()).getKafkaStreams();
     }
 
     @Test
@@ -263,55 +251,11 @@ class PlaybackControllerTest
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void hotStore_shouldKeepLatestEventPerVehicleId()
-    {
-        when(kafkaTopicMetadataService.getPartitionCount(TOPIC)).thenReturn(1);
-        when(consumerFactory.createConsumer()).thenReturn(playbackConsumer);
-        controller.init();
-
-        when(streamsFactory.getKafkaStreams()).thenReturn(kafkaStreams);
-        when(kafkaStreams.store(any())).thenReturn(windowStore);
-        when(kafkaStreams.state()).thenReturn(KafkaStreams.State.RUNNING);
-        when(windowStore.fetchAll(any(), any())).thenReturn(iterator);
-
-        UUID vehicleId = UUID.randomUUID();
-        Instant now = Instant.now();
-
-        VehiclePositionEvent older = event(vehicleId, now.minusMillis(1000), 32.70, -97.30, 10.0, 4.0, "#AAAAAA",
-                "old-host", 111L, "MOVING");
-        VehiclePositionEvent newer = event(vehicleId, now.minusMillis(100), 32.80, -97.40, 20.0, 9.0, "#BBBBBB",
-                "new-host", 222L, "MOVING");
-
-        when(iterator.hasNext()).thenReturn(true, true, false);
-        when(iterator.next()).thenReturn(
-                KeyValue.pair(null, older),
-                KeyValue.pair(null, newer));
-
-        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp(now.toString(), 0,
-                10);
-
-        assertEquals(1, response.getBody().getContent().size());
-
-        VehicleState state = response.getBody().getContent().iterator().next();
-        assertEquals(vehicleId, state.getId());
-        assertEquals(now.minusMillis(100).toEpochMilli(), state.getMsEpochLastRun());
-        assertEquals("#BBBBBB", state.getColorCode());
-        assertEquals("new-host", state.getManagerHost());
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
     void buildPagedResponse_shouldReturnOnlyRequestedPageContent()
     {
         when(kafkaTopicMetadataService.getPartitionCount(TOPIC)).thenReturn(1);
         when(consumerFactory.createConsumer()).thenReturn(playbackConsumer);
         controller.init();
-
-        when(streamsFactory.getKafkaStreams()).thenReturn(kafkaStreams);
-        when(kafkaStreams.store(any())).thenReturn(windowStore);
-        when(kafkaStreams.state()).thenReturn(KafkaStreams.State.RUNNING);
-        when(windowStore.fetchAll(any(), any())).thenReturn(iterator);
 
         Instant now = Instant.now();
 
@@ -319,13 +263,50 @@ class PlaybackControllerTest
         UUID id2 = UUID.randomUUID();
         UUID id3 = UUID.randomUUID();
 
-        when(iterator.hasNext()).thenReturn(true, true, true, false);
-        when(iterator.next()).thenReturn(
-                KeyValue.pair(null, event(id1, now.minusMillis(1500), 1, 1, 1, 1, "#1", "h1", 1L, "MOVING")),
-                KeyValue.pair(null, event(id2, now.minusMillis(1000), 2, 2, 2, 2, "#2", "h2", 2L, "MOVING")),
-                KeyValue.pair(null, event(id3, now.minusMillis(500), 3, 3, 3, 3, "#3", "h3", 3L, "MOVING")));
+        Map<UUID, VehicleState> vehicleMap = new HashMap<UUID, VehicleState>();
 
-        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp(now.toString(), 1,
+        VehicleState vehicleState1 = new VehicleState();
+        vehicleState1.setId(id1);
+        vehicleState1.setPositionLimited(false);
+        vehicleState1.setPositionValid(true);
+        vehicleState1.setDegLatitude(32.75);
+        vehicleState1.setDegLongitude(-97.33);
+        vehicleState1.setDegBearing(45.0);
+        vehicleState1.setMetersPerSecond(8.2);
+        vehicleState1.setColorCode("#00FF00");
+        vehicleState1.setManagerHost("host-a");
+        vehicleState1.setMsEpochLastRun(now.toEpochMilli() - 1500);
+        vehicleMap.put(id1, vehicleState1);
+
+        VehicleState vehicleState2 = new VehicleState();
+        vehicleState2.setId(id2);
+        vehicleState2.setPositionLimited(false);
+        vehicleState2.setPositionValid(true);
+        vehicleState2.setDegLatitude(32.76);
+        vehicleState2.setDegLongitude(-97.34);
+        vehicleState2.setDegBearing(45.0);
+        vehicleState2.setMetersPerSecond(8.2);
+        vehicleState2.setColorCode("#FF0000");
+        vehicleState2.setManagerHost("host-b");
+        vehicleState2.setMsEpochLastRun(now.toEpochMilli() - 100);
+        vehicleMap.put(id2, vehicleState2);
+
+        VehicleState vehicleState3 = new VehicleState();
+        vehicleState3.setId(id3);
+        vehicleState3.setPositionLimited(false);
+        vehicleState3.setPositionValid(true);
+        vehicleState3.setDegLatitude(32.76);
+        vehicleState3.setDegLongitude(-97.34);
+        vehicleState3.setDegBearing(45.0);
+        vehicleState3.setMetersPerSecond(8.2);
+        vehicleState3.setColorCode("#FF0000");
+        vehicleState3.setManagerHost("host-b");
+        vehicleState3.setMsEpochLastRun(now.toEpochMilli() - 50);
+        vehicleMap.put(id3, vehicleState3);
+
+        when(vehicleStateStore.getVehicles(any())).thenReturn(vehicleMap);
+
+        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp("Unset", 1,
                 2);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
