@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -16,13 +17,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StoreQueryParameters;
-import org.apache.kafka.streams.errors.InvalidStateStoreException;
-import org.apache.kafka.streams.kstream.Windowed;
-import org.apache.kafka.streams.state.KeyValueIterator;
-import org.apache.kafka.streams.state.QueryableStoreTypes;
-import org.apache.kafka.streams.state.ReadOnlyWindowStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,13 +26,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tarterware.roadrunner.adapters.kafka.KafkaControllerVehicleStateStore;
 import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
@@ -52,19 +46,22 @@ import jakarta.annotation.PreDestroy;
  * <p>
  * This controller supports querying vehicle positions at a specific point in
  * time by reconstructing state from a Kafka-backed event stream. It uses two
- * distinct data sources depending on how recent the requested timestamp is:
+ * distinct data sources depending on whether the request is for the current
+ * "live" state or a historical point in time:
  *
  * <ul>
- * <li><b>Hot store</b>: A Kafka Streams {@link ReadOnlyWindowStore} used for
- * recent data (typically within the last hour).</li>
+ * <li><b>Live store</b>: An in-memory snapshot provided by
+ * {@link KafkaControllerVehicleStateStore} used when no timestamp is specified.
+ * This provides near-instant access to the most recent state of all active
+ * vehicles.</li>
  * <li><b>Cold store</b>: A direct Kafka consumer replay that scans topic
- * partitions from a timestamp-derived offset for older data.</li>
+ * partitions from a timestamp-derived offset for historical data.</li>
  * </ul>
  *
  * <p>
- * All queries operate on a fixed lookback window (currently 2 seconds) ending
- * at the requested timestamp. Within that window, the controller returns the
- * most recent state per vehicle.
+ * For historical queries, the controller operates on a fixed 2-second lookback
+ * window ending at the requested timestamp. Within that window, the controller
+ * returns the most recent state per vehicle found in the Kafka log.
  *
  * <p>
  * <b>Thread safety:</b> The Kafka consumer used for cold queries is not
@@ -75,20 +72,10 @@ import jakarta.annotation.PreDestroy;
  * <b>Endpoints:</b>
  * <ul>
  * <li>{@code GET /api/playback/state} – Returns paginated vehicle states for a
- * timestamp.</li>
+ * timestamp or the current live state.</li>
  * <li>{@code GET /api/playback/get-vehicle-state} – Returns a single vehicle's
- * state at a timestamp.</li>
+ * state at a timestamp or its current live state.</li>
  * </ul>
- *
- * <p>
- * <b>Lifecycle:</b>
- * <ul>
- * <li>On initialization, a Kafka consumer is created and assigned all
- * partitions for the configured topic.</li>
- * <li>On shutdown, the consumer is closed to release resources.</li>
- * </ul>
- *
- * @author
  */
 @RestController
 @RequestMapping("/api/playback")
@@ -102,7 +89,7 @@ public class PlaybackController
 
     private final KafkaTopicMetadataService kafkaTopicMetadataService;
     private final ConsumerFactory<String, VehiclePositionEvent> consumerFactory;
-    private final StreamsBuilderFactoryBean streamsFactory;
+    private final KafkaControllerVehicleStateStore vehicleStateStore;
 
     // The long-lived "hot" resource
     private Consumer<String, VehiclePositionEvent> playbackConsumer;
@@ -116,30 +103,28 @@ public class PlaybackController
      *
      * @param kafkaTopicMetadataService service used to determine topic partition
      *                                  metadata
-     * @param consumerFactory           factory for creating Kafka consumers used in
-     *                                  cold queries
-     * @param streamsFactory            factory for accessing Kafka Streams state
-     *                                  stores for hot queries
+     * @param consumerFactory           factory for creating the long-lived Kafka
+     *                                  consumer used in cold queries
+     * @param vehicleStateStore         in-memory store providing current vehicle
+     *                                  snapshots for live queries
      */
     public PlaybackController(
             KafkaTopicMetadataService kafkaTopicMetadataService,
             ConsumerFactory<String, VehiclePositionEvent> consumerFactory,
-            StreamsBuilderFactoryBean streamsFactory)
+            KafkaControllerVehicleStateStore vehicleStateStore)
     {
         this.kafkaTopicMetadataService = kafkaTopicMetadataService;
         this.consumerFactory = consumerFactory;
-        this.streamsFactory = streamsFactory;
+        this.vehicleStateStore = vehicleStateStore;
     }
 
     /**
      * Initializes the controller by:
      * <ul>
      * <li>Determining the number of partitions for the configured topic</li>
-     * <li>Creating and assigning a Kafka consumer to all partitions</li>
+     * <li>Creating and manually assigning a long-lived Kafka consumer to all
+     * partitions to enable high-performance seeking</li>
      * </ul>
-     *
-     * <p>
-     * This method is invoked automatically after dependency injection.
      */
     @PostConstruct
     public void init()
@@ -181,20 +166,18 @@ public class PlaybackController
     }
 
     /**
-     * Retrieves a paginated list of vehicle states for a given timestamp.
+     * Retrieves a paginated list of vehicle states for a given timestamp or current
+     * time.
      *
      * <p>
-     * If no timestamp is provided, the current system time is used. The query
-     * returns the most recent state per vehicle within a 2-second window ending at
-     * the specified timestamp.
-     *
-     * <p>
-     * Data is retrieved from either the hot or cold store depending on how recent
-     * the timestamp is.
+     * If {@code timestamp} is "Unset", the current live states are retrieved from
+     * the in-memory store. Otherwise, the method reconstructs the state by
+     * replaying the Kafka log within a 2-second window ending at the specified
+     * time.
      *
      * @param timestamp ISO-8601 timestamp string (e.g.,
      *                  {@code 2026-04-17T21:47:07.113Z}), or "Unset" to use the
-     *                  current time
+     *                  current live snapshot
      * @param page      zero-based page index
      * @param pageSize  number of items per page
      * @return paginated vehicle states wrapped in a {@link PagedModel}
@@ -246,27 +229,23 @@ public class PlaybackController
     }
 
     /**
-     * Performs a cold query by replaying Kafka topic partitions from a
+     * Performs a historical query by replaying Kafka topic partitions from a
      * timestamp-derived offset.
      *
      * <p>
-     * For each partition:
+     * This method implements a "Surgical Seek" by:
      * <ul>
-     * <li>Finds the offset corresponding to {@code startTime}</li>
-     * <li>Seeks the consumer to that offset</li>
-     * <li>Polls records until {@code endTime} is exceeded or a timeout occurs</li>
+     * <li>Pausing the consumer and seeking to the calculated offsets</li>
+     * <li>Resuming and polling until a record exceeding {@code endTime} is
+     * encountered on all relevant partitions</li>
+     * <li>Applying a 1-second safety deadline to prevent blocking on sparse
+     * partitions</li>
      * </ul>
-     *
-     * <p>
-     * The method collects the most recent state per vehicle within the time window.
-     *
-     * <p>
-     * <b>Note:</b> Access to the consumer is synchronized because Kafka consumers
-     * are not thread-safe.
      *
      * @param startTime start of the query window (epoch millis)
      * @param endTime   end of the query window (epoch millis)
-     * @return map of vehicle ID to latest {@link VehicleState} within the window
+     * @return map of vehicle ID to latest {@link VehicleState} found within the
+     *         window
      */
     private Map<UUID, VehicleState> queryColdStore(
             long startTime,
@@ -355,59 +334,19 @@ public class PlaybackController
     }
 
     /**
-     * Performs a hot query using a Kafka Streams window store.
+     * Performs a live query using the in-memory snapshot store.
      *
      * <p>
-     * This method retrieves all events within the given time window and reduces
-     * them to the most recent state per vehicle.
+     * This method bypasses Kafka log scanning and returns the current state of all
+     * vehicles as tracked by the application.
      *
-     * @param startTime start of the query window (epoch millis)
-     * @param endTime   end of the query window (epoch millis)
-     * @return map of vehicle ID to latest {@link VehicleState} within the window
+     * @return map of vehicle ID to their current {@link VehicleState}
      */
-    private Map<UUID, VehicleState> queryHotStore(
-            long startTime,
-            long endTime)
+    private Map<UUID, VehicleState> queryHotStore()
     {
-        KafkaStreams streams = streamsFactory.getKafkaStreams();
+        Set<UUID> vehicleIds = vehicleStateStore.getActiveVehicleIds();
 
-        // Check if the stream is actually ready to be queried
-        if (streams == null || streams.state() != KafkaStreams.State.RUNNING)
-        {
-            logger.warn("Hot store not ready (State: {}). Falling back to Cold Store.",
-                    streams != null ? streams.state() : "NULL");
-
-            // Fallback to the optimized "Cold" logic so the UI doesn't break
-            return queryColdStore(startTime, endTime);
-        }
-        try
-        {
-            ReadOnlyWindowStore<String, VehiclePositionEvent> store = streams.store(
-                    StoreQueryParameters.fromNameAndType("hot-playback-store", QueryableStoreTypes.windowStore()));
-
-            Map<UUID, VehicleState> latestStates = new HashMap<>();
-
-            // Fetch all records in the 2-period window
-            try (KeyValueIterator<Windowed<String>, VehiclePositionEvent> iterator = store
-                    .fetchAll(Instant.ofEpochMilli(startTime), Instant.ofEpochMilli(endTime)))
-            {
-
-                while (iterator.hasNext())
-                {
-                    mapToLatestState(iterator.next().value, latestStates);
-                }
-            }
-            return latestStates;
-        }
-        catch (InvalidStateStoreException ex)
-        {
-            logger.warn(
-                    "Hot store unavailable during query. streamsState={}. Falling back to Cold Store.",
-                    streams.state(),
-                    ex);
-
-            return queryColdStore(startTime, endTime);
-        }
+        return vehicleStateStore.getVehicles(vehicleIds);
     }
 
     /**
@@ -484,47 +423,30 @@ public class PlaybackController
      * Resolves vehicle states for a given timestamp by selecting the appropriate
      * data source.
      *
-     * <p>
-     * The method interprets the provided timestamp and constructs a fixed 2-second
-     * lookback window ending at that time. It then determines whether the requested
-     * time falls within the "hot" window (recent data) or requires a "cold" query
-     * (historical replay), and delegates accordingly.
-     *
      * <ul>
-     * <li>If {@code timestamp} is {@code "Unset"}, the current system time is
-     * used.</li>
-     * <li>The query window is defined as {@code [endTime - 2000ms, endTime]}.</li>
-     * <li>If {@code endTime} is within one hour of the current time, the Kafka
-     * Streams window store is queried via {@link #queryHotStore(long, long)}.</li>
-     * <li>Otherwise, a Kafka consumer replay is performed via
-     * {@link #queryColdStore(long, long)}.</li>
+     * <li>If {@code timestamp} is {@code "Unset"}, the in-memory live store is
+     * queried via {@link #queryHotStore()}.</li>
+     * <li>Otherwise, a 2-second lookback window is constructed and a Kafka consumer
+     * replay is performed via {@link #queryColdStore(long, long)}.</li>
      * </ul>
      *
-     * <p>
-     * The result contains the most recent {@link VehicleState} per vehicle within
-     * the specified window.
-     *
-     * @param timestamp ISO-8601 timestamp string (e.g.,
-     *                  {@code 2026-04-17T21:47:07.113Z}), or {@code "Unset"} to
-     *                  indicate the current time
-     * @return a map of vehicle IDs to their latest {@link VehicleState} within the
-     *         computed time window
+     * @param timestamp ISO-8601 timestamp string or {@code "Unset"}
+     * @return a map of vehicle IDs to their latest {@link VehicleState}
      * @throws java.time.format.DateTimeParseException if the timestamp is not
-     *                                                 {@code "Unset"} and cannot be
-     *                                                 parsed as a valid ISO-8601
-     *                                                 instant
+     *                                                 {@code "Unset"} and is
+     *                                                 malformed
      */
     private Map<UUID, VehicleState> getStatesForTimestamp(String timestamp)
     {
-        long endTime = timestamp.equals(UNSET_VALUE)
-                ? Instant.now().toEpochMilli()
-                : Instant.parse(timestamp).toEpochMilli();
+        if (timestamp.equals(UNSET_VALUE))
+        {
+            return queryHotStore();
+        }
+
+        long endTime = Instant.parse(timestamp).toEpochMilli();
 
         long startTime = endTime - 2000;
-        long hotThreshold = Instant.now().minus(Duration.ofHours(1)).toEpochMilli();
 
-        return endTime > hotThreshold
-                ? queryHotStore(startTime, endTime)
-                : queryColdStore(startTime, endTime);
+        return queryColdStore(startTime, endTime);
     }
 }
