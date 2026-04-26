@@ -1,5 +1,4 @@
 import { fetchAuthSession } from "aws-amplify/auth";
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from "reactstrap";
 import { CONFIG } from "../../config";
@@ -9,34 +8,6 @@ export const ManageMenu = (props: {
   toggleSimTable: any
 }) => {
   const navigate = useNavigate();
-
-  const [token, setToken] = useState("");
-
-  // Load (and silently refresh) an access token
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadToken() {
-      if (token) return;
-
-      try {
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
-
-        if (!accessToken) {
-          console.error("No access token available. Route guard should have redirected to login.");
-          return;
-        }
-
-        if (!cancelled) setToken(accessToken);
-      } catch (error: any) {
-        console.error("Error fetching token:", error?.message ?? error);
-      }
-    }
-
-    loadToken();
-    return () => { cancelled = true; };
-  }, [token]);
 
   const handleCreateCrissCross = async () => {
     const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/create-crisscross`;
@@ -48,11 +19,20 @@ export const ManageMenu = (props: {
     };
 
     try {
+      // Get the latest session right before the call
+      const session = await fetchAuthSession();
+      const accessToken = session.tokens?.accessToken?.toString();
+
+      if (!accessToken) {
+        console.error("Session expired");
+        return;
+      }
+
       const response = await fetch(url, {
         method: 'post',
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(body),
       });
@@ -69,12 +49,21 @@ export const ManageMenu = (props: {
   };
 
   const handleResetServer = async () => {
-    const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/reset-server-INHIBITTED`;
+      // Get the latest session right before the call
+      const session = await fetchAuthSession();
+      const accessToken = session.tokens?.accessToken?.toString();
+
+      if (!accessToken) {
+        console.error("Session expired");
+        return;
+      }
+
+    const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/reset-server`;
     try {
       const response = await fetch(url, {
         method: 'get',
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
@@ -125,6 +114,7 @@ export const ManageMenu = (props: {
           </DropdownItem>
           <DropdownItem
             id="resetServerBtn"
+            disabled={true}
             onClick={() => handleResetServer()}
           >
             Reset server

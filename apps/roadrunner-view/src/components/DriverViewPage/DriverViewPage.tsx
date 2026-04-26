@@ -20,7 +20,6 @@ export const DriverViewPage = () => {
   const { driverViewPageMap } = useMap();
   const mapboxToken = CONFIG.MAPBOX_TOKEN;
 
-  const [token, setToken] = useState("");
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [vehicleState, setVehicleState] = useState<VehicleState>();
@@ -42,36 +41,10 @@ export const DriverViewPage = () => {
   const MPS_TO_MPH = 2.236936;
 
   // Millisecond duration between frame redraws.
-  const MS_FRAME_TIME = 100;
+  const MS_FRAME_TIME = 250;
 
   // Millisecond delay before executing load code.
   const MS_LOAD_DELAY_TIME = 500;
-
-  // Load (and silently refresh) an access token
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadToken() {
-      if (token) return;
-
-      try {
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
-
-        if (!accessToken) {
-          console.error("No access token available. Route guard should have redirected to login.");
-          return;
-        }
-
-        if (!cancelled) setToken(accessToken);
-      } catch (error: any) {
-        console.error("Error fetching token:", error?.message ?? error);
-      }
-    }
-
-    loadToken();
-    return () => { cancelled = true; };
-  }, [token]);
 
   const gotoHomePage = useCallback(() => {
     navigate('/home');
@@ -107,26 +80,39 @@ export const DriverViewPage = () => {
     driverViewPageMap?.setCenter(shiftedPoint);
   }, [degViewOffset, driverViewPageMap, getCoordinateAtBearingAndRange]);
 
-  const fetchVehicleState = useCallback(() => {
-    if (!token || (playbackOffset === null) || isFetchingRef.current) return;
+  const fetchVehicleState = useCallback(async () => {
+    if ((playbackOffset === null) || isFetchingRef.current) return;
 
     isFetchingRef.current = true;
 
-    // Get the latest VehicleState
-    const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
-    let getStatesUrl: string = `${restUrlBase}/api/playback/get-vehicle-state?vehicleId=${vehicleId}`;
-    // If we are in playback mode, calculate the target timestamp
-    if (playbackOffset !== 0) {
-      const targetDate = new Date(Date.now() - playbackOffset);
-      const isoTimestamp = targetDate.toISOString();
-      getStatesUrl += `&timestamp=${encodeURIComponent(isoTimestamp)}`;
-    }
-    fetch(getStatesUrl, {
-      method: 'get',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(response => response.json())
-      .then((data: VehicleState) => {
+    try {
+      // Fetch the latest session (handles refresh automatically)
+      const session = await fetchAuthSession();
+      const accessToken = session.tokens?.accessToken?.toString();
+
+      if (!accessToken) {
+        console.error("No access token available.");
+        return;
+      }
+
+      // Get the latest VehicleState
+      const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
+      let getStatesUrl: string = `${restUrlBase}/api/playback/get-vehicle-state?vehicleId=${vehicleId}`;
+      // If we are in playback mode, calculate the target timestamp
+      if (playbackOffset !== 0) {
+        const targetDate = new Date(Date.now() - playbackOffset);
+        const isoTimestamp = targetDate.toISOString();
+        getStatesUrl += `&timestamp=${encodeURIComponent(isoTimestamp)}`;
+      }
+
+      const response = await fetch(getStatesUrl, {
+        method: 'get',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`)
+
+      const data: VehicleState = await response.json();
         setVehicleState(data);
         setIsDataLoaded(true);
 
@@ -136,16 +122,15 @@ export const DriverViewPage = () => {
         setManagerHost(lastDashIndex >= 0 ? host.substring(lastDashIndex + 1) : host);
 
         updateMapView(data);
-      })
-      .catch(error => {
+      }
+      catch(error: any) {
         console.error(`Error during fetchVehicleState: ${error.message}`);
-        //setIsDataLoaded(false);
-        //gotoHomePage();
-      })
-      .finally(() => {
+        gotoHomePage();
+      }
+      finally {
         isFetchingRef.current = false;
-      });
-  }, [token, vehicleId, updateMapView, playbackOffset]);
+      }
+  }, [vehicleId, updateMapView, playbackOffset, gotoHomePage]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {

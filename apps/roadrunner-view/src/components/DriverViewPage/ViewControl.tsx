@@ -13,7 +13,7 @@ export const ViewControl = (props: {
 
   // Effect to handle view adjustment when buttons are pressed
   useEffect(() => {
-    let timerId: NodeJS.Timeout;
+    let timerId: number | undefined;
 
     const adjustView = () => {
       props.setDegViewOffset((prev:number) => {
@@ -26,12 +26,12 @@ export const ViewControl = (props: {
       });
 
       // Continue the loop
-      timerId = setTimeout(adjustView, MS_FRAME_TIME);
+      timerId = window.setTimeout(adjustView, MS_FRAME_TIME);
     };
 
     // Start the loop when either button is pressed
     if (isAdjustingLeft.current || isAdjustingRight.current) {
-      timerId = setTimeout(adjustView, MS_FRAME_TIME);
+      timerId = window.setTimeout(adjustView, MS_FRAME_TIME);
     }
 
     // Cleanup: Stop the timer on unmount or when neither button is pressed
