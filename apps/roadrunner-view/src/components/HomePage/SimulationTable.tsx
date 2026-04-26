@@ -9,7 +9,6 @@ export const SimulationTable = (props: {
   toggleSimTable: any,
   returnToNow: any,
 }) => {
-  const [token, setToken] = useState("");
   const [data, setData] = useState([]);
   const [rowCount, setRowCount] = useState(0);
 
@@ -20,39 +19,20 @@ export const SimulationTable = (props: {
     pageSize: 10
   });
 
-  // Load (and silently refresh) an access token
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadToken() {
-      if (token) return;
-
-      try {
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
-
-        if (!accessToken) {
-          console.error("No access token available. Route guard should have redirected to login.");
-          return;
-        }
-
-        if (!cancelled) setToken(accessToken);
-      } catch (error: any) {
-        console.error("Error fetching token:", error?.message ?? error);
-      }
-    }
-
-    loadToken();
-    return () => { cancelled = true; };
-  }, [token]);
-
-  useEffect(() => {
-    if (!token) return;
-
     const controller = new AbortController();
 
     async function loadPage() {
       try {
+        // Get the latest session right before the call
+        const session = await fetchAuthSession();
+        const accessToken = session.tokens?.accessToken?.toString();
+
+        if (!accessToken) {
+          console.error("Session expired");
+          return;
+        }
+
         const url =
           `${CONFIG.ROADRUNNER_REST_URL_BASE}` +
           `/api/vehicle/simulation-sessions?page=${pagination.pageIndex}&pageSize=${pagination.pageSize}`
@@ -61,7 +41,7 @@ export const SimulationTable = (props: {
           method: 'GET',
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${accessToken}`,
           },
           signal: controller.signal,
         });
@@ -81,7 +61,7 @@ export const SimulationTable = (props: {
     loadPage();
 
     return () => controller.abort();
-  }, [token, pagination.pageIndex, pagination.pageSize]);
+  }, [pagination.pageIndex, pagination.pageSize]);
 
   const columns = useMemo(() => [
     { accessorKey: 'id', header: 'Session ID' },

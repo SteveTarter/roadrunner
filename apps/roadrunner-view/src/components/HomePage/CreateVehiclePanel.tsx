@@ -1,9 +1,8 @@
 import { Button, Card, Form, FormLabel } from "react-bootstrap";
-import { useEffect, useState } from "react";
 import { Input } from "reactstrap";
 import { fetchAuthSession } from "aws-amplify/auth";
 // eslint-disable-next-line
-import { AddressAutofill } from '@mapbox/search-js-react';
+import { AddressAutofill as MapboxAddressAutofill } from '@mapbox/search-js-react';
 import { useNavigate } from "react-router-dom";
 import { CONFIG } from "../../config";
 
@@ -11,39 +10,12 @@ export const CreateVehiclePanel = (props: {
   setIsCreateVehicleActive: any,
   returnToNow: any,
 }) => {
-  const [token, setToken] = useState("");
-
   const navigate = useNavigate();
 
   const mapboxToken = CONFIG.MAPBOX_TOKEN;
 
-  const AddressAutofill = require('@mapbox/search-js-react').AddressAutofill;
-
-  // Load (and silently refresh) an access token
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadToken() {
-      if (token) return;
-
-      try {
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
-
-        if (!accessToken) {
-          console.error("No access token available. Route guard should have redirected to login.");
-          return;
-        }
-
-        if (!cancelled) setToken(accessToken);
-      } catch (error: any) {
-        console.error("Error fetching token:", error?.message ?? error);
-      }
-    }
-
-    loadToken();
-    return () => { cancelled = true; };
-  }, [token]);
+  // Cast AddressAutofill so TypeScript stops complaining about JSX compatibility
+  const AddressAutofill = MapboxAddressAutofill as any;
 
   const createVehicle = async (): Promise<void> => {
     const inputs = document.querySelectorAll("form input");
@@ -74,11 +46,20 @@ export const CreateVehiclePanel = (props: {
     const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/create-new`;
     props.returnToNow();
     try {
+      // Get the latest session right before the call
+      const session = await fetchAuthSession();
+      const accessToken = session.tokens?.accessToken?.toString();
+
+      if (!accessToken) {
+        console.error("Session expired");
+        return;
+      }
+
       const response = await fetch(url, {
         method: 'post',
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(formattedData),
       });

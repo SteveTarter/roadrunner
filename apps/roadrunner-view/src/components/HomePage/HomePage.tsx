@@ -14,14 +14,13 @@ import { faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash }
 import { Button } from 'react-bootstrap';
 import { CreateVehiclePanel } from './CreateVehiclePanel';
 import { SimulationTable } from './SimulationTable';
-import { fetchAuthSession, signInWithRedirect } from "aws-amplify/auth";
+import { fetchAuthSession } from "aws-amplify/auth";
 import { CONFIG } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
 
 export const HomePage = () => {
   const { homePageMap } = useMap();
 
-  const [token, setToken] = useState("");
   const mapboxToken = CONFIG.MAPBOX_TOKEN;
   const [vehicleSize, setVehicleSize] = useState(5);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -55,36 +54,6 @@ export const HomePage = () => {
   // Vehicle timeout in seconds
   const SECS_VEHICLE_TIMEOUT = 30;
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadToken() {
-      if (token) return;
-
-      try {
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
-
-        if (!accessToken) {
-          // No cached/refreshable session -> interactive login
-          await signInWithRedirect();
-          return;
-        }
-
-        if (!cancelled) setToken(accessToken);
-      } catch (e) {
-        console.error("Error fetching Cognito token:", e);
-        // optional: fall back to interactive login
-        // await signInWithRedirect();
-      }
-    }
-
-    loadToken();
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-
   // Memoize vehicle state list derived from the ref
   const vehicleStateList = useMemo(() => {
     return Array.from(vehicleStateMapRef.current.values());
@@ -103,61 +72,79 @@ export const HomePage = () => {
     }
   }
 
-  const fetchVehicleStateList = useCallback(() => {
-    if (!token || !isMapLoaded || isFetchingRef.current) return;
+  const fetchVehicleStateList = useCallback(async () => {
+    if (!isMapLoaded || isFetchingRef.current) return;
 
     isFetchingRef.current = true;
 
-    // Timeout vehicles if they haven't updated lately
-    const msEpochTimeoutTime = Date.now() - (SECS_VEHICLE_TIMEOUT * 1000) - playbackOffset;
-    vehicleStateMapRef.current = vehicleStateMapRef.current.filter(
-      state => state.msEpochLastRun > msEpochTimeoutTime
-    );
+    try {
+      // Get the latest session right before the call
+      const session = await fetchAuthSession();
+      const accessToken = session.tokens?.accessToken?.toString();
 
-    // Get the latest VehicleStates
-    const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
-    let getStatesUrl = `${restUrlBase}/api/playback/state?page=${pageNumber}`;
+      if (!accessToken) {
+        console.error("Session expired");
+        return;
+      }
 
-    // Calculate the target timestamp, if needed
-    if (playbackOffset !== 0) {
-      const targetDate = new Date(Date.now() - playbackOffset);
-      const isoTimestamp = targetDate.toISOString();
-      getStatesUrl += `&timestamp=${encodeURIComponent(isoTimestamp)}`;
-    }
+      // Timeout vehicles if they haven't updated lately
+      const msEpochTimeoutTime = Date.now() - (SECS_VEHICLE_TIMEOUT * 1000) - playbackOffset;
+      vehicleStateMapRef.current = vehicleStateMapRef.current.filter(
+        state => state.msEpochLastRun > msEpochTimeoutTime
+      );
 
-    fetch(getStatesUrl, {
-      method: 'get',
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(response => response.json())
-      .then((data: ApiResponse) => {
-        // Type the data as an ApiResponse
-        let newPageNumber = pageNumber + 1;
-        if (newPageNumber >= data.page.totalPages) {
-          newPageNumber = 0
-        }
-        setPageNumber(newPageNumber);
-        setIsDataLoaded(true);
+      // Get the latest VehicleStates
+      const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
+      let getStatesUrl = `${restUrlBase}/api/playback/state?page=${pageNumber}`;
 
-        if (data._embedded) {
-          data._embedded.vehicleStates.forEach((vehicleState: VehicleState) => {
-            vehicleStateMapRef.current.set(vehicleState.id, vehicleState);
-            if (!vehicleDisplayMapRef.current.get(vehicleState.id)) {
-              const vehicleDisplay = new VehicleDisplay(vehicleSize, false, false);
-              vehicleDisplayMapRef.current.set(vehicleState.id, vehicleDisplay);
-            }
-          });
-        }
-        setVehicleStateMapVersion(v => v + 1);
-      })
-      .catch(error => {
-        console.log(`Error caught during fetch in fetchVehicleStateList: ${error.message}`);
-        setIsDataLoaded(false);
-      })
-      .finally(() => {
-        isFetchingRef.current = false;
+      // Calculate the target timestamp, if needed
+      if (playbackOffset !== 0) {
+        const targetDate = new Date(Date.now() - playbackOffset);
+        const isoTimestamp = targetDate.toISOString();
+        getStatesUrl += `&timestamp=${encodeURIComponent(isoTimestamp)}`;
+      }
+
+      const response = await fetch(getStatesUrl, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
-  }, [token, isMapLoaded, pageNumber, vehicleSize, playbackOffset]);
+
+      if (!response.ok) {
+        throw new Error(`Vehicle state request failed: ${response.status}`);
+      }
+
+      const data: ApiResponse = await response.json();
+
+      let newPageNumber = pageNumber + 1;
+      if (newPageNumber >= data.page.totalPages) {
+        newPageNumber = 0;
+      }
+
+      setPageNumber(newPageNumber);
+      setIsDataLoaded(true);
+
+
+      if (data._embedded) {
+        data._embedded.vehicleStates.forEach((vehicleState: VehicleState) => {
+          vehicleStateMapRef.current.set(vehicleState.id, vehicleState);
+
+          if (!vehicleDisplayMapRef.current.get(vehicleState.id)) {
+            const vehicleDisplay = new VehicleDisplay(vehicleSize, false, false);
+            vehicleDisplayMapRef.current.set(vehicleState.id, vehicleDisplay);
+          }
+        });
+      }
+
+      setVehicleStateMapVersion(v => v + 1);
+    }
+    catch(error) {
+      console.error("Fetch failed:", error);
+      setIsDataLoaded(false);
+    }
+    finally {
+      isFetchingRef.current = false;
+    }
+  }, [isMapLoaded, pageNumber, vehicleSize, playbackOffset]);
 
   useEffect(() => {
     if (!isMapLoaded) return;
