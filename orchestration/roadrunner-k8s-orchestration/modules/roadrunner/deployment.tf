@@ -48,6 +48,15 @@ resource "kubernetes_deployment" "roadrunner" {
             }
           }
 
+          env {
+            name = "K8S_POD_NAME"
+            value_from {
+              field_ref {
+                field_path = "metadata.name"
+              }
+            }
+          }
+
           # Dynamic args
           args = terraform.workspace == "minikube" ? [
             "--com.tarterware.redis.password=$(REDIS_PASSWORD)"
@@ -61,14 +70,15 @@ resource "kubernetes_deployment" "roadrunner" {
 
           resources {
             requests = {
-              memory = "256Mi"
-              cpu    = "250m"
-            }
-            limits = {
               memory = "512Mi"
               cpu    = "500m"
             }
+            limits = {
+              memory = "1Gi"
+              cpu    = "1000m"
+            }
           }
+
         }
 
         volume {
