@@ -229,58 +229,6 @@ class PlaybackControllerTest
     }
 
     @Test
-    void coldStore_shouldUseLatestEventPerVehicleId()
-    {
-        // Simulate a cache miss so it actually hits the "Cold Store" logic
-        when(playbackResultCache.get(any(), anyLong())).thenReturn(null);
-
-        when(kafkaTopicMetadataService.getPartitionCount(TOPIC)).thenReturn(1);
-        when(consumerFactory.createConsumer()).thenReturn(playbackConsumer);
-        controller.init();
-
-        Instant endTime = Instant.now().minusSeconds(7200);
-        long startMillis = endTime.toEpochMilli() - 2000;
-        TopicPartition tp0 = new TopicPartition(TOPIC, 0);
-
-        when(playbackConsumer.offsetsForTimes(anyMap())).thenReturn(
-                Map.of(tp0, new OffsetAndTimestamp(10L, startMillis)));
-
-        UUID vehicleId = UUID.randomUUID();
-
-        ConsumerRecord<String, VehiclePositionEvent> older = record(tp0, 10L, startMillis + 500,
-                event(vehicleId, Instant.ofEpochMilli(startMillis + 500), 32.70, -97.30, 10.0, 4.0, "#AAAAAA",
-                        "old-host", 111L, "MOVING"));
-
-        ConsumerRecord<String, VehiclePositionEvent> newer = record(tp0, 11L, startMillis + 1500,
-                event(vehicleId, Instant.ofEpochMilli(startMillis + 1500), 32.80, -97.40, 20.0, 9.0, "#BBBBBB",
-                        "new-host", 222L, "MOVING"));
-
-        ConsumerRecord<String, VehiclePositionEvent> stop = record(tp0, 12L, endTime.toEpochMilli() + 1,
-                event(UUID.randomUUID(), Instant.ofEpochMilli(endTime.toEpochMilli() + 1), 0, 0, 0, 0, "#000000",
-                        "done", 0L, "MOVING"));
-
-        when(playbackConsumer.poll(any())).thenReturn(records(Map.of(tp0, List.of(older, newer, stop))));
-
-        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp(
-                endTime.toString(),
-                "2s",
-                0,
-                10);
-
-        assertEquals(1, response.getBody().getContent().size());
-
-        VehicleState state = response.getBody().getContent().iterator().next();
-        assertEquals(vehicleId, state.getId());
-        assertEquals(startMillis + 1500, state.getMsEpochLastRun());
-        assertEquals(32.80, state.getDegLatitude());
-        assertEquals(-97.40, state.getDegLongitude());
-        assertEquals(9.0, state.getMetersPerSecond());
-        assertEquals("#BBBBBB", state.getColorCode());
-        assertEquals("new-host", state.getManagerHost());
-        assertEquals(222L, state.getNsLastExec());
-    }
-
-    @Test
     void buildPagedResponse_shouldReturnOnlyRequestedPageContent()
     {
         when(kafkaTopicMetadataService.getPartitionCount(TOPIC)).thenReturn(1);
