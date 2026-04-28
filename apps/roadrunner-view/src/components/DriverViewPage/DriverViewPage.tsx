@@ -21,6 +21,8 @@ export const DriverViewPage = () => {
 
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  const [lastState, setLastState] = useState<VehicleState | null>(null);
+
   // Driver view offset from straight ahead
   const [degViewOffset, setDegViewOffset] = useState(0);
 
@@ -35,11 +37,24 @@ export const DriverViewPage = () => {
     intervalMs: 250 // Matches original MS_FRAME_TIME
   });
 
+  const gotoHomePage = useCallback(() => {
+    navigate('/home');
+  }, [navigate]);
+
   // Find the specific vehicle from the hook's data
   const vehicleState = useMemo(() => {
-    return vehicleStateMap.get(vehicleId);
+    const currentState = vehicleStateMap.get(vehicleId);
+    if (currentState) {
+      // Keep a ref/state of the last time we saw this vehicle
+      if (lastState?.id !== currentState.id || lastState?.msEpochLastRun !== currentState.msEpochLastRun) {
+        setLastState(currentState);
+      }
+      return currentState;
+    }
+
+    return lastState;
   // eslint-disable-next-line
-  }, [vehicleId, vehicleStateMap, version]);
+  }, [vehicleId, vehicleStateMap, version, lastState]);
 
   // Map style
   const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
@@ -51,10 +66,6 @@ export const DriverViewPage = () => {
 
   // Millisecond delay before executing load code.
   const MS_LOAD_DELAY_TIME = 500;
-
-  const gotoHomePage = useCallback(() => {
-    navigate('/home');
-  }, [navigate]);
 
   const getCoordinateAtBearingAndRange = useCallback((degLatitude: number, degLongitude: number, degBearing: number, mRange: number) => {
     const KM_EARTH_RADIUS = 6378.14;
@@ -79,19 +90,35 @@ export const DriverViewPage = () => {
   }, []);
 
   const updateMapView = useCallback((data: VehicleState) => {
+    // Explicitly bail if we don't any data available
+    if (!data) return;
+    if (data.degLatitude === 0 && data.degLongitude === 0) {
+      gotoHomePage();
+    }
+
     const degViewBearing = data.degBearing + degViewOffset;
     driverViewPageMap?.setBearing(degViewBearing);
+
     const mRange = 20.0 * window.innerHeight / 932.0;
-    const shiftedPoint = getCoordinateAtBearingAndRange(data.degLatitude, data.degLongitude, degViewBearing, mRange);
-    driverViewPageMap?.setCenter(shiftedPoint);
-  }, [degViewOffset, driverViewPageMap, getCoordinateAtBearingAndRange]);
+    const shiftedPoint = getCoordinateAtBearingAndRange(
+      data.degLatitude,
+      data.degLongitude,
+      degViewBearing,
+      mRange
+    );
+
+    // Ensure we aren't sending NaN or [0,0] to Mapbox
+    if (shiftedPoint && !isNaN(shiftedPoint.lng) && !isNaN(shiftedPoint.lat)) {
+        driverViewPageMap?.setCenter(shiftedPoint);
+    }
+  }, [degViewOffset, driverViewPageMap, getCoordinateAtBearingAndRange, gotoHomePage]);
 
   // React to vehicle updates from the hook
   useEffect(() => {
     if (vehicleState) {
       updateMapView(vehicleState);
     }
-  }, [vehicleState, updateMapView]);
+  }, [vehicleState, updateMapView, gotoHomePage]);
 
   const managerHost = useMemo(() => {
     if (!vehicleState) return "";
@@ -138,9 +165,12 @@ export const DriverViewPage = () => {
     return () => clearTimeout(timer);
   }, [driverViewPageMap]);
 
+  // We show the map if we have isDataLoaded OR we have a lastState to show
+  const shouldShowMap = (isDataLoaded || lastState) && vehicleState;
+
   return (
     <div className="body row scroll-y">
-      {(isDataLoaded && !isTransitioning && vehicleState) ? (
+      {shouldShowMap && !isTransitioning ? (
           <Map
             id="driverViewPageMap"
             mapStyle={mapStyle}

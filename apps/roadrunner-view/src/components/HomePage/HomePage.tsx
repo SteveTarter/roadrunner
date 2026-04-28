@@ -24,7 +24,6 @@ export const HomePage = () => {
   const [vehicleSize, setVehicleSize] = useState(5);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isCreateVehicleActive, setIsCreateVehicleActive] = useState(false)
-  const [pageNumber, setPageNumber] = useState(0);
   const [showSimTable, setShowSimTable] = useState(false);
 
   const {
@@ -38,8 +37,6 @@ export const HomePage = () => {
     clearData,
     setAllRoutesVisibility
   } = useVehicleData({
-    pageNumber,
-    setPageNumber,
     vehicleSize
   });
 
