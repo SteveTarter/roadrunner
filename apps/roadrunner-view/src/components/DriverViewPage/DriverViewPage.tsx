@@ -119,7 +119,7 @@ export const DriverViewPage = () => {
     if (shiftedPoint && !isNaN(shiftedPoint.lng) && !isNaN(shiftedPoint.lat)) {
         driverViewPageMap?.setCenter(shiftedPoint);
     }
-  }, [degViewOffset, driverViewPageMap, getCoordinateAtBearingAndRange]);
+  }, [degViewOffset, driverViewPageMap, getCoordinateAtBearingAndRange, gotoHomePage]);
 
   // React to vehicle updates from the hook
   useEffect(() => {
