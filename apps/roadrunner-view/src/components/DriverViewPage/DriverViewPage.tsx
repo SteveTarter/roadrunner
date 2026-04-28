@@ -11,6 +11,7 @@ import { faSatellite, faHome, faMap } from '@fortawesome/free-solid-svg-icons';
 import { ViewControl } from './ViewControl';
 import { CONFIG } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
+import { usePlayback } from "../../context/PlaybackContext";
 
 export const DriverViewPage = () => {
   // Get the Vehicle ID from the URL in the window
@@ -25,6 +26,8 @@ export const DriverViewPage = () => {
 
   // Driver view offset from straight ahead
   const [degViewOffset, setDegViewOffset] = useState(0);
+
+  const { playbackOffset } = usePlayback();
 
   // Integrated Hook
   // Driver view usually wants a static size (e.g., 20) for calculation logic
@@ -49,7 +52,12 @@ export const DriverViewPage = () => {
       if (lastState?.id !== currentState.id || lastState?.msEpochLastRun !== currentState.msEpochLastRun) {
         setLastState(currentState);
       }
+
       return currentState;
+    }
+
+    if (lastState && lastState.msEpochLastRun < (playbackOffset - 30000)) {
+      gotoHomePage();
     }
 
     return lastState;
@@ -111,7 +119,7 @@ export const DriverViewPage = () => {
     if (shiftedPoint && !isNaN(shiftedPoint.lng) && !isNaN(shiftedPoint.lat)) {
         driverViewPageMap?.setCenter(shiftedPoint);
     }
-  }, [degViewOffset, driverViewPageMap, getCoordinateAtBearingAndRange, gotoHomePage]);
+  }, [degViewOffset, driverViewPageMap, getCoordinateAtBearingAndRange]);
 
   // React to vehicle updates from the hook
   useEffect(() => {
