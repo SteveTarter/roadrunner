@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -31,6 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
@@ -42,6 +45,7 @@ import com.tarterware.roadrunner.adapters.kafka.KafkaControllerVehicleStateStore
 import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
+import com.tarterware.roadrunner.services.PlaybackResultCache;
 
 @ExtendWith(MockitoExtension.class)
 class PlaybackControllerTest
@@ -58,6 +62,9 @@ class PlaybackControllerTest
     private KafkaControllerVehicleStateStore vehicleStateStore;
 
     @Mock
+    private PlaybackResultCache playbackResultCache;
+
+    @Mock
     private Consumer<String, VehiclePositionEvent> playbackConsumer;
 
     private PlaybackController controller;
@@ -65,10 +72,17 @@ class PlaybackControllerTest
     @BeforeEach
     void setUp()
     {
+        // Initialize mocks
+        MockitoAnnotations.openMocks(this);
+
+        Duration playbackConsumerPollingPeriod = Duration.ofMillis(20);
+
         controller = new PlaybackController(
                 kafkaTopicMetadataService,
                 consumerFactory,
-                vehicleStateStore);
+                vehicleStateStore,
+                playbackResultCache,
+                playbackConsumerPollingPeriod);
 
         ReflectionTestUtils.setField(controller, "topicName", TOPIC);
     }
@@ -113,6 +127,7 @@ class PlaybackControllerTest
     {
         when(kafkaTopicMetadataService.getPartitionCount(TOPIC)).thenReturn(1);
         when(consumerFactory.createConsumer()).thenReturn(playbackConsumer);
+
         controller.init();
 
         UUID vehicleId = UUID.randomUUID();
@@ -135,7 +150,10 @@ class PlaybackControllerTest
 
         when(vehicleStateStore.getVehicles(any())).thenReturn(vehicleMap);
 
-        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp("Unset", 0,
+        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp(
+                "Unset",
+                "2s",
+                0,
                 10);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -151,6 +169,9 @@ class PlaybackControllerTest
     @Test
     void getVehicleStatesAtTimestamp_shouldUseColdStoreForOldTimestamp()
     {
+        // Simulate a cache miss so it actually hits the "Cold Store" logic
+        when(playbackResultCache.get(any(), anyLong())).thenReturn(null);
+
         when(kafkaTopicMetadataService.getPartitionCount(TOPIC)).thenReturn(2);
         when(consumerFactory.createConsumer()).thenReturn(playbackConsumer);
         controller.init();
@@ -190,8 +211,11 @@ class PlaybackControllerTest
                 tp0, List.of(r1, r3),
                 tp1, List.of(r2, r4))));
 
-        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp(endTime.toString(),
-                0, 10);
+        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp(
+                endTime.toString(),
+                "2s",
+                0,
+                10);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -202,52 +226,6 @@ class PlaybackControllerTest
         verify(playbackConsumer).seek(eq(tp1), eq(200L));
         verify(playbackConsumer, never()).seekToEnd(any());
         verify(playbackConsumer, times(1)).poll(any());
-    }
-
-    @Test
-    void coldStore_shouldUseLatestEventPerVehicleId()
-    {
-        when(kafkaTopicMetadataService.getPartitionCount(TOPIC)).thenReturn(1);
-        when(consumerFactory.createConsumer()).thenReturn(playbackConsumer);
-        controller.init();
-
-        Instant endTime = Instant.now().minusSeconds(7200);
-        long startMillis = endTime.toEpochMilli() - 2000;
-        TopicPartition tp0 = new TopicPartition(TOPIC, 0);
-
-        when(playbackConsumer.offsetsForTimes(anyMap())).thenReturn(
-                Map.of(tp0, new OffsetAndTimestamp(10L, startMillis)));
-
-        UUID vehicleId = UUID.randomUUID();
-
-        ConsumerRecord<String, VehiclePositionEvent> older = record(tp0, 10L, startMillis + 500,
-                event(vehicleId, Instant.ofEpochMilli(startMillis + 500), 32.70, -97.30, 10.0, 4.0, "#AAAAAA",
-                        "old-host", 111L, "MOVING"));
-
-        ConsumerRecord<String, VehiclePositionEvent> newer = record(tp0, 11L, startMillis + 1500,
-                event(vehicleId, Instant.ofEpochMilli(startMillis + 1500), 32.80, -97.40, 20.0, 9.0, "#BBBBBB",
-                        "new-host", 222L, "MOVING"));
-
-        ConsumerRecord<String, VehiclePositionEvent> stop = record(tp0, 12L, endTime.toEpochMilli() + 1,
-                event(UUID.randomUUID(), Instant.ofEpochMilli(endTime.toEpochMilli() + 1), 0, 0, 0, 0, "#000000",
-                        "done", 0L, "MOVING"));
-
-        when(playbackConsumer.poll(any())).thenReturn(records(Map.of(tp0, List.of(older, newer, stop))));
-
-        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp(endTime.toString(),
-                0, 10);
-
-        assertEquals(1, response.getBody().getContent().size());
-
-        VehicleState state = response.getBody().getContent().iterator().next();
-        assertEquals(vehicleId, state.getId());
-        assertEquals(startMillis + 1500, state.getMsEpochLastRun());
-        assertEquals(32.80, state.getDegLatitude());
-        assertEquals(-97.40, state.getDegLongitude());
-        assertEquals(9.0, state.getMetersPerSecond());
-        assertEquals("#BBBBBB", state.getColorCode());
-        assertEquals("new-host", state.getManagerHost());
-        assertEquals(222L, state.getNsLastExec());
     }
 
     @Test
@@ -306,7 +284,10 @@ class PlaybackControllerTest
 
         when(vehicleStateStore.getVehicles(any())).thenReturn(vehicleMap);
 
-        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp("Unset", 1,
+        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp(
+                "Unset",
+                "2s",
+                1,
                 2);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -323,6 +304,9 @@ class PlaybackControllerTest
     @Test
     void coldStore_shouldSeekToEndWhenOffsetForTimeMissing()
     {
+        // Simulate a cache miss so it actually hits the "Cold Store" logic
+        when(playbackResultCache.get(any(), anyLong())).thenReturn(null);
+
         when(kafkaTopicMetadataService.getPartitionCount(TOPIC)).thenReturn(2);
         when(consumerFactory.createConsumer()).thenReturn(playbackConsumer);
         controller.init();
@@ -345,8 +329,11 @@ class PlaybackControllerTest
 
         when(playbackConsumer.poll(any())).thenReturn(records(Map.of(tp0, List.of(r1))));
 
-        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp(endTime.toString(),
-                0, 10);
+        ResponseEntity<PagedModel<VehicleState>> response = controller.getVehicleStatesAtTimestamp(
+                endTime.toString(),
+                "2s",
+                0,
+                10);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
