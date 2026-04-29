@@ -73,5 +73,20 @@
     "name": "com.tarterware.roadrunner.messaging.kafka.debug.enabled",
     "type": "java.lang.String",
     "description": "A description for 'com.tarterware.roadrunner.messaging.kafka.debug.enabled'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.vehicle-state-buffer-period",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.vehicle-state-buffer-period'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.playback-cache-timeout",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.playback-cache-timeout'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.playback-cache-size",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.playback-cache-size'"
   }
 ]}

@@ -1,5 +1,7 @@
 package com.tarterware.roadrunner.controllers;
 
+import static java.util.stream.Collectors.toMap;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -20,6 +22,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.convert.DurationStyle;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -36,6 +39,7 @@ import com.tarterware.roadrunner.adapters.kafka.KafkaControllerVehicleStateStore
 import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
+import com.tarterware.roadrunner.services.PlaybackResultCache;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -90,9 +94,15 @@ public class PlaybackController
     private final KafkaTopicMetadataService kafkaTopicMetadataService;
     private final ConsumerFactory<String, VehiclePositionEvent> consumerFactory;
     private final KafkaControllerVehicleStateStore vehicleStateStore;
+    private final PlaybackResultCache playbackResultCache;
 
     // The long-lived "hot" resource
     private Consumer<String, VehiclePositionEvent> playbackConsumer;
+
+    @Value("${com.tarterware.roadrunner.vehicle-state-buffer-period:2s}")
+    private String strDefaultBufferPeriod;
+
+    private Duration playbackConsumerPollingPeriod;
 
     private static final String UNSET_VALUE = "Unset";
 
@@ -107,15 +117,21 @@ public class PlaybackController
      *                                  consumer used in cold queries
      * @param vehicleStateStore         in-memory store providing current vehicle
      *                                  snapshots for live queries
+     * @param playbackResultCache       service to cache Kafka results
      */
     public PlaybackController(
             KafkaTopicMetadataService kafkaTopicMetadataService,
             ConsumerFactory<String, VehiclePositionEvent> consumerFactory,
-            KafkaControllerVehicleStateStore vehicleStateStore)
+            KafkaControllerVehicleStateStore vehicleStateStore,
+            PlaybackResultCache playbackResultCache,
+            @Value("${com.tarterware.roadrunner.playback-consumer-polling-period:20ms}")
+            Duration playbackConsumerPollingPeriod)
     {
         this.kafkaTopicMetadataService = kafkaTopicMetadataService;
         this.consumerFactory = consumerFactory;
         this.vehicleStateStore = vehicleStateStore;
+        this.playbackResultCache = playbackResultCache;
+        this.playbackConsumerPollingPeriod = playbackConsumerPollingPeriod;
     }
 
     /**
@@ -175,23 +191,26 @@ public class PlaybackController
      * replaying the Kafka log within a 2-second window ending at the specified
      * time.
      *
-     * @param timestamp ISO-8601 timestamp string (e.g.,
-     *                  {@code 2026-04-17T21:47:07.113Z}), or "Unset" to use the
-     *                  current live snapshot
-     * @param page      zero-based page index
-     * @param pageSize  number of items per page
+     * @param timestamp    ISO-8601 timestamp string (e.g.,
+     *                     {@code 2026-04-17T21:47:07.113Z}), or "Unset" to use the
+     *                     current live snapshot
+     * @param windowPeriod ISO-8601 window length string (e.g., {@code 2s})
+     * @param page         zero-based page index
+     * @param pageSize     number of items per page
      * @return paginated vehicle states wrapped in a {@link PagedModel}
      */
     @GetMapping("/state")
     ResponseEntity<PagedModel<VehicleState>> getVehicleStatesAtTimestamp(
             @RequestParam(defaultValue = UNSET_VALUE)
             String timestamp,
+            @RequestParam(defaultValue = "2s")
+            String windowPeriod,
             @RequestParam(defaultValue = "0")
             int page,
             @RequestParam(defaultValue = "10")
             int pageSize)
     {
-        Map<UUID, VehicleState> latestStates = getStatesForTimestamp(timestamp);
+        List<VehicleState> latestStates = getStatesForTimestamp(timestamp, windowPeriod);
 
         return buildPagedResponse(latestStates, page, pageSize);
     }
@@ -204,9 +223,10 @@ public class PlaybackController
      * endpoint. If the vehicle does not have a state within that window, a
      * {@code 404 NOT FOUND} response is returned.
      *
-     * @param vehicleId UUID string identifying the vehicle
-     * @param timestamp ISO-8601 timestamp string, or "Unset" to use the current
-     *                  time
+     * @param vehicleId    UUID string identifying the vehicle
+     * @param timestamp    ISO-8601 timestamp string, or "Unset" to use the current
+     *                     time
+     * @param windowPeriod ISO-8601 window length string (e.g., {@code 2s})
      * @return the vehicle state if found, otherwise {@code 404 NOT FOUND}
      */
     @GetMapping("/get-vehicle-state")
@@ -214,11 +234,23 @@ public class PlaybackController
             @RequestParam(defaultValue = UNSET_VALUE)
             String vehicleId,
             @RequestParam(defaultValue = UNSET_VALUE)
-            String timestamp)
+            String timestamp,
+            @RequestParam(defaultValue = "2s")
+            String windowPeriod)
     {
-        Map<UUID, VehicleState> latestStates = getStatesForTimestamp(timestamp);
+        List<VehicleState> latestStates = getStatesForTimestamp(timestamp, windowPeriod);
 
-        VehicleState vehicleState = latestStates.get(UUID.fromString(vehicleId));
+        Map<UUID, VehicleState> uniqueLatestStates = latestStates.stream()
+                .collect(toMap(
+                        VehicleState::getId, // Key: Vehicle ID
+                        state -> state, // Value: The state object
+                        (existing, replacement) -> // Merge function: keep the one with the later timestamp
+                        existing.getMsEpochLastRun() >= replacement.getMsEpochLastRun()
+                                ? existing
+                                : replacement));
+
+        UUID id = UUID.fromString(vehicleId);
+        VehicleState vehicleState = uniqueLatestStates.get(id);
 
         if (vehicleState == null)
         {
@@ -247,11 +279,11 @@ public class PlaybackController
      * @return map of vehicle ID to latest {@link VehicleState} found within the
      *         window
      */
-    private Map<UUID, VehicleState> queryColdStore(
+    private List<VehicleState> queryColdStore(
             long startTime,
             long endTime)
     {
-        Map<UUID, VehicleState> latestStates = new HashMap<>();
+        List<VehicleState> latestStates = new ArrayList<>();
         // CRITICAL: Kafka Consumer is not thread-safe.
         // We must synchronize to allow multiple users to query playback without
         // crashing.
@@ -294,7 +326,8 @@ public class PlaybackController
                     && System.currentTimeMillis() < timeoutDeadline)
             {
                 // Give broker 100ms to respond.
-                ConsumerRecords<String, VehiclePositionEvent> records = playbackConsumer.poll(Duration.ofMillis(20));
+                ConsumerRecords<String, VehiclePositionEvent> records = playbackConsumer
+                        .poll(playbackConsumerPollingPeriod);
 
                 if (records.isEmpty())
                 {
@@ -342,11 +375,17 @@ public class PlaybackController
      *
      * @return map of vehicle ID to their current {@link VehicleState}
      */
-    private Map<UUID, VehicleState> queryHotStore()
+    private List<VehicleState> queryHotStore()
     {
         Set<UUID> vehicleIds = vehicleStateStore.getActiveVehicleIds();
 
-        return vehicleStateStore.getVehicles(vehicleIds);
+        List<VehicleState> stateList = vehicleStateStore
+                .getVehicles(vehicleIds)
+                .values()
+                .stream()
+                .toList();
+
+        return stateList;
     }
 
     /**
@@ -360,16 +399,10 @@ public class PlaybackController
      * @param event        the incoming Kafka event
      * @param latestStates map of vehicle ID to latest known state
      */
-    private void mapToLatestState(VehiclePositionEvent event, Map<UUID, VehicleState> latestStates)
+    private void mapToLatestState(VehiclePositionEvent event, List<VehicleState> latestStates)
     {
         UUID id = UUID.fromString(event.vehicleId());
         long eventMillis = event.eventTime().toEpochMilli();
-
-        VehicleState existing = latestStates.get(id);
-        if (existing != null && existing.getMsEpochLastRun() >= eventMillis)
-        {
-            return;
-        }
 
         VehicleState vehicleState = new VehicleState();
         vehicleState.setId(id);
@@ -384,7 +417,7 @@ public class PlaybackController
         vehicleState.setMsEpochLastRun(eventMillis);
         vehicleState.setNsLastExec(event.nsLastExec());
 
-        latestStates.put(id, vehicleState);
+        latestStates.add(vehicleState);
     }
 
     /**
@@ -400,22 +433,24 @@ public class PlaybackController
      * @return paginated response entity
      */
     private ResponseEntity<PagedModel<VehicleState>> buildPagedResponse(
-            Map<UUID, VehicleState> states,
+            List<VehicleState> states,
             int page,
             int pageSize)
     {
-        List<VehicleState> list = new ArrayList<>(states.values());
+        int listSize = states.size();
+        int start = Math.min(page * pageSize, listSize);
+        int end = Math.min(start + pageSize, listSize);
+        List<VehicleState> pageContent = states.subList(start, end);
 
-        int start = Math.min(page * pageSize, list.size());
-        int end = Math.min(start + pageSize, list.size());
-        List<VehicleState> pageContent = list.subList(start, end);
-
-        Page<VehicleState> vehicleStatePage = new PageImpl<>(pageContent, PageRequest.of(page, pageSize), list.size());
+        Page<VehicleState> vehicleStatePage = new PageImpl<>(
+                pageContent,
+                PageRequest.of(page, pageSize),
+                listSize);
 
         return new ResponseEntity<>(
                 PagedModel.of(
                         vehicleStatePage.getContent(),
-                        new PagedModel.PageMetadata(pageSize, page, list.size())),
+                        new PagedModel.PageMetadata(pageSize, page, listSize)),
                 HttpStatus.OK);
     }
 
@@ -436,17 +471,41 @@ public class PlaybackController
      *                                                 {@code "Unset"} and is
      *                                                 malformed
      */
-    private Map<UUID, VehicleState> getStatesForTimestamp(String timestamp)
+    private List<VehicleState> getStatesForTimestamp(String timestamp, String windowPeriod)
     {
         if (timestamp.equals(UNSET_VALUE))
         {
             return queryHotStore();
         }
 
-        long endTime = Instant.parse(timestamp).toEpochMilli();
+        List<VehicleState> fullResultSet;
 
-        long startTime = endTime - 2000;
+        // Determine the requested window period in milliseconds
+        Duration duration = DurationStyle.detect(windowPeriod).parse(windowPeriod);
+        long msWindowPeriod = duration.toMillis();
 
-        return queryColdStore(startTime, endTime);
+        // Check to see if we already scanned Kafka for this specific request
+        fullResultSet = playbackResultCache.get(timestamp, msWindowPeriod);
+
+        if (fullResultSet == null)
+        {
+            // Cache miss. Do the expensive work.
+            long endTime = Instant.parse(timestamp).toEpochMilli();
+
+            long startTime = endTime - msWindowPeriod;
+
+            fullResultSet = queryColdStore(startTime, endTime);
+
+            // Store it for next time
+            playbackResultCache.put(timestamp, msWindowPeriod, fullResultSet);
+
+            logger.debug("Cache miss for {}. Scanned Kafka and cached {} vehicles.", timestamp, fullResultSet.size());
+        }
+        else
+        {
+            logger.debug("Cache hit for {}. Serving from memory.", timestamp);
+        }
+
+        return fullResultSet;
     }
 }
