@@ -1,6 +1,5 @@
 import './DriverViewPage.css';
-import { fetchAuthSession } from "aws-amplify/auth";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Map, { FullscreenControl, useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
 import { PlaybackClock } from '../Utils/PlaybackClock';
@@ -11,6 +10,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSatellite, faHome, faMap } from '@fortawesome/free-solid-svg-icons';
 import { ViewControl } from './ViewControl';
 import { CONFIG } from "../../config";
+import { useVehicleData } from '../../hooks/useVehicleData';
 import { usePlayback } from "../../context/PlaybackContext";
 
 export const DriverViewPage = () => {
@@ -20,35 +20,66 @@ export const DriverViewPage = () => {
   const { driverViewPageMap } = useMap();
   const mapboxToken = CONFIG.MAPBOX_TOKEN;
 
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [vehicleState, setVehicleState] = useState<VehicleState>();
-  const [managerHost, setManagerHost] = useState("");
+
+  const [lastState, setLastState] = useState<VehicleState | null>(null);
 
   // Driver view offset from straight ahead
   const [degViewOffset, setDegViewOffset] = useState(0);
 
   const { playbackOffset } = usePlayback();
 
+  // Integrated Hook
+  // Driver view usually wants a static size (e.g., 20) for calculation logic
+  const {
+    vehicleStateMap,
+    isDataLoaded,
+    version
+  } = useVehicleData({
+    vehicleSize: 20,
+    intervalMs: 250 // Matches original MS_FRAME_TIME
+  });
+
+  const gotoHomePage = useCallback(() => {
+    navigate('/home');
+  }, [navigate]);
+
+  // Find the specific vehicle from the hook's data
+  const vehicleState = useMemo(() => {
+    const currentState = vehicleStateMap.get(vehicleId);
+    if (currentState) {
+      // Keep a ref/state of the last time we saw this vehicle
+      if (lastState?.id !== currentState.id || lastState?.msEpochLastRun !== currentState.msEpochLastRun) {
+        setLastState(currentState);
+      }
+
+      return currentState;
+    }
+
+    const msCurrentTime = Date.now() - playbackOffset;
+    if (lastState && (lastState.msEpochLastRun < msCurrentTime)) {
+      gotoHomePage();
+    }
+
+    return lastState;
+  // eslint-disable-next-line
+  }, [
+    vehicleId,
+    vehicleStateMap,
+    version,
+    lastState
+  ]);
+
   // Map style
   const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
   const [mapStyle, setMapStyle] = useState(MAP_STYLE_SATELLITE);
 
-  const isFetchingRef = useRef(false);
-
   // Conversion from meters per second to miles per hour.
   const MPS_TO_MPH = 2.236936;
 
-  // Millisecond duration between frame redraws.
-  const MS_FRAME_TIME = 250;
-
   // Millisecond delay before executing load code.
   const MS_LOAD_DELAY_TIME = 500;
-
-  const gotoHomePage = useCallback(() => {
-    navigate('/home');
-  }, [navigate]);
 
   const getCoordinateAtBearingAndRange = useCallback((degLatitude: number, degLongitude: number, degBearing: number, mRange: number) => {
     const KM_EARTH_RADIUS = 6378.14;
@@ -73,71 +104,60 @@ export const DriverViewPage = () => {
   }, []);
 
   const updateMapView = useCallback((data: VehicleState) => {
+    // Explicitly bail if we don't any data available
+    if (!data) return;
+
+    // Check for timeout
+    const MS_VEHICLE_TIMEOUT = 30 * 1000;
+    const msCurrentTime = Date.now() - playbackOffset;
+     if ((msCurrentTime - data.msEpochLastRun) >= MS_VEHICLE_TIMEOUT) {
+      gotoHomePage();
+    }
+
+    // Warping to (0, 0) signals loss of data feed
+    if(data.degLatitude === 0 && data.degLongitude === 0) {
+      gotoHomePage();
+    }
+
     const degViewBearing = data.degBearing + degViewOffset;
     driverViewPageMap?.setBearing(degViewBearing);
+
     const mRange = 20.0 * window.innerHeight / 932.0;
-    const shiftedPoint = getCoordinateAtBearingAndRange(data.degLatitude, data.degLongitude, degViewBearing, mRange);
-    driverViewPageMap?.setCenter(shiftedPoint);
-  }, [degViewOffset, driverViewPageMap, getCoordinateAtBearingAndRange]);
+    const shiftedPoint = getCoordinateAtBearingAndRange(
+      data.degLatitude,
+      data.degLongitude,
+      degViewBearing,
+      mRange
+    );
 
-  const fetchVehicleState = useCallback(async () => {
-    if ((playbackOffset === null) || isFetchingRef.current) return;
+    // Ensure we aren't sending NaN or [0,0] to Mapbox
+    if (shiftedPoint && !isNaN(shiftedPoint.lng) && !isNaN(shiftedPoint.lat)) {
+        driverViewPageMap?.setCenter(shiftedPoint);
+    }
+  }, [
+    degViewOffset,
+    driverViewPageMap,
+    getCoordinateAtBearingAndRange,
+    gotoHomePage,
+    playbackOffset
+  ]);
 
-    isFetchingRef.current = true;
-
-    try {
-      // Fetch the latest session (handles refresh automatically)
-      const session = await fetchAuthSession();
-      const accessToken = session.tokens?.accessToken?.toString();
-
-      if (!accessToken) {
-        console.error("No access token available.");
-        return;
-      }
-
-      // Get the latest VehicleState
-      const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
-      let getStatesUrl: string = `${restUrlBase}/api/playback/get-vehicle-state?vehicleId=${vehicleId}`;
-      // If we are in playback mode, calculate the target timestamp
-      if (playbackOffset !== 0) {
-        const targetDate = new Date(Date.now() - playbackOffset);
-        const isoTimestamp = targetDate.toISOString();
-        getStatesUrl += `&timestamp=${encodeURIComponent(isoTimestamp)}`;
-      }
-
-      const response = await fetch(getStatesUrl, {
-        method: 'get',
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      if (!response.ok) throw new Error(`HTTP error ${response.status}`)
-
-      const data: VehicleState = await response.json();
-        setVehicleState(data);
-        setIsDataLoaded(true);
-
-        // Set the manager host, shortening it if from a kubernetes pod.
-        const host: string = data.managerHost;
-        const lastDashIndex = host.lastIndexOf('-');
-        setManagerHost(lastDashIndex >= 0 ? host.substring(lastDashIndex + 1) : host);
-
-        updateMapView(data);
-      }
-      catch(error: any) {
-        console.error(`Error during fetchVehicleState: ${error.message}`);
-        gotoHomePage();
-      }
-      finally {
-        isFetchingRef.current = false;
-      }
-  }, [vehicleId, updateMapView, playbackOffset, gotoHomePage]);
-
+  // React to vehicle updates from the hook
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      fetchVehicleState();
-    }, MS_FRAME_TIME);
-    return () => clearInterval(intervalId);
-  }, [fetchVehicleState]);
+    if (vehicleState) {
+      updateMapView(vehicleState);
+    }
+  }, [
+    vehicleState,
+    updateMapView
+  ]);
+
+  const managerHost = useMemo(() => {
+    if (!vehicleState) return "";
+    const host = vehicleState.managerHost;
+    const lastDashIndex = host.lastIndexOf('-');
+    return lastDashIndex >= 0 ? host.substring(lastDashIndex + 1) : host;
+  }, [vehicleState]);
 
   const toggleMapStyle = useCallback(() => {
     setIsTransitioning(true);
@@ -177,9 +197,12 @@ export const DriverViewPage = () => {
     return () => clearTimeout(timer);
   }, [driverViewPageMap]);
 
+  // We show the map if we have isDataLoaded OR we have a lastState to show
+  const shouldShowMap = (isDataLoaded || lastState) && vehicleState;
+
   return (
     <div className="body row scroll-y">
-      {(isDataLoaded && !isTransitioning && vehicleState) ? (
+      {shouldShowMap && !isTransitioning ? (
           <Map
             id="driverViewPageMap"
             mapStyle={mapStyle}
