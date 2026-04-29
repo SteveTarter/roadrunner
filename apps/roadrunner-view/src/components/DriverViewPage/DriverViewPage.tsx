@@ -62,7 +62,12 @@ export const DriverViewPage = () => {
 
     return lastState;
   // eslint-disable-next-line
-  }, [vehicleId, vehicleStateMap, version, lastState]);
+  }, [
+    vehicleId,
+    vehicleStateMap,
+    version,
+    lastState
+  ]);
 
   // Map style
   const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
@@ -100,7 +105,16 @@ export const DriverViewPage = () => {
   const updateMapView = useCallback((data: VehicleState) => {
     // Explicitly bail if we don't any data available
     if (!data) return;
-    if (data.degLatitude === 0 && data.degLongitude === 0) {
+
+    // Check for timeout
+    const MS_VEHICLE_TIMEOUT = 30 * 1000;
+    const msCurrentTime = Date.now() - playbackOffset;
+     if ((msCurrentTime - data.msEpochLastRun) >= MS_VEHICLE_TIMEOUT) {
+      gotoHomePage();
+    }
+
+    // Warping to (0, 0) signals loss of data feed
+    if(data.degLatitude === 0 && data.degLongitude === 0) {
       gotoHomePage();
     }
 
@@ -119,14 +133,24 @@ export const DriverViewPage = () => {
     if (shiftedPoint && !isNaN(shiftedPoint.lng) && !isNaN(shiftedPoint.lat)) {
         driverViewPageMap?.setCenter(shiftedPoint);
     }
-  }, [degViewOffset, driverViewPageMap, getCoordinateAtBearingAndRange, gotoHomePage]);
+  }, [
+    degViewOffset,
+    driverViewPageMap,
+    getCoordinateAtBearingAndRange,
+    gotoHomePage,
+    playbackOffset
+  ]);
 
   // React to vehicle updates from the hook
   useEffect(() => {
     if (vehicleState) {
       updateMapView(vehicleState);
     }
-  }, [vehicleState, updateMapView, gotoHomePage]);
+  }, [
+    vehicleState,
+     updateMapView,
+      gotoHomePage
+  ]);
 
   const managerHost = useMemo(() => {
     if (!vehicleState) return "";
