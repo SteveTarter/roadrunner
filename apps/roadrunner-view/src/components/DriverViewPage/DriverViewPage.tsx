@@ -7,7 +7,7 @@ import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Button, Card } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSatellite, faHome, faMap } from '@fortawesome/free-solid-svg-icons';
+import { faSatellite, faHome, faMap, faMagic, faBars } from '@fortawesome/free-solid-svg-icons';
 import { ViewControl } from './ViewControl';
 import { CONFIG } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
@@ -34,10 +34,12 @@ export const DriverViewPage = () => {
   const {
     vehicleStateMap,
     isDataLoaded,
+    setIsInterpolationEnabled,
+    isInterpolationEnabled,
     version
   } = useVehicleData({
     vehicleSize: 20,
-    intervalMs: 250 // Matches original MS_FRAME_TIME
+    intervalMs: 50
   });
 
   const gotoHomePage = useCallback(() => {
@@ -232,6 +234,14 @@ export const DriverViewPage = () => {
                   :
                   <FontAwesomeIcon title="Map Display" icon={faMap} className="mr-3" />
                 }
+              </Button>
+            </div>
+            <div style={{ position: "fixed", top: 10, left: 110 }}>
+              <Button onClick={() => setIsInterpolationEnabled(!isInterpolationEnabled)}>
+                <FontAwesomeIcon
+                  icon={isInterpolationEnabled ? faMagic : faBars}
+                  title={isInterpolationEnabled ? "Disable Smoothing" : "Enable Smoothing"}                    className="mr-3"
+                />
               </Button>
             </div>
             <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "10rem" }}>
