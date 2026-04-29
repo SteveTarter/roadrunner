@@ -9,7 +9,7 @@ import { PlaybackClock } from '../Utils/PlaybackClock';
 import { AppNavBar } from '../NavBar/AppNavBar';
 import { ManageMenu } from './ManageMenu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import { faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faMagic, faBars } from '@fortawesome/free-solid-svg-icons';
 import { Button } from 'react-bootstrap';
 import { CreateVehiclePanel } from './CreateVehiclePanel';
 import { SimulationTable } from './SimulationTable';
@@ -29,16 +29,20 @@ export const HomePage = () => {
   const {
     clearPlayback
   } = usePlayback();
+
   const {
     vehicleStateMap,
     vehicleDisplayMap,
     isDataLoaded,
     version,
+    setIsInterpolationEnabled,
+    isInterpolationEnabled,
     clearData,
     setAllRoutesVisibility
   } = useVehicleData({
-    vehicleSize
-  });
+    vehicleSize: 20,
+    intervalMs: 50
+   });
 
   // Map styles
   const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
@@ -227,6 +231,14 @@ export const HomePage = () => {
                     title="Hide All Routes"
                     icon={faEyeSlash}
                     className="mr-3"
+                  />
+                </Button>
+              </div>
+              <div style={{ position: "fixed", top: 100, left: 210 }}>
+                <Button onClick={() => setIsInterpolationEnabled(!isInterpolationEnabled)}>
+                  <FontAwesomeIcon
+                    icon={isInterpolationEnabled ? faMagic : faBars}
+                    title={isInterpolationEnabled ? "Disable Smoothing" : "Enable Smoothing"}                    className="mr-3"
                   />
                 </Button>
               </div>

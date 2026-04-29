@@ -16,6 +16,7 @@ export const useVehicleData = ({
   intervalMs = 100
 }: UseVehicleDataProps) => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isInterpolationEnabled, setIsInterpolationEnabled] = useState(true);
   const isFetchingRef = useRef(false);
   const { playbackOffset } = usePlayback();
 
@@ -53,10 +54,14 @@ export const useVehicleData = ({
       // We start at page 0 for every batch
       let currentPage = 0;
       let totalPages = 1;
+      let pageSize = 200;
 
       // Loop until we have swallowed every page for the current timeAnchor
       while (currentPage < totalPages) {
-        let url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/playback/state?page=${currentPage}`;
+        let url =
+          `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/playback/state?page=${currentPage}`;
+
+        url += `&pageSize=${pageSize}`;
 
         if (timeAnchor) {
           url += `&timestamp=${encodeURIComponent(timeAnchor)}`;
@@ -81,8 +86,16 @@ export const useVehicleData = ({
 
           // Append new states to master buffer
           masterBuffer.current = [...masterBuffer.current, ...newStates];
+        }
 
-          // Force an immediate UI update for the first page.
+        // If this is the first page, determine how big each remaining
+        // request needs to be so we can get the data in 5 bites.
+        if (result.page?.number === 0) {
+          const remainingElements =
+            result.page?.totalElements - result.page?.size;
+
+          pageSize = Math.ceil(remainingElements / 5.0);
+          pageSize = Math.max(pageSize, 200);
         }
 
         totalPages = result.page?.totalPages || 1;
@@ -101,30 +114,72 @@ export const useVehicleData = ({
   // eslint-disable-next-line
   }, [timeAnchor]);
 
+  // Helper for bearing interpolation
+  const interpolateBearing = (start: number, end: number, ratio: number) => {
+    let delta = end - start;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    return (start + delta * ratio + 360) % 360;
+  };
+
+  const LIVE_INTERPOLATION_DELAY_MS = 2000;
+
   /**
    * THE PLAYBACK ENGINE: Syncs the UI maps to the specific playback time.
    */
   const syncMapsToPlaybackTime = useCallback(() => {
-    const currentTime = Date.now() - playbackOffset;
-    const SECS_VEHICLE_TIMEOUT = 30;
+    // If offset is 0 (live), subtract a delay to allow for look-ahead data
+    const effectiveOffset =
+      playbackOffset === 0 ? LIVE_INTERPOLATION_DELAY_MS : playbackOffset;
+    const currentTime = Date.now() - effectiveOffset;
 
-    // Filter buffer for states that match our current playback window
-    // We want the most recent state for each vehicle that is NOT in the future
-    const activeStates = masterBuffer.current.filter(s => s.msEpochLastRun <= currentTime);
+    const vehicleIds = new Set(masterBuffer.current.map(s => s.id));
 
-    // Group by ID to get the latest state for each vehicle
-    const latestPerVehicle = new Map<string, VehicleState>();
-    activeStates.forEach(state => {
-      const existing = latestPerVehicle.get(state.id);
-      if (!existing || state.msEpochLastRun > existing.msEpochLastRun) {
-        latestPerVehicle.set(state.id, state);
+    vehicleIds.forEach(id => {
+      const states = masterBuffer.current
+        .filter(s => s.id === id)
+        .sort((a, b) => a.msEpochLastRun - b.msEpochLastRun);
+
+      if (states.length === 0) return;
+
+      let displayState: VehicleState;
+
+      // Logic for Smooth vs. Raw movement
+      if (isInterpolationEnabled) {
+
+        // Find the two states surrounding currentTime
+        const nextIndex = states.findIndex(s => s.msEpochLastRun > currentTime);
+
+        if (nextIndex === -1) {
+          // We only have past data, use the latest one (raw)
+          displayState = states[states.length - 1];
+        } else if (nextIndex === 0) {
+          // We only have future data, use the first one
+          displayState = states[0];
+        } else {
+          // Interpolate between states[nextIndex - 1] and states[nextIndex]
+          const s0 = states[nextIndex - 1];
+          const s1 = states[nextIndex];
+
+          const ratio = (currentTime - s0.msEpochLastRun) / (s1.msEpochLastRun - s0.msEpochLastRun);
+
+          displayState = {
+            ...s0,
+            degLatitude: s0.degLatitude + (s1.degLatitude - s0.degLatitude) * ratio,
+            degLongitude: s0.degLongitude + (s1.degLongitude - s0.degLongitude) * ratio,
+            // Handle bearing wrap-around (e.g., 350 to 10 degrees)
+            degBearing: interpolateBearing(s0.degBearing, s1.degBearing, ratio)
+          };
+        }
+      } else {
+        // In Raw mode, we use the real "now" if live, or the playback time
+        const rawCurrentTime = Date.now() - playbackOffset;
+        displayState = states.filter(s => s.msEpochLastRun <= rawCurrentTime).pop() || states[0];        // Raw mode: Get the latest state that is not in the future
       }
-    });
 
-    // Update the UI MapWrapper
-    latestPerVehicle.forEach((state, id) => {
-      vehicleStateMapRef.current.set(id, state);
+      vehicleStateMapRef.current.set(id, displayState);
 
+      // Update Display metadata (size and visibility)
       if (!vehicleDisplayMapRef.current.get(id)) {
         vehicleDisplayMapRef.current.set(id, new VehicleDisplay(vehicleSize, false, false));
       } else {
@@ -134,19 +189,24 @@ export const useVehicleData = ({
     });
 
     // Housekeeping: Remove old states from UI and Master Buffer
-    const timeoutThreshold = currentTime - (SECS_VEHICLE_TIMEOUT * 1000);
+    const timeoutPastThreshold = currentTime - (30 * 1000);
+    const timeoutFutureThreshold = currentTime + (30 * 1000);
 
     vehicleStateMapRef.current = vehicleStateMapRef.current.filter(
-      state => state.msEpochLastRun > timeoutThreshold
+      state =>
+        state.msEpochLastRun > timeoutPastThreshold &&
+        state.msEpochLastRun < timeoutFutureThreshold
     );
 
     // Keep masterBuffer from growing infinitely (remove data older than timeout)
     masterBuffer.current = masterBuffer.current.filter(
-        state => state.msEpochLastRun > timeoutThreshold
+      state =>
+        state.msEpochLastRun > timeoutPastThreshold &&
+        state.msEpochLastRun < timeoutFutureThreshold
     );
 
     setVersion(v => v + 1);
-  }, [playbackOffset, vehicleSize]);
+  }, [playbackOffset, masterBuffer, vehicleSize, isInterpolationEnabled]);
 
   // Run the Fetcher (Background)
   useEffect(() => {
@@ -174,7 +234,7 @@ export const useVehicleData = ({
   }, []);
 
   const setAllRoutesVisibility = useCallback((visible: boolean) => {
-    vehicleDisplayMapRef.current.forEach((display: { routeVisible: boolean; }) => {
+    vehicleDisplayMapRef.current.forEach((display: any) => {
       display.routeVisible = visible;
     });
     setVersion(v => v + 1);
@@ -184,6 +244,8 @@ export const useVehicleData = ({
     vehicleStateMap: vehicleStateMapRef.current,
     vehicleDisplayMap: vehicleDisplayMapRef.current,
     isDataLoaded,
+    isInterpolationEnabled,
+    setIsInterpolationEnabled,
     version,
     clearData,
     setAllRoutesVisibility
