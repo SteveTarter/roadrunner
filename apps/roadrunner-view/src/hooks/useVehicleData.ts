@@ -33,9 +33,9 @@ export const useVehicleData = ({
    */
   const timeAnchor = useMemo(() => {
     if (playbackOffset === 0) return null;
-    const bufferLeadTime = 10000; // 10 seconds ahead
-    return new Date(Date.now() - playbackOffset + bufferLeadTime).toISOString();
-// eslint-disable-next-line
+    const bufferBackfillTime = 5000; // 5 seconds ahead
+    return new Date(Date.now() - playbackOffset + bufferBackfillTime).toISOString();
+  // eslint-disable-next-line
   }, [playbackOffset, bufferNum]); // Only changes if the user scrubs playback
 
   /**
@@ -81,6 +81,8 @@ export const useVehicleData = ({
 
           // Append new states to master buffer
           masterBuffer.current = [...masterBuffer.current, ...newStates];
+
+          // Force an immediate UI update for the first page.
         }
 
         totalPages = result.page?.totalPages || 1;
@@ -148,10 +150,10 @@ export const useVehicleData = ({
 
   // Run the Fetcher (Background)
   useEffect(() => {
-    var fetchInterval = 2500; // Fetch pages every 2.5s usually
-    if (playbackOffset ===0) {
-      fetchInterval = 250;
-    }
+     // If in playback mode, fetch pages every 2.5s. Live is fetched every 250 ms.
+    var fetchInterval = playbackOffset === 0 ? 250 : 2500;
+
+    fetchBatch();
 
     const fetchTimer = window.setInterval(fetchBatch, fetchInterval);
     return () => window.clearInterval(fetchTimer);

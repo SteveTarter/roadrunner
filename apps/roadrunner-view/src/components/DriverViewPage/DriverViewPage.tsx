@@ -56,7 +56,8 @@ export const DriverViewPage = () => {
       return currentState;
     }
 
-    if (lastState && lastState.msEpochLastRun < (playbackOffset - 30000)) {
+    const msCurrentTime = Date.now() - playbackOffset;
+    if (lastState && (lastState.msEpochLastRun < msCurrentTime)) {
       gotoHomePage();
     }
 
@@ -148,8 +149,7 @@ export const DriverViewPage = () => {
     }
   }, [
     vehicleState,
-     updateMapView,
-      gotoHomePage
+    updateMapView
   ]);
 
   const managerHost = useMemo(() => {
