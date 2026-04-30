@@ -16,13 +16,21 @@ import { usePlayback } from "../../context/PlaybackContext";
 export const DriverViewPage = () => {
   // Get the Vehicle ID from the URL in the window
   const vehicleId = (window.location.pathname).split('/')[2];
+
   const navigate = useNavigate();
   const { driverViewPageMap } = useMap();
   const mapboxToken = CONFIG.MAPBOX_TOKEN;
 
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  // Constants
+  const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
+  const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
+  const MPS_TO_MPH = 2.236936;
 
+  // States
   const [lastState, setLastState] = useState<VehicleState | null>(null);
+  const [mapStyle, setMapStyle] = useState(MAP_STYLE_SATELLITE);
+  const [isMapReady, setIsMapReady] = useState(false);
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
 
   // Driver view offset from straight ahead
   const [degViewOffset, setDegViewOffset] = useState(0);
@@ -46,46 +54,29 @@ export const DriverViewPage = () => {
     navigate('/home');
   }, [navigate]);
 
-  // Find the specific vehicle from the hook's data
+  // Logic to find current vehicle
   const vehicleState = useMemo(() => {
-    const currentState = vehicleStateMap.get(vehicleId);
-    if (currentState) {
-      // Keep a ref/state of the last time we saw this vehicle
-      if (lastState?.id !== currentState.id || lastState?.msEpochLastRun !== currentState.msEpochLastRun) {
-        setLastState(currentState);
-      }
+    return vehicleStateMap.get(vehicleId) || lastState;
+  }, [vehicleId, vehicleStateMap, lastState]);
 
-      return currentState;
-    }
-
+  // Handle Auto-Redirects as a Side Effect
+  useEffect(() => {
     const msCurrentTime = Date.now() - playbackOffset;
-    if (lastState && (lastState.msEpochLastRun < msCurrentTime)) {
+
+    // Case 1: Data has gone stale
+    if (lastState && (lastState.msEpochLastRun < msCurrentTime - (30 * 1000))) {
       gotoHomePage();
     }
 
-    return lastState;
-  // eslint-disable-next-line
-  }, [
-    vehicleId,
-    vehicleStateMap,
-    version,
-    lastState
-  ]);
-
-  // Map style
-  const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
-  const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
-  const [mapStyle, setMapStyle] = useState(MAP_STYLE_SATELLITE);
-
-  // Conversion from meters per second to miles per hour.
-  const MPS_TO_MPH = 2.236936;
-
-  // Millisecond delay before executing load code.
-  const MS_LOAD_DELAY_TIME = 500;
+    // Case 2: Explicit update for last state
+    const currentState = vehicleStateMap.get(vehicleId);
+    if (currentState && (lastState?.msEpochLastRun !== currentState.msEpochLastRun)) {
+      setLastState(currentState);
+    }
+  }, [vehicleStateMap, vehicleId, lastState, playbackOffset, gotoHomePage]);
 
   const getCoordinateAtBearingAndRange = useCallback((degLatitude: number, degLongitude: number, degBearing: number, mRange: number) => {
     const KM_EARTH_RADIUS = 6378.14;
-
     const radLatitude = degLatitude / 180.0 * Math.PI;
     const radLongitude = degLongitude / 180.0 * Math.PI;
     const radBearing = degBearing / 180.0 * Math.PI;
@@ -106,10 +97,10 @@ export const DriverViewPage = () => {
   }, []);
 
   const updateMapView = useCallback((data: VehicleState) => {
-    // Explicitly bail if we don't any data available
-    if (!data) return;
+    const map = driverViewPageMap?.getMap();
+    if (!data || !map || !isMapReady || !assetsLoaded) return;
 
-    // Check for timeout
+    // Check for timeouts
     const MS_VEHICLE_TIMEOUT = 30 * 1000;
     const msCurrentTime = Date.now() - playbackOffset;
      if ((msCurrentTime - data.msEpochLastRun) >= MS_VEHICLE_TIMEOUT) {
@@ -134,12 +125,18 @@ export const DriverViewPage = () => {
 
     // Ensure we aren't sending NaN or [0,0] to Mapbox
     if (shiftedPoint && !isNaN(shiftedPoint.lng) && !isNaN(shiftedPoint.lat)) {
-        driverViewPageMap?.setCenter(shiftedPoint);
+      map.jumpTo({
+        center: [shiftedPoint.lng, shiftedPoint.lat],
+        bearing: degViewBearing,
+        //animate: false // Critical for high-frequency updates
+      })
     }
   }, [
     degViewOffset,
     driverViewPageMap,
     getCoordinateAtBearingAndRange,
+    isMapReady,
+    assetsLoaded,
     gotoHomePage,
     playbackOffset
   ]);
@@ -154,6 +151,122 @@ export const DriverViewPage = () => {
     updateMapView
   ]);
 
+  // Handle Model Injection & Style Switches
+  useEffect(() => {
+    const map = driverViewPageMap?.getMap();
+    if (!map) return;
+
+    const setupLayers = () => {
+      // If the style isn't ready, wait 200ms and try again
+      if (!map.isStyleLoaded()) {
+        setTimeout(setupLayers, 200);
+        return;
+      }
+
+      try {
+        // Add Model
+        if (!map.hasModel('mitsubishi-car')) {
+          map.addModel('mitsubishi-car', '/models/mitsubishi/source/Untitled.glb');
+        }
+
+        // Add Source
+        if (!map.getSource('vehicle-positions')) {
+          map.addSource('vehicle-positions', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] }
+          });
+        }
+
+        // Add Layer
+        if (!map.getLayer('vehicle-layer')) {
+          map.addLayer({
+            id: 'vehicle-layer',
+            type: 'model',
+            source: 'vehicle-positions',
+            layout: {
+              'model-id': 'mitsubishi-car'
+            },
+            paint: {
+              'model-rotation': [
+                0,
+                0,
+                ['+', ['get', 'bearing'], 180]
+              ],
+              'model-scale': [1, 1, 1],
+              'model-type': 'common-3d',
+
+              // Grab the color from the feature properties
+              'model-color': ['get', 'vehicleColor'],
+              // 1.0 = fully replace texture color, 0.7 = heavy tint
+              'model-color-mix-intensity': 0.7
+            }
+          });
+        }
+
+        // Terrain & Fog
+        if (!map.getSource('mapbox-dem')) {
+            map.addSource('mapbox-dem', {
+              type: 'raster-dem',
+              url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+              tileSize: 512,
+              maxzoom: 14
+            });
+            map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.0 });
+        }
+
+        setIsMapReady(true);
+        setAssetsLoaded(true);
+        console.log("3D assets loaded.");
+      } catch (e) {
+        console.error("Error loading 3D assets:", e);
+      }
+    };
+
+    // Listen for style changes
+    map.on('style.load', setupLayers);
+
+    // Manually trigger if it's the first load or a style toggle
+    setupLayers();
+
+    return () => {
+      map.off('style.load', setupLayers);
+    };
+  }, [driverViewPageMap, mapStyle]);
+
+  // Update GeoJSON Source
+  useEffect(() => {
+    const map = driverViewPageMap?.getMap();
+    if (!map || !isMapReady) return;
+
+    const features = Array.from(vehicleStateMap.values())
+      .filter((vState: any) => vState.id !== vehicleId)
+      .map((vState: any) => ({
+        type: 'Feature',
+        properties: {
+          id: vState.id,
+          bearing: vState.degBearing,
+          vehicleColor: vState.colorCode || '#FFFFFF'
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [
+            vState.degLongitude,
+            vState.degLatitude
+          ]
+        }
+      }));
+
+    const source: any = map.getSource('vehicle-positions');
+    if (source) {
+      source.setData({ type: 'FeatureCollection', features });
+    }
+  }, [version, vehicleStateMap, driverViewPageMap, isMapReady, vehicleId]);
+
+  const toggleMapStyle = useCallback(() => {
+    setIsMapReady(false);
+    setMapStyle(prevStyle => (prevStyle === MAP_STYLE_STREET ? MAP_STYLE_SATELLITE : MAP_STYLE_STREET));
+  }, []);
+
   const managerHost = useMemo(() => {
     if (!vehicleState) return "";
     const host = vehicleState.managerHost;
@@ -161,50 +274,12 @@ export const DriverViewPage = () => {
     return lastDashIndex >= 0 ? host.substring(lastDashIndex + 1) : host;
   }, [vehicleState]);
 
-  const toggleMapStyle = useCallback(() => {
-    setIsTransitioning(true);
-    setMapStyle(prevStyle => (prevStyle === MAP_STYLE_STREET ? MAP_STYLE_SATELLITE : MAP_STYLE_STREET));
-    setTimeout(() => setIsTransitioning(false), 500);
-  }, []);
-
-  const onMapLoad = useCallback(() => {
-    const timer = setTimeout(() => {
-      const map = driverViewPageMap?.getMap();
-      const layers = map?.getStyle()?.layers;
-      if (layers) {
-        for (const layer of layers) {
-          if (layer.type === 'symbol' && layer.layout && layer.layout['text-field']) {
-            driverViewPageMap?.getMap().removeLayer(layer.id);
-          }
-        }
-      }
-
-      map?.setFog({
-        range: [19, 20],
-        'horizon-blend': 0.3,
-        color: 'white',
-        'high-color': '#add8e6',
-        'space-color': '#d8f2ff',
-        'star-intensity': 0.0
-      });
-
-      map?.addSource('mapbox-dem', {
-        type: 'raster-dem',
-        url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
-        tileSize: 512,
-        maxzoom: 14
-      });
-      map?.setTerrain({ source: 'mapbox-dem', exaggeration: 1.0 });
-    }, MS_LOAD_DELAY_TIME);
-    return () => clearTimeout(timer);
-  }, [driverViewPageMap]);
-
-  // We show the map if we have isDataLoaded OR we have a lastState to show
+  // Show the map if we have isDataLoaded OR we have a lastState to show
   const shouldShowMap = (isDataLoaded || lastState) && vehicleState;
 
   return (
     <div className="body row scroll-y">
-      {shouldShowMap && !isTransitioning ? (
+      {shouldShowMap ? (
           <Map
             id="driverViewPageMap"
             mapStyle={mapStyle}
@@ -217,7 +292,6 @@ export const DriverViewPage = () => {
             zoom={22}
             minZoom={19}
             maxZoom={24}
-            onLoad={onMapLoad}
           >
             <PlaybackClock />
             <div style={{ position: "fixed", top: 10, left: 10 }}>
