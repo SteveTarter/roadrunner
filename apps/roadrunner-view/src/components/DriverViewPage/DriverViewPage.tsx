@@ -56,31 +56,24 @@ export const DriverViewPage = () => {
 
   // Logic to find current vehicle
   const vehicleState = useMemo(() => {
-    const currentState = vehicleStateMap.get(vehicleId);
-    if (currentState) {
-      // Keep a ref/state of the last time we saw this vehicle
-      if (lastState?.id !== currentState.id || lastState?.msEpochLastRun !== currentState.msEpochLastRun) {
-        setLastState(currentState);
-      }
+    return vehicleStateMap.get(vehicleId) || lastState;
+  }, [vehicleId, vehicleStateMap, lastState]);
 
-      return currentState;
-    }
-
+  // Handle Auto-Redirects as a Side Effect
+  useEffect(() => {
     const msCurrentTime = Date.now() - playbackOffset;
-    if (lastState && (lastState.msEpochLastRun < msCurrentTime)) {
+
+    // Case 1: Data has gone stale
+    if (lastState && (lastState.msEpochLastRun < msCurrentTime - (30 * 1000))) {
       gotoHomePage();
     }
 
-    return lastState;
-  // eslint-disable-next-line
-  }, [
-    vehicleId,
-    vehicleStateMap,
-    version,
-    lastState,
-    playbackOffset,
-    gotoHomePage
-  ]);
+    // Case 2: Explicit update for last state
+    const currentState = vehicleStateMap.get(vehicleId);
+    if (currentState && (lastState?.msEpochLastRun !== currentState.msEpochLastRun)) {
+      setLastState(currentState);
+    }
+  }, [vehicleStateMap, vehicleId, lastState, playbackOffset, gotoHomePage]);
 
   const getCoordinateAtBearingAndRange = useCallback((degLatitude: number, degLongitude: number, degBearing: number, mRange: number) => {
     const KM_EARTH_RADIUS = 6378.14;
@@ -200,7 +193,12 @@ export const DriverViewPage = () => {
                 ['+', ['get', 'bearing'], 180]
               ],
               'model-scale': [1, 1, 1],
-              'model-type': 'common-3d'
+              'model-type': 'common-3d',
+
+              // Grab the color from the feature properties
+              'model-color': ['get', 'vehicleColor'],
+              // 1.0 = fully replace texture color, 0.7 = heavy tint
+              'model-color-mix-intensity': 0.7
             }
           });
         }
@@ -240,17 +238,29 @@ export const DriverViewPage = () => {
     const map = driverViewPageMap?.getMap();
     if (!map || !isMapReady) return;
 
-    const features = Array.from(vehicleStateMap.values()).map((vState: any) => ({
-      type: 'Feature',
-      properties: { id: vState.id, bearing: vState.degBearing },
-      geometry: { type: 'Point', coordinates: [vState.degLongitude, vState.degLatitude] }
-    }));
+    const features = Array.from(vehicleStateMap.values())
+      .filter((vState: any) => vState.id !== vehicleId)
+      .map((vState: any) => ({
+        type: 'Feature',
+        properties: {
+          id: vState.id,
+          bearing: vState.degBearing,
+          vehicleColor: vState.colorCode || '#FFFFFF'
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [
+            vState.degLongitude,
+            vState.degLatitude
+          ]
+        }
+      }));
 
     const source: any = map.getSource('vehicle-positions');
     if (source) {
       source.setData({ type: 'FeatureCollection', features });
     }
-  }, [version, vehicleStateMap, driverViewPageMap, isMapReady]);
+  }, [version, vehicleStateMap, driverViewPageMap, isMapReady, vehicleId]);
 
   const toggleMapStyle = useCallback(() => {
     setIsMapReady(false);
