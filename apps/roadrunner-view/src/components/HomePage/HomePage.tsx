@@ -16,6 +16,7 @@ import { SimulationTable } from './SimulationTable';
 import { CONFIG } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
 import { useVehicleData } from '../../hooks/useVehicleData';
+import { ActivityHistogram } from './ActivityHistogram';
 
 export const HomePage = () => {
   const { homePageMap } = useMap();
@@ -25,6 +26,7 @@ export const HomePage = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isCreateVehicleActive, setIsCreateVehicleActive] = useState(false)
   const [showSimTable, setShowSimTable] = useState(false);
+  const [showActivityHistogram, setShowActivityHistogram] = useState(false);
 
   const {
     clearPlayback
@@ -145,8 +147,15 @@ export const HomePage = () => {
 
   const toggleSimTable = useCallback(() => {
     setShowSimTable(!showSimTable);
+    setShowActivityHistogram(false);
     clearData();
   }, [showSimTable, clearData]);
+
+  const toggleActivityHistogram = useCallback(() => {
+    setShowActivityHistogram(!showActivityHistogram)
+    setShowSimTable(false);
+    clearData();
+  }, [showActivityHistogram, clearData]);
 
   const returnToNow = useCallback(() => {
     clearPlayback();
@@ -176,6 +185,7 @@ export const HomePage = () => {
             <ManageMenu
               openCreateVehicle={openCreateVehicle}
               toggleSimTable={toggleSimTable}
+              toggleActivityHistogram={toggleActivityHistogram}
             />
           }
           />
@@ -246,6 +256,11 @@ export const HomePage = () => {
                 <SimulationTable
                   toggleSimTable={toggleSimTable}
                   returnToNow={returnToNow}
+                />
+              }
+              {showActivityHistogram &&
+                <ActivityHistogram
+                  toggleActivityHistogram={toggleActivityHistogram}
                 />
               }
               {vehicleStateList.map((vehicleState) => {

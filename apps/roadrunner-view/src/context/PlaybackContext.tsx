@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState } from 'react';
 
 interface PlaybackContextType {
   playbackOffset: number; // Offset in milliseconds
+  setPlaybackOffset: (offset: number) => void;
   setPlaybackSession: (startTime: string) => void;
   clearPlayback: () => void;
 }
@@ -26,7 +27,7 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }
 
   return (
-    <PlaybackContext.Provider value={{ playbackOffset, setPlaybackSession, clearPlayback }}>
+    <PlaybackContext.Provider value={{ playbackOffset, setPlaybackOffset, setPlaybackSession, clearPlayback }}>
       {children}
     </PlaybackContext.Provider>
   );

@@ -5,7 +5,8 @@ import { CONFIG } from "../../config";
 
 export const ManageMenu = (props: {
   openCreateVehicle: any,
-  toggleSimTable: any
+  toggleSimTable: any,
+  toggleActivityHistogram: any
 }) => {
   const navigate = useNavigate();
 
@@ -87,6 +88,11 @@ export const ManageMenu = (props: {
   function handleToggleSimTable() {
     props.toggleSimTable();
   }
+
+  function handleToggleActivityHistogram() {
+    props.toggleActivityHistogram();
+  }
+
   return (
     <div className="d-flex justify-content-left align-items-center">
       <UncontrolledDropdown nav inNavbar className="centered-dropdown">
@@ -111,6 +117,12 @@ export const ManageMenu = (props: {
             onClick={() => handleToggleSimTable()}
           >
           Toggle Sim Table
+          </DropdownItem>
+          <DropdownItem
+            id="simTable"
+            onClick={() => handleToggleActivityHistogram()}
+          >
+          Toggle Activity Histogram
           </DropdownItem>
           <DropdownItem
             id="resetServerBtn"
