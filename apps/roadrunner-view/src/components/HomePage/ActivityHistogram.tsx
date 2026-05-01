@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { fetchAuthSession } from "aws-amplify/auth";
 import { CONFIG } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
@@ -21,7 +21,15 @@ export const ActivityHistogram = (props: {
 }) => {
   const { playbackOffset, setPlaybackSession, clearPlayback } = usePlayback();
   const [sessions, setSessions] = useState<any[]>([]);
+
   const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const ABSOLUTE_END = Date.now();
+  const ABSOLUTE_START = ABSOLUTE_END - ONE_WEEK_MS;
+
+  const [domain, setDomain] = useState<[number, number]>([ABSOLUTE_START, ABSOLUTE_END]);
+
+  // Track the current time under the mouse for the zoom anchor
+  const [hoveredTime, setHoveredTime] = useState<number | null>(null);
 
   // Fetch all session data for the week
   useEffect(() => {
@@ -74,8 +82,6 @@ export const ActivityHistogram = (props: {
       const dateObj = new Date(key);
       const activeCount = activeCountMap.get(key);
 
-      console.log(dateObj, ":", activeCount);
-
       data.push({
         time: dateObj,
         // X-Axis usually looks better with just the date or hour
@@ -108,13 +114,41 @@ export const ActivityHistogram = (props: {
     }
   };
 
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (hoveredTime === null) return;
+
+    const [currentStart, currentEnd] = domain;
+    const zoomFactor = 0.1; // 10% zoom per scroll notch
+    const direction = e.deltaY < 0 ? 1 : -1; // Negative deltaY is scroll up (zoom in)
+
+    if (direction === -1) {
+      let newStart = currentStart - (hoveredTime - currentStart) * zoomFactor;
+      let newEnd = currentEnd + (currentEnd - hoveredTime) * zoomFactor;
+
+      newStart = Math.max(ABSOLUTE_START, newStart);
+      newEnd = Math.min(ABSOLUTE_END, newEnd);
+
+      setDomain([newStart, newEnd]);
+      return;
+    }
+
+    // Zoom In: Contract start and end around hoveredTime
+    const newStart = currentStart + (hoveredTime - currentStart) * zoomFactor;
+    const newEnd = currentEnd - (currentEnd - hoveredTime) * zoomFactor;
+
+    // Prevent zooming in too far (e.g., closer than 1 minute)
+
+    if (newEnd - newStart > 60000) {
+      setDomain([newStart, newEnd]);
+    }
+  }, [domain, hoveredTime, ABSOLUTE_START, ABSOLUTE_END]);
+
   const currentPlaybackTime = Date.now() - playbackOffset;
-  const msEndDomain = Date.now();
-  const msStartDomain = msEndDomain - ONE_WEEK_MS;
 
   return (
     <div
       className="activity-histogram-container"
+      onWheel={handleWheel}
       style={{
         position: 'relative',
         background: 'rgba(255, 255, 255, 0.6)',
@@ -133,7 +167,17 @@ export const ActivityHistogram = (props: {
           <LineChart
             data={chartData}
             onMouseDown={handleChartClick}
-            style={{ cursor: 'pointer' }}
+            onMouseMove={(state) => {
+              // Recharts activeLabel can be string | number.
+              // We check if it is a number before setting our state.
+              if (state && typeof state.activeLabel === 'number') {
+                setHoveredTime(state.activeLabel);
+              } else {
+                setHoveredTime(null);
+              }
+            }}
+            onMouseLeave={() => setHoveredTime(null)}
+            style={{ cursor: 'crosshair' }}
           >
             <CartesianGrid
               strokeDasharray="3 3"
@@ -144,7 +188,8 @@ export const ActivityHistogram = (props: {
             <XAxis
               dataKey="msTime"
               type="number"
-              domain={[msStartDomain, msEndDomain]}
+              allowDataOverflow={true}
+              domain={domain}
               tickFormatter={(unixTime) => new Date(unixTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}
             />
             <YAxis />
@@ -159,7 +204,10 @@ export const ActivityHistogram = (props: {
               dataKey="count"
               stroke="#8884d8"
               fill="#8884d8"
+              strokeWidth={7}
               fillOpacity={0.8}
+              connectNulls={true}
+              isAnimationActive={false}
             />
             <ReferenceLine x={new Date(currentPlaybackTime).toLocaleDateString()} stroke="red" label="Now Playing" />
           </LineChart>
