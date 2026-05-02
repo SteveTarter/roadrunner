@@ -22,6 +22,10 @@ export class MapWrapper<K, V> {
     this.wrappedMap.clear();
   }
 
+  public keys() {
+    return this.wrappedMap.keys();
+  }
+
   public values() {
     return this.wrappedMap.values();
   }

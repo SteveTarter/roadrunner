@@ -5,7 +5,8 @@ import { CONFIG } from "../../config";
 
 export const ManageMenu = (props: {
   openCreateVehicle: any,
-  toggleSimTable: any
+  toggleSimTable: any,
+  toggleShowActiveVehiclePlot: any
 }) => {
   const navigate = useNavigate();
 
@@ -87,13 +88,18 @@ export const ManageMenu = (props: {
   function handleToggleSimTable() {
     props.toggleSimTable();
   }
+
+  function handleToggleShowActiveVehiclePlot() {
+    props.toggleShowActiveVehiclePlot();
+  }
+
   return (
     <div className="d-flex justify-content-left align-items-center">
       <UncontrolledDropdown nav inNavbar className="centered-dropdown">
         <DropdownToggle nav caret style={{ fontSize: "1.1rem" }}>
           Manage
         </DropdownToggle>
-        <DropdownMenu>
+        <DropdownMenu className="wide-dropdown">
           <DropdownItem
             id="createVehicleBtn"
             onClick={() => handleCreateVehicle()}
@@ -110,7 +116,13 @@ export const ManageMenu = (props: {
             id="simTable"
             onClick={() => handleToggleSimTable()}
           >
-          Toggle Sim Table
+          Sim Table
+          </DropdownItem>
+          <DropdownItem
+            id="simTable"
+            onClick={() => handleToggleShowActiveVehiclePlot()}
+          >
+          Active Vehicle Plot
           </DropdownItem>
           <DropdownItem
             id="resetServerBtn"

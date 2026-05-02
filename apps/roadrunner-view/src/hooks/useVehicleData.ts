@@ -18,7 +18,7 @@ export const useVehicleData = ({
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isInterpolationEnabled, setIsInterpolationEnabled] = useState(true);
   const isFetchingRef = useRef(false);
-  const { playbackOffset } = usePlayback();
+  const { playbackOffset, setPlaybackOffset } = usePlayback();
 
   // The master storage of every state we've fetched
   const masterBuffer = useRef<VehicleState[]>([]);
@@ -33,7 +33,13 @@ export const useVehicleData = ({
    * This ensures all page requests for this "batch" use the same server cache.
    */
   const timeAnchor = useMemo(() => {
+    // playbackOffset got set to NaN somehow.  This "cleans" that state.
+    if (isNaN(playbackOffset)) {
+      setPlaybackOffset(0);
+      return null;
+    }
     if (playbackOffset === 0) return null;
+
     const bufferBackfillTime = 5000; // 5 seconds ahead
     return new Date(Date.now() - playbackOffset + bufferBackfillTime).toISOString();
   // eslint-disable-next-line
