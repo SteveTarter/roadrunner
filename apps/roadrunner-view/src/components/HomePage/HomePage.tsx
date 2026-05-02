@@ -16,7 +16,7 @@ import { SimulationTable } from './SimulationTable';
 import { CONFIG } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
 import { useVehicleData } from '../../hooks/useVehicleData';
-import { ActivityHistogram } from './ActivityHistogram';
+import { ActiveVehiclePlot } from './ActiveVehiclePlot';
 
 export const HomePage = () => {
   const { homePageMap } = useMap();
@@ -26,7 +26,7 @@ export const HomePage = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isCreateVehicleActive, setIsCreateVehicleActive] = useState(false)
   const [showSimTable, setShowSimTable] = useState(false);
-  const [showActivityHistogram, setShowActivityHistogram] = useState(false);
+  const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
 
   const {
     clearPlayback
@@ -147,15 +147,15 @@ export const HomePage = () => {
 
   const toggleSimTable = useCallback(() => {
     setShowSimTable(!showSimTable);
-    setShowActivityHistogram(false);
+    setShowActiveVehiclePlot(false);
     clearData();
   }, [showSimTable, clearData]);
 
-  const toggleActivityHistogram = useCallback(() => {
-    setShowActivityHistogram(!showActivityHistogram)
+  const toggleShowActiveVehiclePlot = useCallback(() => {
+    setShowActiveVehiclePlot(!showActiveVehiclePlot)
     setShowSimTable(false);
     clearData();
-  }, [showActivityHistogram, clearData]);
+  }, [showActiveVehiclePlot, clearData]);
 
   const returnToNow = useCallback(() => {
     clearPlayback();
@@ -185,7 +185,7 @@ export const HomePage = () => {
             <ManageMenu
               openCreateVehicle={openCreateVehicle}
               toggleSimTable={toggleSimTable}
-              toggleActivityHistogram={toggleActivityHistogram}
+              toggleShowActiveVehiclePlot={toggleShowActiveVehiclePlot}
             />
           }
           />
@@ -258,9 +258,9 @@ export const HomePage = () => {
                   returnToNow={returnToNow}
                 />
               }
-              {showActivityHistogram &&
-                <ActivityHistogram
-                  toggleActivityHistogram={toggleActivityHistogram}
+              {showActiveVehiclePlot &&
+                <ActiveVehiclePlot
+                  toggleShowActiveVehiclePlot={toggleShowActiveVehiclePlot}
                 />
               }
               {vehicleStateList.map((vehicleState) => {

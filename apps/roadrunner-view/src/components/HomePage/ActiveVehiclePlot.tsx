@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { fetchAuthSession } from "aws-amplify/auth";
 import { CONFIG } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
-import { Button, Form } from "react-bootstrap";
+import { Button } from "react-bootstrap";
 import {
   LineChart,
   Line,
@@ -16,8 +16,8 @@ import {
 
 import { MapWrapper } from '../Utils/MapWrapper';
 
-export const ActivityHistogram = (props: {
-  toggleActivityHistogram: any
+export const ActiveVehiclePlot = (props: {
+  toggleShowActiveVehiclePlot: any
 }) => {
   const { playbackOffset, setPlaybackSession, clearPlayback } = usePlayback();
   const [sessions, setSessions] = useState<any[]>([]);
@@ -47,7 +47,7 @@ export const ActivityHistogram = (props: {
     loadAllSessions();
   }, []);
 
-  // 2. Generate Chart Data
+  // Generate Chart Data
   const chartData = useMemo(() => {
     const data: any[] = [];
 
@@ -57,11 +57,11 @@ export const ActivityHistogram = (props: {
       const msStart = new Date(s.start).getTime();
       const msEnd = s.end ? new Date(s.end).getTime() : msStart;
 
-      // A start event should increment actions for this timestamp
+      // A start event increments action count for this timestamp
       var startCount = eventMap.get(msStart) || 0;
       eventMap.set(msStart, startCount + 1);
 
-      // An end event should decrement actions for this timestamp
+      // An end event decrements action count for this timestamp
       var endCount = eventMap.get(msEnd) || 0;
       eventMap.set(msEnd, endCount - 1);
     })
@@ -100,9 +100,31 @@ export const ActivityHistogram = (props: {
     return data;
   }, [sessions]);
 
-  // 3. Handle Slider (converts absolute time back to offset)
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPlaybackSession(e.target.value); // Requires adding setPlaybackOffset to PlaybackContext
+  // Helper to format the title based on the viewable span
+  const getDynamicTitle = (start: number, end: number) => {
+    const span = end - start;
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+
+    if (span > 24 * 60 * 60 * 1000 * 2) { // Greater than 2 days
+      return `Vehicle Activity: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+    } else if (span > 60 * 60 * 1000) { // Greater than 1 hour
+      return `Vehicle Activity: ${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} to ${endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    return `Vehicle Activity: ${startDate.toLocaleString()}`;
+  };
+
+  // Helper for X-Axis ticks
+  const formatXAxis = (unixTime: number, domain: [number, number]) => {
+    const span = domain[1] - domain[0];
+    const date = new Date(unixTime);
+
+    if (span < 60 * 60 * 1000 * 2) { // Less than 2 hours: show minutes/seconds
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } else if (span < 24 * 60 * 60 * 1000) { // Less than a day: show hours
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' }); // Default: Date
   };
 
   const handleChartClick = (state: any) => {
@@ -110,7 +132,7 @@ export const ActivityHistogram = (props: {
     if (state && state.activeLabel) {
       setPlaybackSession(state.activeLabel); // This updates the global playback state
       console.log("Warping to:", state.activeLabel);
-      props.toggleActivityHistogram();
+      props.toggleShowActiveVehiclePlot();
     }
   };
 
@@ -147,7 +169,7 @@ export const ActivityHistogram = (props: {
 
   return (
     <div
-      className="activity-histogram-container"
+      className="active-vehicle-plot-container"
       onWheel={handleWheel}
       style={{
         position: 'relative',
@@ -157,10 +179,9 @@ export const ActivityHistogram = (props: {
         borderRadius: '8px',
         zIndex: 1000,
         paddingBottom: '65px',
-
       }}
     >
-      <h5>Fleet Activity (Last 7 Days)</h5>
+      <h5>{getDynamicTitle(domain[0], domain[1])}</h5>
 
       <div style={{ width: '100%', height: 300 }}>
         <ResponsiveContainer>
@@ -190,9 +211,20 @@ export const ActivityHistogram = (props: {
               type="number"
               allowDataOverflow={true}
               domain={domain}
-              tickFormatter={(unixTime) => new Date(unixTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+              tickFormatter={(unixTime) => formatXAxis(unixTime, domain)}
             />
             <YAxis />
+
+            {/* Sweeping Line: Only show if it falls within the current visible domain */}
+            {currentPlaybackTime >= domain[0] && currentPlaybackTime <= domain[1] && (
+              <ReferenceLine
+                x={currentPlaybackTime}
+                stroke="red"
+                strokeWidth={2}
+                zIndex={1001}
+                label={{ position: 'top', value: 'Live', fill: 'red', fontSize: 10 }}
+              />
+            )}
 
             <Tooltip
               labelFormatter={(label, payload) =>
@@ -204,34 +236,19 @@ export const ActivityHistogram = (props: {
               dataKey="count"
               stroke="#8884d8"
               fill="#8884d8"
-              strokeWidth={7}
+              strokeWidth={2}
               fillOpacity={0.8}
+              dot={false}
               connectNulls={true}
               isAnimationActive={false}
             />
-            <ReferenceLine x={new Date(currentPlaybackTime).toLocaleDateString()} stroke="red" label="Now Playing" />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      <Form.Group className="mt-3">
-        <Form.Label>Playback Seeker</Form.Label>
-        <Form.Range
-          min={Date.now() - ONE_WEEK_MS}
-          max={Date.now()}
-          value={currentPlaybackTime}
-          onChange={handleSliderChange}
-        />
-        <div className="d-flex justify-content-between">
-          <small>7 Days Ago</small>
-          <strong>{new Date(currentPlaybackTime).toISOString()}</strong>
-          <small>Live</small>
-        </div>
-      </Form.Group>
-
       <div className="mt-3 d-flex gap-2">
         <Button variant="warning" onClick={clearPlayback}>Return to Live</Button>
-        <Button variant="secondary" onClick={props.toggleActivityHistogram}>Close</Button>
+        <Button variant="secondary" onClick={props.toggleShowActiveVehiclePlot}>Close</Button>
       </div>
     </div>
   );

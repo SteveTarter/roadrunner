@@ -6,7 +6,7 @@ import { CONFIG } from "../../config";
 export const ManageMenu = (props: {
   openCreateVehicle: any,
   toggleSimTable: any,
-  toggleActivityHistogram: any
+  toggleShowActiveVehiclePlot: any
 }) => {
   const navigate = useNavigate();
 
@@ -89,8 +89,8 @@ export const ManageMenu = (props: {
     props.toggleSimTable();
   }
 
-  function handleToggleActivityHistogram() {
-    props.toggleActivityHistogram();
+  function handleToggleShowActiveVehiclePlot() {
+    props.toggleShowActiveVehiclePlot();
   }
 
   return (
@@ -99,7 +99,7 @@ export const ManageMenu = (props: {
         <DropdownToggle nav caret style={{ fontSize: "1.1rem" }}>
           Manage
         </DropdownToggle>
-        <DropdownMenu>
+        <DropdownMenu className="wide-dropdown">
           <DropdownItem
             id="createVehicleBtn"
             onClick={() => handleCreateVehicle()}
@@ -116,13 +116,13 @@ export const ManageMenu = (props: {
             id="simTable"
             onClick={() => handleToggleSimTable()}
           >
-          Toggle Sim Table
+          Sim Table
           </DropdownItem>
           <DropdownItem
             id="simTable"
-            onClick={() => handleToggleActivityHistogram()}
+            onClick={() => handleToggleShowActiveVehiclePlot()}
           >
-          Toggle Activity Histogram
+          Active Vehicle Plot
           </DropdownItem>
           <DropdownItem
             id="resetServerBtn"
