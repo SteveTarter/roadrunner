@@ -22,14 +22,20 @@ export const ActiveVehiclePlot = (props: {
   const { playbackOffset, setPlaybackSession, clearPlayback } = usePlayback();
   const [sessions, setSessions] = useState<any[]>([]);
 
-  const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-  const ABSOLUTE_END = Date.now();
-  const ABSOLUTE_START = ABSOLUTE_END - ONE_WEEK_MS;
+  const [touchStartDist, setTouchStartDist] = useState<number | null>(null);
+  const [midX, setMidX] = useState<number | null>(null);
+  const [msXPoint, setMsXPoint] = useState<number | null>(null);
 
-  const [domain, setDomain] = useState<[number, number]>([ABSOLUTE_START, ABSOLUTE_END]);
+  const chartRef = React.useRef<HTMLDivElement>(null);
+
+  const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const INITIAL_END = Date.now();
+  const INITIAL_START = INITIAL_END - ONE_WEEK_MS;
+
+  const [domain, setDomain] = useState<[number, number]>([INITIAL_START, INITIAL_END]);
 
   // Track the current time under the mouse for the zoom anchor
-  const [hoveredTime, setHoveredTime] = useState<number | null>(null);
+  //const [hoveredTime, setHoveredTime] = useState<number | null>(null);
 
   // Fetch all session data for the week
   useEffect(() => {
@@ -46,6 +52,32 @@ export const ActiveVehiclePlot = (props: {
     }
     loadAllSessions();
   }, []);
+
+  useEffect(() => {
+    if(!chartRef || !chartRef.current || !midX) return;
+
+    // Get the bounding box of the chart container
+    const rect = chartRef.current.getBoundingClientRect();
+    const [currentStart, currentEnd] = domain;
+
+    // Define the chart margins (Recharts defaults + Y-Axis width)
+    // Usually, the Y-Axis takes about 60px, and there's a 5px margin.
+    // You can inspect your specific chart to tune these numbers.
+    const chartMarginLeft = 65;
+    const chartMarginRight = 5;
+    const chartWidth = rect.width - chartMarginLeft - chartMarginRight;
+
+    // Calculate where the mouse is relative to the start of the line area
+    const xInChart = midX - rect.left - chartMarginLeft;
+
+    // Calculate the percentage across the X-axis (clamped between 0 and 1)
+    const percentage = Math.max(0, Math.min(1, xInChart / chartWidth));
+
+    // Map that percentage to your current time domain
+    const timeSpan = currentEnd - currentStart;
+    const exactMsTime = currentStart + (timeSpan * percentage);
+    setMsXPoint(exactMsTime);
+  }, [chartRef, midX, domain]);
 
   // Generate Chart Data
   const chartData = useMemo(() => {
@@ -100,6 +132,33 @@ export const ActiveVehiclePlot = (props: {
     return data;
   }, [sessions]);
 
+  // Extracted zoom logic for reuse between Wheel and Touch
+  const performZoom = useCallback((isZoomIn: boolean, anchor: number) => {
+    const [currentStart, currentEnd] = domain;
+    const zoomFactor = 0.1;
+
+    if (isZoomIn) {
+      let newStart = currentStart + (anchor - currentStart) * zoomFactor;
+      let newEnd = currentEnd - (currentEnd - anchor) * zoomFactor;
+
+      newStart = Math.max(INITIAL_START, newStart);
+      newEnd = Math.min(INITIAL_END, newEnd);
+
+      // Prevent zooming in too far (e.g., closer than 1 minute)
+      if (newEnd - newStart > 60000) {
+        setDomain([newStart, newEnd]);
+      }
+    } else {
+      let newStart = currentStart - (anchor - currentStart) * zoomFactor;
+      let newEnd = currentEnd + (currentEnd - anchor) * zoomFactor;
+
+      newStart = Math.max(INITIAL_START, newStart);
+      newEnd = Math.min(INITIAL_END, newEnd);
+
+      setDomain([newStart, newEnd]);
+    }
+  }, [domain, INITIAL_END, INITIAL_START]);
+
   // Helper to format the title based on the viewable span
   const getDynamicTitle = (start: number, end: number) => {
     const span = end - start;
@@ -128,50 +187,96 @@ export const ActiveVehiclePlot = (props: {
   };
 
   const handleChartClick = (state: any) => {
-    // Check if activePayload exists (this contains the data for the clicked point)
-    if (state && state.activeLabel) {
-      setPlaybackSession(state.activeLabel); // This updates the global playback state
-      console.log("Warping to:", state.activeLabel);
+    if (!msXPoint) return;
+
+    const strExactMsTime = new Date(msXPoint).toISOString();
+
+    // Update the playback session
+    setPlaybackSession(strExactMsTime);
+
+    console.log("Warping to calculated time:", strExactMsTime);
+    props.toggleShowActiveVehiclePlot();
+  };
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (msXPoint === null) return;
+
+    performZoom(e.deltaY < 0, msXPoint);
+  }, [performZoom, msXPoint]);
+
+  const getTouchDist = (e: React.TouchEvent) => {
+    if (e.touches.length !== 2) return null;
+    const dx = e.touches[0].pageX - e.touches[1].pageX;
+    const dy = e.touches[0].pageY - e.touches[1].pageY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = getTouchDist(e);
+      setTouchStartDist(dist);
+      // Use the midpoint between two fingers as the zoom anchor
+      setMidX((e.touches[0].pageX + e.touches[1].pageX) / 2);
+    }
+    if ((e.touches.length === 1) && !touchStartDist) {
+      if (!msXPoint) return;
+
+      const strExactMsTime = new Date(msXPoint).toISOString();
+
+      // Update the playback session
+      setPlaybackSession(strExactMsTime);
+
+      console.log("Warping to calculated time:", strExactMsTime);
       props.toggleShowActiveVehiclePlot();
     }
   };
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (hoveredTime === null) return;
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchStartDist !== null) {
+      const currentDist = getTouchDist(e);
+      if (!currentDist) return;
+      if (!msXPoint) return;
 
-    const [currentStart, currentEnd] = domain;
-    const zoomFactor = 0.1; // 10% zoom per scroll notch
-    const direction = e.deltaY < 0 ? 1 : -1; // Negative deltaY is scroll up (zoom in)
+      const zoomThreshold = 2; // Pixels
+      const diff = currentDist - touchStartDist;
 
-    if (direction === -1) {
-      let newStart = currentStart - (hoveredTime - currentStart) * zoomFactor;
-      let newEnd = currentEnd + (currentEnd - hoveredTime) * zoomFactor;
+      if (Math.abs(diff) > zoomThreshold) {
+        const isZoomIn = diff > 0;
 
-      newStart = Math.max(ABSOLUTE_START, newStart);
-      newEnd = Math.min(ABSOLUTE_END, newEnd);
+        performZoom(isZoomIn, msXPoint);
 
-      setDomain([newStart, newEnd]);
-      return;
+        // Update starting distance to allow continuous zooming
+        setTouchStartDist(currentDist);
+      }
     }
+  };
 
-    // Zoom In: Contract start and end around hoveredTime
-    const newStart = currentStart + (hoveredTime - currentStart) * zoomFactor;
-    const newEnd = currentEnd - (currentEnd - hoveredTime) * zoomFactor;
-
-    // Prevent zooming in too far (e.g., closer than 1 minute)
-
-    if (newEnd - newStart > 60000) {
-      setDomain([newStart, newEnd]);
-    }
-  }, [domain, hoveredTime, ABSOLUTE_START, ABSOLUTE_END]);
 
   const currentPlaybackTime = Date.now() - playbackOffset;
 
   return (
     <div
+      ref={chartRef}
       className="active-vehicle-plot-container"
       onWheel={handleWheel}
+      onMouseMove={(state) => {
+        if (state && state.clientX) {
+          setMidX(state.clientX);
+        }
+      }}
+      onMouseLeave={() => {
+        setMidX(null);
+        setMsXPoint(null);
+      }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={() => {
+        setMidX(null);
+        setMsXPoint(null);
+        setTouchStartDist(null);
+      }}
       style={{
+        touchAction: 'none',
         position: 'relative',
         background: 'rgba(255, 255, 255, 0.6)',
         backdropFilter: 'blur(2px)',
@@ -188,16 +293,6 @@ export const ActiveVehiclePlot = (props: {
           <LineChart
             data={chartData}
             onMouseDown={handleChartClick}
-            onMouseMove={(state) => {
-              // Recharts activeLabel can be string | number.
-              // We check if it is a number before setting our state.
-              if (state && typeof state.activeLabel === 'number') {
-                setHoveredTime(state.activeLabel);
-              } else {
-                setHoveredTime(null);
-              }
-            }}
-            onMouseLeave={() => setHoveredTime(null)}
             style={{ cursor: 'crosshair' }}
           >
             <CartesianGrid
