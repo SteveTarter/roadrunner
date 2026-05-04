@@ -15,6 +15,7 @@ import { CreateVehiclePanel } from './CreateVehiclePanel';
 import { SimulationTable } from './SimulationTable';
 import { CONFIG } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
+import { useMapViewState } from '../../context/MapViewStateContext';
 import { useVehicleData } from '../../hooks/useVehicleData';
 import { ActiveVehiclePlot } from './ActiveVehiclePlot';
 
@@ -31,6 +32,11 @@ export const HomePage = () => {
   const {
     clearPlayback
   } = usePlayback();
+
+  const {
+    homeMapViewState,
+    setHomeMapViewState
+  } = useMapViewState();
 
   const {
     vehicleStateMap,
@@ -100,19 +106,6 @@ export const HomePage = () => {
     setTimeout(() => setIsTransitioning(false), 500);
   }, [mapStyle, homePageMap]);
 
-  const onZoom = useCallback((viewState: any) => {
-    const currentZoom = viewState.zoom;
-    let size = MIN_SIZE;
-    if (currentZoom >= MIN_ZOOM && currentZoom <= MAX_ZOOM) {
-      size = (MAX_SIZE * Math.pow((2.0 / 3.0), (MAX_ZOOM - currentZoom)));
-    }
-    else if (currentZoom > MAX_ZOOM) {
-      size = MAX_SIZE;
-    }
-    if (size < 0) size = MIN_SIZE;
-    setVehicleSize(size);
-  }, []);
-
   const onClick = useCallback((event: any) => {
     let bestVehicle: VehicleDisplay | undefined = {} as VehicleDisplay;
     let bestDistance = 50;
@@ -162,6 +155,27 @@ export const HomePage = () => {
     clearData();
   }, [clearPlayback, clearData]);
 
+  const onMove = useCallback((evt: any) => {
+    const { viewState } = evt;
+
+    // Handle vehicle sizing
+    const currentZoom = viewState.zoom;
+
+    let size = MIN_SIZE;
+    if (currentZoom >= MIN_ZOOM && currentZoom <= MAX_ZOOM) {
+      size = (MAX_SIZE * Math.pow((2.0 / 3.0), (MAX_ZOOM - currentZoom)));
+    } else if (currentZoom > MAX_ZOOM) {
+      size = MAX_SIZE;
+    }
+    setVehicleSize(Math.max(size, MIN_SIZE));
+
+    // Mapbox occasionally fires onMove with 0,0 on mount.
+    // Ensure we actually have coordinates before saving to Context.
+    if (viewState.latitude !== 0 && viewState.longitude !== 0) {
+      setHomeMapViewState(viewState);
+    }
+  }, [setHomeMapViewState]);
+
   const hideAllRoutes = () => setAllRoutesVisibility(false);
   const showAllRoutes = () => setAllRoutesVisibility(true);
 
@@ -170,16 +184,12 @@ export const HomePage = () => {
       <div className="map-container">
         <Map
           id="homePageMap"
+          {...homeMapViewState}
           mapStyle={mapStyle}
           mapboxAccessToken={mapboxToken}
           fog={{}}
-          initialViewState={{
-            longitude: -97.5,
-            latitude: 32.75,
-            zoom: 10,
-          }}
+          onMove={onMove}
           onClick={(event) => onClick(event)}
-          onZoom={(viewStateChangeEvent) => onZoom(viewStateChangeEvent)}
         >
           <AppNavBar additionalMenuItems={
             <ManageMenu

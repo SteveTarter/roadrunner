@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 
 interface PlaybackContextType {
   playbackOffset: number; // Offset in milliseconds
@@ -10,20 +10,29 @@ interface PlaybackContextType {
 const PlaybackContext = createContext<PlaybackContextType | undefined>(undefined);
 
 export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const tabId = useMemo(() => {
+    if (!window.name) {
+      window.name = `tab_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    return window.name;
+  }, []);
+
+  const storageKey = `roadrunner_offset_${tabId}`;
+
   const [playbackOffset, setPlaybackOffset] = useState<number>(() => {
-    const saved = localStorage.getItem('roadrunner_offset');
+    const saved = sessionStorage.getItem(storageKey);
     return saved ? parseInt(saved, 10) : 0;
   });
 
   const setPlaybackSession = (startTime: string) => {
     const offset = Date.now() - new Date(startTime).getTime();
     setPlaybackOffset(offset);
-    localStorage.setItem('roadrunner_offset', offset.toString());
+    sessionStorage.setItem(storageKey, offset.toString());
   };
 
   const clearPlayback = () => {
     setPlaybackOffset(0);
-    localStorage.removeItem('roadrunner_offset');
+    sessionStorage.removeItem(storageKey);
   }
 
   return (
