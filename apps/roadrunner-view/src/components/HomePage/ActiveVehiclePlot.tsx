@@ -60,21 +60,28 @@ export const ActiveVehiclePlot = (props: {
     const rect = chartRef.current.getBoundingClientRect();
     const [currentStart, currentEnd] = domain;
 
+    // If the mouse is outside the LineChart area, the msXPoint is invalid.
+    if((midX < 84) || (midX > rect.width - 26)) {
+      setMsXPoint(null);
+      return;
+    }
+
     // Define the chart margins (Recharts defaults + Y-Axis width)
     // Usually, the Y-Axis takes about 60px, and there's a 5px margin.
     // You can inspect your specific chart to tune these numbers.
-    const chartMarginLeft = 65;
-    const chartMarginRight = 5;
+    const chartMarginLeft = 84;
+    const chartMarginRight = 26;
     const chartWidth = rect.width - chartMarginLeft - chartMarginRight;
 
     // Calculate where the mouse is relative to the start of the line area
     const xInChart = midX - rect.left - chartMarginLeft;
 
+    const timeSpan = currentEnd - currentStart;
+
     // Calculate the percentage across the X-axis (clamped between 0 and 1)
     const percentage = Math.max(0, Math.min(1, xInChart / chartWidth));
 
     // Map that percentage to your current time domain
-    const timeSpan = currentEnd - currentStart;
     const exactMsTime = currentStart + (timeSpan * percentage);
     setMsXPoint(exactMsTime);
   }, [chartRef, midX, domain]);
@@ -194,7 +201,6 @@ export const ActiveVehiclePlot = (props: {
     // Update the playback session
     setPlaybackSession(strExactMsTime);
 
-    console.log("Warping to calculated time:", strExactMsTime);
     props.toggleShowActiveVehiclePlot();
   };
 
