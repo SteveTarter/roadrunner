@@ -7,6 +7,7 @@ import { MapProvider } from 'react-map-gl';
 import { PlaybackProvider } from './context/PlaybackContext';
 
 import { configureAmplify } from "./amplify-config";
+import { MapViewStateProvider } from './context/MapViewStateContext';
 
 configureAmplify();
 
@@ -16,10 +17,12 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <MapProvider>
-    <BrowserRouter>
-      <PlaybackProvider>
-        <App />
-      </PlaybackProvider>
-    </BrowserRouter>
+    <MapViewStateProvider>
+      <BrowserRouter>
+        <PlaybackProvider>
+          <App />
+        </PlaybackProvider>
+      </BrowserRouter>
+    </MapViewStateProvider>
   </MapProvider>
 );
