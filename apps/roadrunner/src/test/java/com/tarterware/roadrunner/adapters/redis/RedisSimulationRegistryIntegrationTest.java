@@ -36,6 +36,7 @@ import com.tarterware.roadrunner.ports.TripPlanRepository;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
+import com.tarterware.roadrunner.services.IdentityService;
 import com.tarterware.roadrunner.services.IsochroneService;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 
@@ -87,6 +88,9 @@ public class RedisSimulationRegistryIntegrationTest
 
     @MockitoBean
     private IsochroneService isochroneService;
+
+    @MockitoBean
+    private IdentityService identityService;
 
     @MockitoBean
     private SecurityConfig securityConfig;
