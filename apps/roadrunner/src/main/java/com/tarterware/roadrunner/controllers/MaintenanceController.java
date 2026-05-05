@@ -1,5 +1,7 @@
 package com.tarterware.roadrunner.controllers;
 
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,9 +22,11 @@ public class MaintenanceController
     }
 
     @PostMapping("/cleanse-sessions")
-    public ResponseEntity<String> cleanseSessions()
+    public ResponseEntity<Map<String, String>> cleanseSessions()
     {
         maintenanceService.cleanseOrphanedSessions();
-        return ResponseEntity.ok("Cleanse operation initiated.");
+        return ResponseEntity.accepted().body(Map.of(
+                "status", "Operation Started",
+                "message", "Cleaning orphaned sessions in the background. Check logs for progress."));
     }
 }

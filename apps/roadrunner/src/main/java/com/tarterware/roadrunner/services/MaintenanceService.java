@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -19,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
@@ -91,17 +93,19 @@ public class MaintenanceService
         }
     }
 
+    @Async
     public void cleanseOrphanedSessions()
     {
         List<SimulationSession> orphans = registry.getAllSessions().stream()
                 .filter(s -> s.getEnd() == null)
                 .collect(Collectors.toList());
 
-        log.info("Found {} potentially orphaned sessions.", orphans.size());
+        log.info("Background thread started. Found {} potentially orphaned sessions.",
+                orphans.size());
 
         for (SimulationSession session : orphans)
         {
-            // Step 1: Check if it's currently in the hot store
+            // Step 1: Check if it's currently in the memory store
             if (hotStore.getVehicle(session.getId()) != null)
             {
                 log.debug("Vehicle {} is still active in memory. Skipping.", session.getId());
@@ -125,24 +129,38 @@ public class MaintenanceService
         // Default to start time if no messages found
         Instant lastFoundTime = session.getStart();
 
-        // Grab 5 seconds worth of data at a time. When we encounter a buffer without
+        // Grab 1 minute worth of data at a time. When we encounter a buffer without
         // the vehicle ID, the search is over.
-        boolean vehiclePresent = true;
-        long step = 5000;
-        long msEpochTime = session.getStart().toEpochMilli();
-        while (vehiclePresent)
+        long windowSizeMs = 60000;
+        long currentPointer = session.getStart().toEpochMilli();
+        boolean searching = true;
+
+        while (searching)
         {
-            List<VehicleState> stateList = queryTopic(msEpochTime, msEpochTime + step);
-            boolean inBuffer = false;
-            for (VehicleState state : stateList)
+            List<VehicleState> states = queryTopic(currentPointer, currentPointer + windowSizeMs);
+
+            Optional<Long> latestInWindow = states.stream()
+                    .filter(s -> s.getId().equals(targetId))
+                    .map(VehicleState::getMsEpochLastRun)
+                    .max(Long::compare);
+
+            if (latestInWindow.isPresent())
             {
-                if (state.getId().equals(targetId))
-                {
-                    inBuffer = true;
-                    lastFoundTime = Instant.ofEpochMilli(state.getMsEpochLastRun());
-                }
+                lastFoundTime = Instant.ofEpochMilli(latestInWindow.get());
+                currentPointer += windowSizeMs; // Move pointer forward
             }
-            vehiclePresent = inBuffer;
+            else
+            {
+                // If the vehicle isn't in this 1-minute window, it likely stopped in the
+                // previous one
+                searching = false;
+            }
+
+            // Safety break: Don't search into the future
+            if (currentPointer > System.currentTimeMillis())
+            {
+                searching = false;
+            }
         }
 
         return lastFoundTime;
