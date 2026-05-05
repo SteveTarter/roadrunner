@@ -2,16 +2,18 @@ import './DriverViewPage.css';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Map, { FullscreenControl, useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
+import { ActiveVehiclePlot } from "../Shared/ActiveVehiclePlot";
 import { PlaybackClock } from '../Utils/PlaybackClock';
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Button, Card } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSatellite, faHome, faMap, faMagic, faBars } from '@fortawesome/free-solid-svg-icons';
+import { faSatellite, faHome, faMap, faMagic, faBars, faChartLine } from '@fortawesome/free-solid-svg-icons';
 import { ViewControl } from './ViewControl';
 import { CONFIG } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
 import { usePlayback } from "../../context/PlaybackContext";
+import { useMapViewState } from '../../context/MapViewStateContext';
 
 export const DriverViewPage = () => {
   // Get the Vehicle ID from the URL in the window
@@ -31,11 +33,19 @@ export const DriverViewPage = () => {
   const [mapStyle, setMapStyle] = useState(MAP_STYLE_SATELLITE);
   const [isMapReady, setIsMapReady] = useState(false);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
+  const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
+  const [goingHome, setGoingHome] = useState(false);
 
   // Driver view offset from straight ahead
   const [degViewOffset, setDegViewOffset] = useState(0);
 
   const { playbackOffset } = usePlayback();
+
+  const {
+    homeMapViewState,
+    setHomeMapViewState
+  } = useMapViewState();
+
 
   // Integrated Hook
   // Driver view usually wants a static size (e.g., 20) for calculation logic
@@ -50,14 +60,23 @@ export const DriverViewPage = () => {
     intervalMs: 50
   });
 
-  const gotoHomePage = useCallback(() => {
-    navigate('/home');
-  }, [navigate]);
-
   // Logic to find current vehicle
   const vehicleState = useMemo(() => {
     return vehicleStateMap.get(vehicleId) || lastState;
   }, [vehicleId, vehicleStateMap, lastState]);
+
+  const gotoHomePage = useCallback(() => {
+    if(goingHome || !vehicleState) return;
+    setGoingHome(true);
+
+    setHomeMapViewState({
+      ...homeMapViewState,
+      longitude: vehicleState.degLongitude,
+      latitude: vehicleState.degLatitude
+    });
+
+    navigate('/home');
+  }, [navigate, vehicleState, homeMapViewState, setHomeMapViewState, goingHome]);
 
   // Handle Auto-Redirects as a Side Effect
   useEffect(() => {
@@ -274,6 +293,10 @@ export const DriverViewPage = () => {
     return lastDashIndex >= 0 ? host.substring(lastDashIndex + 1) : host;
   }, [vehicleState]);
 
+  const toggleShowActiveVehiclePlot = useCallback(() => {
+    setShowActiveVehiclePlot(!showActiveVehiclePlot)
+  }, [showActiveVehiclePlot]);
+
   // Show the map if we have isDataLoaded OR we have a lastState to show
   const shouldShowMap = (isDataLoaded || lastState) && vehicleState;
 
@@ -318,6 +341,11 @@ export const DriverViewPage = () => {
                 />
               </Button>
             </div>
+            <div style={{ position: "fixed", top: 10, left: 160 }}>
+              <Button onClick={() => setShowActiveVehiclePlot(!showActiveVehiclePlot)}>
+                <FontAwesomeIcon icon={faChartLine}/>
+              </Button>
+            </div>
             <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "10rem" }}>
 
               <Card style={{ width: '10rem', alignSelf: 'end', textAlign: 'center' }}>
@@ -338,6 +366,12 @@ export const DriverViewPage = () => {
                 </Card.Body>
               </Card>
             </div>
+            {showActiveVehiclePlot &&
+              <ActiveVehiclePlot
+                toggleShowActiveVehiclePlot={toggleShowActiveVehiclePlot}
+                vehicleId={vehicleId}
+              />
+            }
             <FullscreenControl />
           </Map>
       ) : (

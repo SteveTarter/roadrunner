@@ -17,7 +17,7 @@ import { CONFIG } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
 import { useMapViewState } from '../../context/MapViewStateContext';
 import { useVehicleData } from '../../hooks/useVehicleData';
-import { ActiveVehiclePlot } from './ActiveVehiclePlot';
+import { ActiveVehiclePlot } from '../Shared/ActiveVehiclePlot';
 
 export const HomePage = () => {
   const { homePageMap } = useMap();
