@@ -117,7 +117,7 @@ public class KafkaVehicleEventPublisherTest
                 kafkaPublisher, meterRegistry, environment);
 
         // Create the vehicle
-        vehicle = vehicleManager.createVehicle(mockTripPlan);
+        vehicle = vehicleManager.createVehicle(mockTripPlan, "testing@tarterware.com");
 
         // Capture the event sent to KafkaTemplate
         ArgumentCaptor<VehiclePositionEvent> eventCaptor = ArgumentCaptor.forClass(VehiclePositionEvent.class);
@@ -147,9 +147,9 @@ public class KafkaVehicleEventPublisherTest
                 kafkaPublisher, meterRegistry, environment);
 
         // Create the vehicle
-        vehicle = vehicleManager.createVehicle(mockTripPlan);
+        vehicle = vehicleManager.createVehicle(mockTripPlan, "testing@tarterware.com");
 
-        verify(simulationRegistry).recordStart(any(Vehicle.class), any(Instant.class));
+        verify(simulationRegistry).recordStart(any(Vehicle.class), anyString(), any(Instant.class));
         verify(kafkaTemplate).send(anyString(), anyString(), any(VehiclePositionEvent.class));
     }
 }

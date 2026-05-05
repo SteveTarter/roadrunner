@@ -31,6 +31,7 @@ import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
+import com.tarterware.roadrunner.services.IdentityService;
 import com.tarterware.roadrunner.services.IsochroneService;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 
@@ -67,6 +68,9 @@ class RoadrunnerApplicationTests
 
     @MockitoBean
     private IsochroneService isochroneService;
+
+    @MockitoBean
+    private IdentityService identityService;
 
     @MockitoBean
     private SecurityConfig securityConfig;

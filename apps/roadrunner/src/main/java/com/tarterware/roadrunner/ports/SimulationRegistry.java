@@ -28,7 +28,7 @@ public interface SimulationRegistry
      * @param vehicle   the vehicle in the simulation session
      * @param startTime the precise timestamp when the simulation began
      */
-    void recordStart(Vehicle vehicle, Instant startTime);
+    void recordStart(Vehicle vehicle, String username, Instant startTime);
 
     /**
      * Records the conclusion of a simulation session by updating its end timestamp.

@@ -12,7 +12,7 @@ public interface VehicleEventPublisher
      *
      * @param vehicle New Vehicle to publish.
      */
-    void publishVehicleCreated(Vehicle vehicle);
+    void publishVehicleCreated(Vehicle vehicle, String username);
 
     /**
      * Publish updated Vehicle information.

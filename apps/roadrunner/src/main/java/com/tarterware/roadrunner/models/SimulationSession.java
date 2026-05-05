@@ -31,6 +31,11 @@ public class SimulationSession
     UUID id;
 
     /**
+     * The username that created this vehicle.
+     */
+    String username;
+
+    /**
      * The color associated with this vehicle
      */
     String colorCode;

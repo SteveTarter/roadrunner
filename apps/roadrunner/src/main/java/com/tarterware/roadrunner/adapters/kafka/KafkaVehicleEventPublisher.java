@@ -63,10 +63,11 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
     }
 
     @Override
-    public void publishVehicleCreated(Vehicle vehicle)
+    public void publishVehicleCreated(Vehicle vehicle, String username)
     {
         simulationRegistry.recordStart(
                 vehicle,
+                username,
                 Instant.ofEpochMilli(vehicle.getLastCalculationEpochMillis()));
 
         publishEvent(vehicle, "CREATED");

@@ -81,9 +81,9 @@ class VehicleManagerTest
                 vehicleEventPublisher, meterRegistry, environment);
 
         // Create the vehicle
-        vehicle = vehicleManager.createVehicle(mockTripPlan);
+        vehicle = vehicleManager.createVehicle(mockTripPlan, "testing@tarterware.com");
 
         // Verify the abstraction was called
-        verify(vehicleEventPublisher, times(1)).publishVehicleCreated(vehicle);
+        verify(vehicleEventPublisher, times(1)).publishVehicleCreated(vehicle, "testing@tarterware.com");
     }
 }

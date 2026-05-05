@@ -264,9 +264,11 @@ public class VehicleManager
      * Creates a new Vehicle based on a TripPlan.
      *
      * @param tripPlan The TripPlan containing the route and stops for the Vehicle.
+     * @param username The username that requested the vehicle creation.
+     * 
      * @return The created Vehicle.
      */
-    public Vehicle createVehicle(TripPlan tripPlan)
+    public Vehicle createVehicle(TripPlan tripPlan, String username)
     {
         // Check for a valid trip plan.
         if (tripPlan == null)
@@ -292,9 +294,9 @@ public class VehicleManager
         this.vehicleMap.put(vehicle.getId(), vehicle);
         this.vehicleStateStore.saveVehicle(vehicle.getVehicleState());
         this.vehicleStateStore.addActiveVehicle(vehicle.getId());
-        this.vehicleEventPublisher.publishVehicleCreated(vehicle);
+        this.vehicleEventPublisher.publishVehicleCreated(vehicle, username);
 
-        logger.info("Created vehicle ID {}", vehicle.getId());
+        logger.info("User {} created vehicle ID {}", username, vehicle.getId());
         return vehicle;
     }
 
