@@ -64,10 +64,27 @@ export const SimulationTable = (props: {
   }, [pagination.pageIndex, pagination.pageSize]);
 
   const columns = useMemo(() => [
-    { accessorKey: 'id', header: 'Session ID' },
-    { accessorKey: 'start', header: 'Start Time' },
+    {
+      accessorKey: 'id',
+      header: 'Session ID',
+      size: 150,
+      // Shorten the UUID like a git commit ID (first 7-8 characters)
+      Cell: ({ cell }: any) => cell.getValue()?.substring(0, 8)
+    },
+    {
+      accessorKey: 'username',
+      header: 'Username',
+      size: 200,
+      // Fallback to "UNKNOWN" if username is missing or empty
+      Cell: ({ cell }: any) => cell.getValue() || "UNKNOWN"    },
+    {
+      accessorKey: 'start',
+      header: 'Start Time',
+      size: 200,
+    },
     {
       header: 'Actions',
+      size: 120,
       Cell: ({ row }: any) => {
         const { setPlaybackSession } = usePlayback();
         return (
@@ -93,40 +110,57 @@ export const SimulationTable = (props: {
         background: 'white',
         padding: '10px',
         borderRadius: '8px',
-        paddingBottom: '65px'
+        paddingBottom: '65px',
+        width: 'fit-content',
+        margin: 'auto'
       }}
     >
-      {/* Show the button only if we are currently in playback mode */}
-      {playbackOffset !== 0 && (
-        <Button
-          variant="warning"
-          className="mb-2"
-          onClick={() => {
-            props.returnToNow();
-            props.toggleSimTable();
-          }}
-          style={{
-            position: 'relative',
-            zIndex: 1001,
-            display: 'block', // Ensure it takes up its own line
-            width: '100%'
-          }}
-        >
-          Return to Current Time (Live)
-        </Button>
-      )}
       <MaterialReactTable
         columns={columns}
         data={data}
         manualPagination // Tells MRT NOT to do client-side paging
         rowCount={rowCount}
         onPaginationChange={setPagination}
-        state={{
-          pagination,
-         }}
-        muiTableContainerProps={{ sx: { maxHeight: '400px' } }} // Sets the scrollable area
+        state={{ pagination }}
+        layoutMode="grid" // Important for allowing columns to respect 'size'
+        displayColumnDefOptions={{
+          'mrt-row-actions': {
+            size: 100,
+          },
+        }}
+        muiTablePaperProps={{
+          sx: {
+            width: 'fit-content',
+            maxWidth: '100%',
+            margin: '0 auto'
+          }
+        }} // Sets the scrollable area
+        muiTableContainerProps={{
+          sx: {
+            maxHeight: '400px',
+            width: 'fit-content'
+          }
+        }} // Sets the scrollable area
         initialState={{ density: 'compact' }}
       />
+      {playbackOffset !== 0 && (
+        <Button
+          variant="success"
+          className="mb-2"
+          onClick={() => {
+            props.returnToNow();
+            props.toggleSimTable();
+          }}
+          style={{
+            position: 'absolute',
+            bottom: '10px',
+            right: '85px',
+            zIndex: 1001,
+          }}
+        >
+          Return to Now
+        </Button>
+      )}
       <Button
         variant="warning"
         className="mb-2"

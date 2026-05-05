@@ -57,22 +57,24 @@ export const ActiveVehiclePlot = (props: {
     // Get the bounding box of the chart container
     const rect = chartRef.current.getBoundingClientRect();
     const [currentStart, currentEnd] = domain;
+    console.log("midX: ", midX);
+    console.log("rect: ", rect);
+
+    const chartMarginLeft = 85;
+    const chartMarginRight = 24;
 
     // If the mouse is outside the LineChart area, the msXPoint is invalid.
-    if((midX < 84) || (midX > rect.width - 26)) {
+    if((midX < chartMarginLeft + rect.x) || (midX > rect.width + rect.x - chartMarginRight)) {
       setMsXPoint(null);
+      console.log("OUTSIDE CHART")
       return;
     }
 
     // Define the chart margins (Recharts defaults + Y-Axis width)
-    // Usually, the Y-Axis takes about 60px, and there's a 5px margin.
-    // You can inspect your specific chart to tune these numbers.
-    const chartMarginLeft = 84;
-    const chartMarginRight = 26;
     const chartWidth = rect.width - chartMarginLeft - chartMarginRight;
 
     // Calculate where the mouse is relative to the start of the line area
-    const xInChart = midX - rect.left - chartMarginLeft;
+    const xInChart = midX - chartMarginLeft - rect.x;
 
     const timeSpan = currentEnd - currentStart;
 
@@ -81,6 +83,10 @@ export const ActiveVehiclePlot = (props: {
 
     // Map that percentage to your current time domain
     const exactMsTime = currentStart + (timeSpan * percentage);
+
+    console.log("xInChart: ", xInChart);
+    console.log("exactMsTime: ", exactMsTime);
+
     setMsXPoint(exactMsTime);
   }, [chartRef, midX, domain]);
 
@@ -299,12 +305,15 @@ export const ActiveVehiclePlot = (props: {
       style={{
         touchAction: 'none',
         position: 'relative',
-        background: 'rgba(255, 255, 255, 0.6)',
+        background: 'rgba(255, 255, 255, 0.8)',
         backdropFilter: 'blur(2px)',
         padding: '20px',
         borderRadius: '8px',
         zIndex: 1000,
         paddingBottom: '65px',
+        width: '94%',
+        margin: '20px auto',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
       }}
     >
       <h5>{getDynamicTitle(domain[0], domain[1])}</h5>
@@ -362,8 +371,8 @@ export const ActiveVehiclePlot = (props: {
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-3 d-flex gap-2">
-        <Button variant="warning" onClick={clearPlayback}>Return to Live</Button>
+      <div className="mt-3 d-flex justify-content-end gap-2">
+        <Button variant="success" onClick={clearPlayback}>Return to Live</Button>
         <Button variant="secondary" onClick={props.toggleShowActiveVehiclePlot}>Close</Button>
       </div>
     </div>
