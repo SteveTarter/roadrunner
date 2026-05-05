@@ -16,6 +16,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,6 +38,7 @@ import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
 import com.tarterware.roadrunner.ports.SimulationRegistry;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
+import com.tarterware.roadrunner.services.IdentityService;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 /**
@@ -68,6 +71,8 @@ public class VehicleController
 
     private GeocodingService geocodingService;
 
+    private IdentityService identityService;
+
     private static final Logger log = LoggerFactory.getLogger(VehicleController.class);
 
     /**
@@ -84,13 +89,15 @@ public class VehicleController
             ControllerVehicleStateStore vehicleStateStore,
             SimulationRegistry simulationRegistry,
             DirectionsService directionsService,
-            GeocodingService geocodingService)
+            GeocodingService geocodingService,
+            IdentityService identityService)
     {
         this.vehicleManager = vehicleManager;
         this.vehicleStateStore = vehicleStateStore;
         this.simulationRegistry = simulationRegistry;
         this.directionsService = directionsService;
         this.geocodingService = geocodingService;
+        this.identityService = identityService;
 
         log.info("vehicleStateStore is {}", vehicleStateStore);
     }
@@ -99,14 +106,21 @@ public class VehicleController
      * Creates a single new vehicle based on the provided trip plan.
      *
      * @param tripPlan the plan containing stops and routing information
+     * @param jwt      The {@link Jwt} object containing the authenticated user's
+     *                 claims, representing the bearer token passed in the
+     *                 Authorization header.
      * @return a {@link ResponseEntity} containing the initial {@link VehicleState}
      */
     @PostMapping("/create-new")
     ResponseEntity<VehicleState> getNewVehicle(
             @RequestBody
-            TripPlan tripPlan)
+            TripPlan tripPlan,
+            @AuthenticationPrincipal
+            Jwt jwt)
     {
-        Vehicle vehicle = vehicleManager.createVehicle(tripPlan);
+        String userEmail = identityService.getEmailBySub(jwt.getSubject());
+
+        Vehicle vehicle = vehicleManager.createVehicle(tripPlan, userEmail);
         VehicleState vehicleState = vehicle.getVehicleState();
         vehicleStateStore.saveVehicle(vehicleState);
         vehicleStateStore.addActiveVehicle(vehicle.getId());
@@ -125,13 +139,20 @@ public class VehicleController
      *
      * @param crissCrossPlan configuration for the scenario, including vehicle count
      *                       and radius
+     * @param jwt            The {@link Jwt} object containing the authenticated
+     *                       user's claims, representing the bearer token passed in
+     *                       the Authorization header.
      * @return a list of {@link VehicleState} objects for the created vehicles
      */
     @PostMapping("/create-crisscross")
     ResponseEntity<List<VehicleState>> createCrissCrossVehicles(
             @RequestBody
-            CrissCrossPlan crissCrossPlan)
+            CrissCrossPlan crissCrossPlan,
+            @AuthenticationPrincipal
+            Jwt jwt)
     {
+        String userEmail = identityService.getEmailBySub(jwt.getSubject());
+
         List<VehicleState> listVehicleStates = new ArrayList<VehicleState>();
 
         // Create a Coordinate representing the center point.
@@ -169,7 +190,7 @@ public class VehicleController
             listStops.add(endAddress);
             tripPlan.setListStops(listStops);
 
-            Vehicle vehicle = vehicleManager.createVehicle(tripPlan);
+            Vehicle vehicle = vehicleManager.createVehicle(tripPlan, userEmail);
             VehicleState vehicleState = vehicle.getVehicleState();
 
             listVehicleStates.add(vehicleState);

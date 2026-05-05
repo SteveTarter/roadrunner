@@ -154,11 +154,11 @@ public class SimulationSessionControllerIntegrationTest
         Instant now = Instant.now();
 
         // Sim 1 started 10 minutes ago and finished 5 minutes ago
-        simulationRegistry.recordStart(vehicle1, now.minusSeconds(600));
+        simulationRegistry.recordStart(vehicle1, "testing@tarterware.com", now.minusSeconds(600));
         simulationRegistry.recordEnd(vehicle1.getId(), now.minusSeconds(300));
 
         // Sim 2 started 2 minutes ago and is still active (end is null)
-        simulationRegistry.recordStart(vehicle2, now.minusSeconds(120));
+        simulationRegistry.recordStart(vehicle2, "testing@tarterware.com", now.minusSeconds(120));
 
         // Act & Assert
         mockMvc.perform(get("/api/vehicle/simulation-sessions")

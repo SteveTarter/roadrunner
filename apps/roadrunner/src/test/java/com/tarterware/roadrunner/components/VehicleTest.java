@@ -128,7 +128,7 @@ class VehicleTest
                 vehicleEventPublisher, meterRegistry, environment);
 
         // Create the vehicle
-        vehicle = vehicleManager.createVehicle(mockTripPlan);
+        vehicle = vehicleManager.createVehicle(mockTripPlan, "testing@tarterware.com");
 
         // Ensure Redis returns the vehicle when asked by ID
         UUID vehicleId = vehicle.getId();

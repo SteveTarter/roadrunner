@@ -135,7 +135,7 @@ public class RedisSimulationRegistryIntegrationTest
         Vehicle vehicle = new Vehicle();
         Instant startTime = Instant.now();
 
-        registry.recordStart(vehicle, startTime);
+        registry.recordStart(vehicle, "testing@tarterware.com", startTime);
 
         List<SimulationSession> sessions = registry.getAllSessions();
         assertEquals(1, sessions.size(), "Should have one session");
@@ -152,7 +152,7 @@ public class RedisSimulationRegistryIntegrationTest
         Instant endTime = Instant.now();
 
         // Start simulation
-        registry.recordStart(vehicle, startTime);
+        registry.recordStart(vehicle, "testing@tarterware.com", startTime);
 
         // End simulation
         registry.recordEnd(vehicle.getId(), endTime);
@@ -172,8 +172,8 @@ public class RedisSimulationRegistryIntegrationTest
         Instant now = Instant.now();
 
         // Record out of order
-        registry.recordStart(vehicle2, now); // Newer
-        registry.recordStart(vehicle1, now.minusSeconds(100)); // Older
+        registry.recordStart(vehicle2, "testing@tarterware.com", now); // Newer
+        registry.recordStart(vehicle1, "testing@tarterware.com", now.minusSeconds(100)); // Older
 
         List<SimulationSession> sessions = registry.getAllSessions();
 

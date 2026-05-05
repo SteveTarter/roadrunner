@@ -76,10 +76,11 @@ public class RedisSimulationRegistry implements SimulationRegistry
     }
 
     @Override
-    public void recordStart(Vehicle vehicle, Instant startTime)
+    public void recordStart(Vehicle vehicle, String username, Instant startTime)
     {
         SimulationSession session = new SimulationSession();
         session.setId(vehicle.getId());
+        session.setUsername(username);
         session.setColorCode(vehicle.getColorCode());
         session.setStart(startTime);
         session.setEnd(null); // Explicitly null for active sessions
