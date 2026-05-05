@@ -1,24 +1,15 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, Dispatch, ReactNode, SetStateAction, useContext, useMemo, useState } from 'react';
 
 import type { ViewState } from "react-map-gl";
 
 interface MapViewStateContextType {
   homeMapViewState: ViewState;
-  setHomeMapViewState: (viewState: ViewState) => void;
+  setHomeMapViewState: Dispatch<SetStateAction<ViewState>>;
 }
-
-const DEFAULT_VIEW_STATE: ViewState = {
-  longitude: -97.5,
-  latitude: 32.75,
-  zoom: 10,
-  bearing: 0,
-  pitch: 0,
-  padding: { top: 0, bottom: 0,left: 0,right: 0 }
-};
 
 const MapViewStateContext = createContext<MapViewStateContextType | undefined>(undefined);
 
-export const MapViewStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const MapViewStateProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const tabId = useMemo(() => {
     if (!window.name) {
       window.name = `tab_${Math.random().toString(36).substr(2, 9)}`;
@@ -30,10 +21,17 @@ export const MapViewStateProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const [homeMapViewState, setViewState] = useState<ViewState>(() => {
     const saved = sessionStorage.getItem(storageKey);
-    return saved ? JSON.parse(saved) : DEFAULT_VIEW_STATE;
+    return saved ? JSON.parse(saved) : {
+      longitude: -97.5,
+      latitude: 32.75,
+      zoom: 10,
+      bearing: 0,
+      pitch: 0,
+      padding: { top: 0, bottom: 0,left: 0,right: 0 }
+    }
   });
 
-  const setHomeMapViewState = ((vs:ViewState) => {
+  const setHomeMapViewState = ((vs:any) => {
     setViewState(vs);
     sessionStorage.setItem(storageKey, JSON.stringify(vs));
   })

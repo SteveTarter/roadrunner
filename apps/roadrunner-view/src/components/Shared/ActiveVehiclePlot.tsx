@@ -17,7 +17,8 @@ import {
 import { MapWrapper } from '../Utils/MapWrapper';
 
 export const ActiveVehiclePlot = (props: {
-  toggleShowActiveVehiclePlot: any
+  toggleShowActiveVehiclePlot: any,
+  vehicleId?: any | null
 }) => {
   const { playbackOffset, setPlaybackSession, clearPlayback } = usePlayback();
   const [sessions, setSessions] = useState<any[]>([]);
@@ -33,9 +34,6 @@ export const ActiveVehiclePlot = (props: {
   const INITIAL_START = INITIAL_END - ONE_WEEK_MS;
 
   const [domain, setDomain] = useState<[number, number]>([INITIAL_START, INITIAL_END]);
-
-  // Track the current time under the mouse for the zoom anchor
-  //const [hoveredTime, setHoveredTime] = useState<number | null>(null);
 
   // Fetch all session data for the week
   useEffect(() => {
@@ -88,6 +86,8 @@ export const ActiveVehiclePlot = (props: {
 
   // Generate Chart Data
   const chartData = useMemo(() => {
+    if (!sessions || sessions.length === 0) return;
+
     const data: any[] = [];
 
     // Generate a Map of session events
@@ -136,8 +136,23 @@ export const ActiveVehiclePlot = (props: {
         count: activeCount
       });
     });
+
+    // If a vehicle ID was provided, restrict the window to that vehicle's timespan.
+    if (props.vehicleId) {
+      const driverSession = sessions.find((s) => (props.vehicleId === s.id));
+      if (driverSession) {
+        const startDate = new Date(driverSession.start);
+        const endDate = driverSession.end ? new Date(driverSession.end) : new Date();
+        setDomain([startDate.getTime(), endDate.getTime()]);
+      }
+      else {
+        console.error("Didn't find session for vehicle ID", props.vehicleId);
+      }
+    }
+
     return data;
-  }, [sessions]);
+
+  }, [sessions, props.vehicleId]);
 
   // Extracted zoom logic for reuse between Wheel and Touch
   const performZoom = useCallback((isZoomIn: boolean, anchor: number) => {
