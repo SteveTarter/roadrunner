@@ -11,7 +11,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
-  CartesianGrid
+  CartesianGrid,
+  ReferenceDot
 } from 'recharts';
 
 import { MapWrapper } from '../Utils/MapWrapper';
@@ -57,8 +58,6 @@ export const ActiveVehiclePlot = (props: {
     // Get the bounding box of the chart container
     const rect = chartRef.current.getBoundingClientRect();
     const [currentStart, currentEnd] = domain;
-    console.log("midX: ", midX);
-    console.log("rect: ", rect);
 
     const chartMarginLeft = 85;
     const chartMarginRight = 24;
@@ -66,7 +65,6 @@ export const ActiveVehiclePlot = (props: {
     // If the mouse is outside the LineChart area, the msXPoint is invalid.
     if((midX < chartMarginLeft + rect.x) || (midX > rect.width + rect.x - chartMarginRight)) {
       setMsXPoint(null);
-      console.log("OUTSIDE CHART")
       return;
     }
 
@@ -83,9 +81,6 @@ export const ActiveVehiclePlot = (props: {
 
     // Map that percentage to your current time domain
     const exactMsTime = currentStart + (timeSpan * percentage);
-
-    console.log("xInChart: ", xInChart);
-    console.log("exactMsTime: ", exactMsTime);
 
     setMsXPoint(exactMsTime);
   }, [chartRef, midX, domain]);
@@ -133,6 +128,8 @@ export const ActiveVehiclePlot = (props: {
         displayTime: dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' }),
         // Create a detailed string specifically for the tooltip
         fullLocalTime: dateObj.toLocaleString([], {
+          timeZone: 'UTC',
+          hour12: false,
           hour: '2-digit',
           minute: '2-digit',
           month: 'short',
@@ -159,6 +156,79 @@ export const ActiveVehiclePlot = (props: {
     return data;
 
   }, [sessions, props.vehicleId]);
+
+  const getMidnightTicks = (start: number, end: number) => {
+    const ticks = [];
+    // Create a date object starting at the beginning of the domain
+    let current = new Date(start);
+
+    // Normalize to the start of the next UTC day
+    current.setUTCHours(24, 0, 0, 0);
+
+    while (current.getTime() <= end) {
+      ticks.push(current.getTime());
+      // Advance by exactly 24 hours
+      current.setUTCDate(current.getUTCDate() + 1);
+    }
+    return ticks;
+  };
+
+  const isMultiDay = useMemo(() => {
+    const startDate = new Date(domain[0]);
+    const endDate = new Date(domain[1]);
+
+    // Compare UTC components to ignore local timezone offsets
+    return (
+      startDate.getUTCFullYear() !== endDate.getUTCFullYear() ||
+      startDate.getUTCMonth() !== endDate.getUTCMonth() ||
+      startDate.getUTCDate() !== endDate.getUTCDate()
+    );
+  }, [domain]);
+
+  const isRightOfCenter = useMemo(() => {
+    if (!chartRef.current || midX === null) return false;
+    const rect = chartRef.current.getBoundingClientRect();
+    return (midX - rect.left) > (rect.width / 2);
+  }, [midX]);
+
+  const midnightTicks = useMemo(() => {
+    const span = domain[1] - domain[0];
+    if (span > 2 * 24 * 60 * 60 * 1000) {
+      return getMidnightTicks(domain[0], domain[1]);
+    }
+    return undefined; // Fall back to automatic even spacing for small time spans
+  }, [domain]);
+
+  const hoveredCount = useMemo(() => {
+    if (!msXPoint || !chartData || chartData.length === 0) return 0;
+    // Find the last data point that happened before or exactly at the mouse point
+    const point = chartData.reduce((prev, curr) =>
+      (curr.msTime <= msXPoint ? curr : prev),
+      chartData[0]
+    );
+    return point?.count || 0;
+  }, [msXPoint, chartData]);
+
+  const hoveredTimestamp = useMemo(() => {
+    if (!msXPoint || !chartData || chartData.length === 0) return undefined;
+    const span = domain[1] - domain[0];
+
+    const options: Intl.DateTimeFormatOptions = {
+      timeZone: 'UTC',
+      month: 'numeric',
+      day: 'numeric',
+      year: '2-digit',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    };
+    const date = new Date(msXPoint);
+    if (span < 60 * 60 * 1000) {
+      return `${date.toLocaleTimeString([], { ...options, second: '2-digit' })}Z`;
+    }
+    return `${date.toLocaleTimeString([], options)}Z`;
+
+  }, [domain, msXPoint, chartData]);
 
   // Extracted zoom logic for reuse between Wheel and Touch
   const performZoom = useCallback((isZoomIn: boolean, anchor: number) => {
@@ -193,12 +263,26 @@ export const ActiveVehiclePlot = (props: {
     const startDate = new Date(start);
     const endDate = new Date(end);
 
-    if (span > 24 * 60 * 60 * 1000 * 2) { // Greater than 2 days
-      return `Vehicle Activity: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
-    } else if (span > 60 * 60 * 1000) { // Greater than 1 hour
-      return `Vehicle Activity: ${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} to ${endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  const options: Intl.DateTimeFormatOptions = {
+      timeZone: 'UTC',
+      month: 'numeric',
+      day: 'numeric',
+      year: '2-digit',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    };
+
+    if (span > 24 * 60 * 60 * 1000 * 2) {
+      return `Vehicle Activity: ${startDate.toLocaleDateString([], options)} to ${endDate.toLocaleDateString([], options)}`;
+    } else if (span > 60 * 60 * 1000) {
+      if (isMultiDay) {
+        return `Vehicle Activity: ${startDate.toLocaleDateString([], options)}, ${startDate.toLocaleTimeString([], { ...options, hour: '2-digit', minute: '2-digit' })}Z to ${endDate.toLocaleDateString([], options)}, ${endDate.toLocaleTimeString([], { ...options, hour: '2-digit', minute: '2-digit' })}Z`;
+      } else {
+        return `Vehicle Activity: ${startDate.toLocaleDateString([], options)}, ${startDate.toLocaleTimeString([], { ...options, hour: '2-digit', minute: '2-digit' })}Z to ${endDate.toLocaleTimeString([], { ...options, hour: '2-digit', minute: '2-digit' })}Z`;
+      }
     }
-    return `Vehicle Activity: ${startDate.toLocaleString()}`;
+    return `Vehicle Activity: ${startDate.toLocaleString([], options)}Z to ${endDate.toLocaleString([], options)}Z`;
   };
 
   // Helper for X-Axis ticks
@@ -206,12 +290,23 @@ export const ActiveVehiclePlot = (props: {
     const span = domain[1] - domain[0];
     const date = new Date(unixTime);
 
-    if (span < 60 * 60 * 1000 * 2) { // Less than 2 hours: show minutes/seconds
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    } else if (span < 24 * 60 * 60 * 1000) { // Less than a day: show hours
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const options: Intl.DateTimeFormatOptions = {
+      timeZone: 'UTC',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    };
+
+    if (span > 24 * 60 * 60 * 1000 * 2) {
+      return date.toLocaleDateString([], {
+        timeZone: 'UTC',
+        month: 'short',
+        day: 'numeric',
+      });
+    } else if (span > 60 * 60 * 1000) {
+      return `${date.toLocaleTimeString([], options)}Z`;
     }
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' }); // Default: Date
+    return `${date.toLocaleTimeString([], { ...options, second: '2-digit' })}Z`;
   };
 
   const handleChartClick = (state: any) => {
@@ -278,7 +373,6 @@ export const ActiveVehiclePlot = (props: {
     }
   };
 
-
   const currentPlaybackTime = Date.now() - playbackOffset;
 
   return (
@@ -310,7 +404,7 @@ export const ActiveVehiclePlot = (props: {
         padding: '20px',
         borderRadius: '8px',
         zIndex: 1000,
-        paddingBottom: '65px',
+        paddingBottom: '20px',
         width: '94%',
         margin: '20px auto',
         boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
@@ -328,7 +422,9 @@ export const ActiveVehiclePlot = (props: {
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
-              strokeOpacity={0.3}
+              strokeOpacity={0.8}
+              fill="rgba(0, 0, 0, 0.07)" // Light gray fill for the interior
+              fillOpacity={1}
             />
 
             <XAxis
@@ -336,6 +432,8 @@ export const ActiveVehiclePlot = (props: {
               type="number"
               allowDataOverflow={true}
               domain={domain}
+              ticks={midnightTicks}
+              interval={0}
               tickFormatter={(unixTime) => formatXAxis(unixTime, domain)}
             />
             <YAxis />
@@ -343,19 +441,32 @@ export const ActiveVehiclePlot = (props: {
             {/* Sweeping Line: Only show if it falls within the current visible domain */}
             {currentPlaybackTime >= domain[0] && currentPlaybackTime <= domain[1] && (
               <ReferenceLine
-                x={currentPlaybackTime}
+                x={playbackOffset === 0 ? domain[1] : currentPlaybackTime}
                 stroke="red"
                 strokeWidth={2}
                 zIndex={1001}
                 label={{ position: 'top', value: 'Live', fill: 'red', fontSize: 10 }}
               />
             )}
-
-            <Tooltip
-              labelFormatter={(label, payload) =>
-                payload?.[0]?.payload?.fullLocalTime || label
-              }
-            />
+            {/* Red Dot and vertical line following the mouse exactly on the line */}
+            {msXPoint && chartData && (
+              <>
+                <ReferenceDot
+                  x={msXPoint}
+                  // Logic to find the Y value: find the last data point that happened BEFORE the mouse X
+                  y={chartData.reduce((prev, curr) => (curr.msTime <= msXPoint ? curr : prev), chartData[0])?.count}
+                  r={4}
+                  fill="red"
+                  stroke="none"
+                />
+                <ReferenceLine
+                  x={msXPoint}
+                  stroke="rgba(0,0,0,0.1)"
+                  strokeDasharray="3 3"
+                />
+              </>
+            )}
+            <Tooltip active={false}/> {/* Disable default snapping tooltip */}
             <Line
               type="stepAfter"
               dataKey="count"
@@ -364,15 +475,45 @@ export const ActiveVehiclePlot = (props: {
               strokeWidth={2}
               fillOpacity={0.8}
               dot={false}
+              activeDot={false}
               connectNulls={true}
               isAnimationActive={false}
             />
           </LineChart>
         </ResponsiveContainer>
+        {/* Tooltip tied to the ReferencePoint at the cursor X position */}
+        {msXPoint && midX && (
+          <div
+            style={{
+              position: 'fixed',
+              // Dynamic anchoring logic:
+              left: isRightOfCenter ? 'auto' : midX + 15,
+              right: isRightOfCenter ? (window.innerWidth - midX) + 15 : 'auto',
+              top: '50%',
+              pointerEvents: 'none',
+              background: 'white',
+              border: '1px solid #ccc',
+              padding: '8px',
+              borderRadius: '4px',
+              zIndex: 1002,
+              fontSize: '12px',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+            }}
+          >
+            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+              {hoveredTimestamp}
+            </div>
+            <div style={{ color: '#8884d8' }}>
+              Active Vehicles: {hoveredCount}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-3 d-flex justify-content-end gap-2">
-        <Button variant="success" onClick={clearPlayback}>Return to Live</Button>
+        {playbackOffset !== 0 && (
+          <Button variant="success" onClick={clearPlayback}>Return to Live</Button>
+        )}
         <Button variant="secondary" onClick={props.toggleShowActiveVehiclePlot}>Close</Button>
       </div>
     </div>

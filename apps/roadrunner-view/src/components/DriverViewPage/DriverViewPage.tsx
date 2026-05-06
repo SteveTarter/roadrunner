@@ -348,11 +348,12 @@ export const DriverViewPage = () => {
             </div>
             <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "10rem" }}>
 
-              <Card style={{ width: '10rem', alignSelf: 'end', textAlign: 'center' }}>
+              <Card style={{ width: '11rem', alignSelf: 'end', textAlign: 'center' }}>
                 <Card.Body>
                   <ViewControl degViewOffset={degViewOffset} setDegViewOffset={setDegViewOffset} />
                   <Card.Text style={{ fontSize: '1.1rem' }}>
-                    <br />
+                    <br/>
+                    {`Vehicle:${vehicleState.id.substring(0, 8)}`}<br/>
                     {`${(Math.round(MPS_TO_MPH * vehicleState.metersPerSecond * 10) / 10)
                       .toFixed(1)
                       .padStart(4, ' ')}`} MPH<br />

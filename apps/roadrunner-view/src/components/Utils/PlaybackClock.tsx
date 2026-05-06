@@ -8,9 +8,20 @@ export const PlaybackClock = () => {
 
   useEffect(() => {
     const updateClock = () => {
+      const options: Intl.DateTimeFormatOptions = {
+        timeZone: 'UTC',
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      };
+
       // Calculate time: Current wall clock - the historical offset
       const targetDate = new Date(Date.now() - playbackOffset);
-      setDisplayTime(targetDate.toISOString());
+      setDisplayTime(`${targetDate.toLocaleTimeString([], options)}Z`);
     };
 
     // Initialize and set interval

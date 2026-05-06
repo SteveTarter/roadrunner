@@ -9,7 +9,7 @@ import { PlaybackClock } from '../Utils/PlaybackClock';
 import { AppNavBar } from '../NavBar/AppNavBar';
 import { ManageMenu } from './ManageMenu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faMagic, faBars } from '@fortawesome/free-solid-svg-icons';
+import { faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faMagic, faBars, faChartLine } from '@fortawesome/free-solid-svg-icons';
 import { Button } from 'react-bootstrap';
 import { CreateVehiclePanel } from './CreateVehiclePanel';
 import { SimulationTable } from './SimulationTable';
@@ -260,6 +260,11 @@ export const HomePage = () => {
                     icon={isInterpolationEnabled ? faMagic : faBars}
                     title={isInterpolationEnabled ? "Disable Smoothing" : "Enable Smoothing"}                    className="mr-3"
                   />
+                </Button>
+              </div>
+              <div style={{ position: "fixed", top: 100, left: 260 }}>
+                <Button onClick={() => setShowActiveVehiclePlot(!showActiveVehiclePlot)}>
+                  <FontAwesomeIcon icon={faChartLine}/>
                 </Button>
               </div>
               {showSimTable &&
