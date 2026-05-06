@@ -132,8 +132,9 @@ export const VehicleIcon: React.FC<{
           anchor="bottom-left">
           <Card.Body>
             <Card.Text>
-            Speed: {(Math.round(MPS_TO_MPH * props.vehicleState.metersPerSecond * 10) / 10).toFixed(1)} MPH<br/>
-            Bearing: {(Math.round(props.vehicleState.degBearing * 10) / 10).toFixed(1)}&deg;
+              Vehicle: {props.vehicleState.id.substring(0, 8)}<br/>
+              Speed: {(Math.round(MPS_TO_MPH * props.vehicleState.metersPerSecond * 10) / 10).toFixed(1)} MPH<br/>
+              Bearing: {(Math.round(props.vehicleState.degBearing * 10) / 10).toFixed(1)}&deg;
             </Card.Text>
             <Button variant="primary" href={`/driver-view/${props.vehicleState.id}`}>
               Jump into vehicle

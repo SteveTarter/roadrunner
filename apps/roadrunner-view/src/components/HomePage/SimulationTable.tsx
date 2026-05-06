@@ -66,7 +66,7 @@ export const SimulationTable = (props: {
   const columns = useMemo(() => [
     {
       accessorKey: 'id',
-      header: 'Session ID',
+      header: 'Vehicle',
       size: 150,
       // Shorten the UUID like a git commit ID (first 7-8 characters)
       Cell: ({ cell }: any) => cell.getValue()?.substring(0, 8)
@@ -75,8 +75,8 @@ export const SimulationTable = (props: {
       accessorKey: 'username',
       header: 'Username',
       size: 200,
-      // Fallback to "UNKNOWN" if username is missing or empty
-      Cell: ({ cell }: any) => cell.getValue() || "UNKNOWN"    },
+      // Fallback to "unknown-user" if username is missing or empty
+      Cell: ({ cell }: any) => cell.getValue() || "unknown-user"    },
     {
       accessorKey: 'start',
       header: 'Start Time',
@@ -111,8 +111,10 @@ export const SimulationTable = (props: {
         padding: '10px',
         borderRadius: '8px',
         paddingBottom: '65px',
-        width: 'fit-content',
-        margin: 'auto'
+        width: '94%',
+        maxWidth: 'fit-content',
+        margin: '10px auto',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
       }}
     >
       <MaterialReactTable
@@ -130,17 +132,17 @@ export const SimulationTable = (props: {
         }}
         muiTablePaperProps={{
           sx: {
-            width: 'fit-content',
-            maxWidth: '100%',
-            margin: '0 auto'
+            width: '100%',
+            overflow: 'hidden',
           }
-        }} // Sets the scrollable area
+        }}
         muiTableContainerProps={{
           sx: {
             maxHeight: '400px',
-            width: 'fit-content'
+            maxWidth: '100%',
+            overflowX: 'auto',
           }
-        }} // Sets the scrollable area
+        }}
         initialState={{ density: 'compact' }}
       />
       {playbackOffset !== 0 && (
