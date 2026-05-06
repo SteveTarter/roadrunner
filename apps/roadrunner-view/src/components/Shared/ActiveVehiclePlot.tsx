@@ -217,7 +217,7 @@ export const ActiveVehiclePlot = (props: {
       timeZone: 'UTC',
       month: 'numeric',
       day: 'numeric',
-      year: 'numeric',
+      year: '2-digit',
       hour12: false,
       hour: '2-digit',
       minute: '2-digit',
@@ -265,7 +265,12 @@ export const ActiveVehiclePlot = (props: {
 
   const options: Intl.DateTimeFormatOptions = {
       timeZone: 'UTC',
-      hour12: false
+      month: 'numeric',
+      day: 'numeric',
+      year: '2-digit',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
     };
 
     if (span > 24 * 60 * 60 * 1000 * 2) {
