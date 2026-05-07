@@ -235,7 +235,6 @@ export const DriverViewPage = () => {
 
         setIsMapReady(true);
         setAssetsLoaded(true);
-        console.log("3D assets loaded.");
       } catch (e) {
         console.error("Error loading 3D assets:", e);
       }
