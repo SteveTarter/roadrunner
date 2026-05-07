@@ -63,10 +63,9 @@ export const VehicleIcon: React.FC<{
         })
           .then(async response => response.json())
           .then(data => {
-            let dg: any = [];
-            for (let i = 0; i < data.routes[0].legs[0].steps.length; ++i) {
-              dg.push(data.routes[0].legs[0].steps[i].geometry.coordinates);
-            }
+            const dg = data.routes[0].legs.flatMap((leg: any) =>
+              leg.steps.map((step: any) => step.geometry.coordinates)
+            );
 
             setDirectionsGeometry(dg);
           });
