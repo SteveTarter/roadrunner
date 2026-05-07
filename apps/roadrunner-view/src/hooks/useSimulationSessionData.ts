@@ -12,6 +12,10 @@ export const useSimulationSessionData = () => {
   const simulationSessionMapRef = useRef(new MapWrapper<string, SimulationSession>());
   const activeCountMapRef = useRef(new MapWrapper<number, number>());
   const sortedCountKeysRef = useRef(new Array<number>());
+  const [activeCountData, setActiveCountData] = useState({
+    activeCountMap: new MapWrapper<number, number>(),
+    sortedCountKeys: new Array<number>(),
+  });
 
   const fetchBatch = useCallback(async () => {
     if (isFetchingRef.current) return;
@@ -60,11 +64,9 @@ export const useSimulationSessionData = () => {
 
         totalPages = result.page?.totalPages || 1;
         currentPage++;
-
-        setIsDataLoaded(true);
       }
 
-      // Once the entire loop is done, we've exhausted this anchor
+      setIsDataLoaded(true);
       setBufferNum(prev => prev + 1);
     } catch (error) {
       console.error("Fetch error:", error);
@@ -83,7 +85,7 @@ export const useSimulationSessionData = () => {
     simulationSessionMapRef.current.forEach((s: SimulationSession) => {
       const msStart = new Date(s.start).getTime();
       if (msStart < msTimeout) {
-        clearList = [...clearList, s.id];
+        clearList.push(s.id);
       }
     });
     clearList.forEach((id: string) => {
@@ -92,21 +94,22 @@ export const useSimulationSessionData = () => {
 
     // Generate a Map of session events
     const eventMap = new MapWrapper<number, number>();
+    const msNow = new Date().getTime();
     simulationSessionMapRef.current.forEach((s: SimulationSession) => {
       const msStart = new Date(s.start).getTime();
-      const msEnd = s.end ? new Date(s.end).getTime() : msStart;
+      const msEnd = s.end ? new Date(s.end).getTime() : msNow;
 
       // A start event increments action count for this timestamp
-      var startCount = eventMap.get(msStart) || 0;
+      let startCount = eventMap.get(msStart) || 0;
       eventMap.set(msStart, startCount + 1);
 
       // An end event decrements action count for this timestamp
-      var endCount = eventMap.get(msEnd) || 0;
+      let endCount = eventMap.get(msEnd) || 0;
       eventMap.set(msEnd, endCount - 1);
     })
 
     // Now, iterate through the event list and maintain running activeCount.
-    var activeCount = 0;
+    let activeCount = 0;
 
     const sortedKeys = Array.from(eventMap.keys()).sort((a, b) => a - b);
     activeCountMapRef.current.clear();
@@ -118,9 +121,13 @@ export const useSimulationSessionData = () => {
       activeCountMapRef.current.set(key, activeCount);
     })
 
-
     sortedCountKeysRef.current = Array.from(activeCountMapRef.current.keys()).sort((a, b) => a - b);
-  }, [simulationSessionMapRef, isDataLoaded, bufferNum]);
+
+    setActiveCountData({
+      activeCountMap: activeCountMapRef.current,
+      sortedCountKeys: sortedCountKeysRef.current,
+    })
+  }, [isDataLoaded, bufferNum]);
 
   useEffect(() => {
     fetchBatch();
@@ -131,7 +138,6 @@ export const useSimulationSessionData = () => {
 
   return {
     simulationSessionMap: simulationSessionMapRef.current,
-    activeCountMap: activeCountMapRef.current,
-    sortedCountKeys: sortedCountKeysRef.current,
+    activeCountData,
   }
 }

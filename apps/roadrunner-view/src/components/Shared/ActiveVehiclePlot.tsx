@@ -22,9 +22,9 @@ export const ActiveVehiclePlot = (props: {
 
   const {
     simulationSessionMap,
-    activeCountMap,
-    sortedCountKeys,
+    activeCountData,
    } = useSimulationSessionData();
+  const {activeCountMap, sortedCountKeys} = activeCountData;
 
   const [touchStartDist, setTouchStartDist] = useState<number | null>(null);
   const [midX, setMidX] = useState<number | null>(null);
@@ -236,12 +236,12 @@ export const ActiveVehiclePlot = (props: {
       return `Vehicle Activity: ${startDate.toLocaleDateString([], options)} to ${endDate.toLocaleDateString([], options)}`;
     } else if (span > 60 * 60 * 1000) {
       if (isMultiDay) {
-        return `Vehicle Activity: ${startDate.toLocaleDateString([], options)}, ${startDate.toLocaleTimeString([], { ...options, hour: '2-digit', minute: '2-digit' })}Z to ${endDate.toLocaleDateString([], options)}, ${endDate.toLocaleTimeString([], { ...options, hour: '2-digit', minute: '2-digit' })}Z`;
+        return `Vehicle Activity: ${startDate.toLocaleTimeString([], { ...options, hour: '2-digit', minute: '2-digit' })}Z to ${endDate.toLocaleTimeString([], { ...options, hour: '2-digit', minute: '2-digit' })}Z`;
       } else {
-        return `Vehicle Activity: ${startDate.toLocaleDateString([], options)}, ${startDate.toLocaleTimeString([], { ...options, hour: '2-digit', minute: '2-digit' })}Z to ${endDate.toLocaleTimeString([], { ...options, hour: '2-digit', minute: '2-digit' })}Z`;
+        return `Vehicle Activity: ${startDate.toLocaleTimeString([], { ...options, hour: '2-digit', minute: '2-digit' })}Z to ${endDate.toLocaleTimeString([], { ...options, hour: '2-digit', minute: '2-digit' })}Z`;
       }
     }
-    return `Vehicle Activity: ${startDate.toLocaleString([], options)}Z to ${endDate.toLocaleString([], options)}Z`;
+    return `Vehicle Activity: ${startDate.toLocaleString([], { ...options, second: '2-digit' })}Z to ${endDate.toLocaleString([], { ...options, second: '2-digit' })}Z`;
   };
 
   // Helper for X-Axis ticks
