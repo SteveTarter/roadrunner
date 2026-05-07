@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { fetchAuthSession } from "aws-amplify/auth";
-import { CONFIG } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
+import { useSimulationSessionData } from '../../hooks/useSimulationSessionData';
 import { Button } from "react-bootstrap";
 import {
   LineChart,
@@ -15,14 +14,17 @@ import {
   ReferenceDot
 } from 'recharts';
 
-import { MapWrapper } from '../Utils/MapWrapper';
-
 export const ActiveVehiclePlot = (props: {
   toggleShowActiveVehiclePlot: any,
   vehicleId?: any | null
 }) => {
   const { playbackOffset, setPlaybackSession, clearPlayback } = usePlayback();
-  const [sessions, setSessions] = useState<any[]>([]);
+
+  const {
+    simulationSessionMap,
+    activeCountMap,
+    sortedCountKeys,
+   } = useSimulationSessionData();
 
   const [touchStartDist, setTouchStartDist] = useState<number | null>(null);
   const [midX, setMidX] = useState<number | null>(null);
@@ -35,22 +37,6 @@ export const ActiveVehiclePlot = (props: {
   const INITIAL_START = INITIAL_END - ONE_WEEK_MS;
 
   const [domain, setDomain] = useState<[number, number]>([INITIAL_START, INITIAL_END]);
-
-  // Fetch all session data for the week
-  useEffect(() => {
-    async function loadAllSessions() {
-      const session = await fetchAuthSession();
-      const accessToken = session.tokens?.accessToken?.toString();
-      // Fetch logic similar to SimulationTable, but iterating through all pages
-      // to capture the full week's worth of start/end timestamps
-      const res = await fetch(`${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/simulation-sessions?pageSize=1000`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      const data = await res.json();
-      setSessions(data._embedded?.simulationSessions ?? []);
-    }
-    loadAllSessions();
-  }, []);
 
   useEffect(() => {
     if(!chartRef || !chartRef.current || !midX) return;
@@ -87,37 +73,10 @@ export const ActiveVehiclePlot = (props: {
 
   // Generate Chart Data
   const chartData = useMemo(() => {
-    if (!sessions || sessions.length === 0) return;
+    if (simulationSessionMap.size() === 0) return;
 
     const data: any[] = [];
 
-    // Generate a Map of session events
-    const eventMap = new MapWrapper<number, number>();
-    sessions.forEach(s => {
-      const msStart = new Date(s.start).getTime();
-      const msEnd = s.end ? new Date(s.end).getTime() : msStart;
-
-      // A start event increments action count for this timestamp
-      var startCount = eventMap.get(msStart) || 0;
-      eventMap.set(msStart, startCount + 1);
-
-      // An end event decrements action count for this timestamp
-      var endCount = eventMap.get(msEnd) || 0;
-      eventMap.set(msEnd, endCount - 1);
-    })
-
-    // Now, iterate through the event list and maintain running activeCount.
-    var activeCount = 0;
-    const activeCountMap = new MapWrapper<number, number>();
-    const sortedKeys = Array.from(eventMap.keys()).sort((a, b) => a - b);
-    sortedKeys.forEach((key) => {
-      const countAdjustment = eventMap.get(key) || 0;
-      activeCount += countAdjustment;
-
-      activeCountMap.set(key, activeCount);
-    })
-
-    var sortedCountKeys = Array.from(activeCountMap.keys()).sort((a, b) => a - b);
     sortedCountKeys.forEach((key) => {
       const dateObj = new Date(key);
       const activeCount = activeCountMap.get(key);
@@ -142,7 +101,7 @@ export const ActiveVehiclePlot = (props: {
 
     // If a vehicle ID was provided, restrict the window to that vehicle's timespan.
     if (props.vehicleId) {
-      const driverSession = sessions.find((s) => (props.vehicleId === s.id));
+      const driverSession = simulationSessionMap.get(props.vehicleId);
       if (driverSession) {
         const startDate = new Date(driverSession.start);
         const endDate = driverSession.end ? new Date(driverSession.end) : new Date();
@@ -155,7 +114,7 @@ export const ActiveVehiclePlot = (props: {
 
     return data;
 
-  }, [sessions, props.vehicleId]);
+  }, [sortedCountKeys, activeCountMap, simulationSessionMap, props.vehicleId]);
 
   const getMidnightTicks = (start: number, end: number) => {
     const ticks = [];

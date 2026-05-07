@@ -29,7 +29,7 @@ export const useVehicleData = ({
   const [version, setVersion] = useState(0);
   const [bufferNum, setBufferNum] = useState(0);
   /**
-   * FIX: Create a stable time tag anchored to the moment the offset changes.
+   * Create a stable time tag anchored to the moment the offset changes.
    * This ensures all page requests for this "batch" use the same server cache.
    */
   const timeAnchor = useMemo(() => {
