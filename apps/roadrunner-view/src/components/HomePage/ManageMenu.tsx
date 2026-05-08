@@ -10,6 +10,28 @@ export const ManageMenu = (props: {
 }) => {
   const navigate = useNavigate();
 
+  type ApiErrorResponse = {
+    message?: string;
+    status?: number;
+    timestamp?: string;
+  };
+
+  async function readApiError(response: Response): Promise<string> {
+    const contentType = response.headers.get("content-type") ?? "";
+
+    try {
+      if (contentType.includes("application/json")) {
+        const body = (await response.json()) as ApiErrorResponse;
+        return body.message || `Request failed with status ${response.status}`;
+      }
+
+      const text = await response.text();
+      return text || `Request failed with status ${response.status}`;
+    } catch {
+      return `Request failed with status ${response.status}`;
+    }
+  }
+
   const handleCreateCrissCross = async () => {
     const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/create-crisscross`;
     const body = {
@@ -39,13 +61,14 @@ export const ManageMenu = (props: {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        const message = await readApiError(response);
+        throw new Error(message);
       }
 
       await response.json();
     } catch (error) {
       console.error("Error creating criss-cross:", error);
-      alert("Failed to create criss-cross.");
+      alert(error);
     }
   };
 

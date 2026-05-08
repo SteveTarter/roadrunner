@@ -17,6 +17,28 @@ export const CreateVehiclePanel = (props: {
   // Cast AddressAutofill so TypeScript stops complaining about JSX compatibility
   const AddressAutofill = MapboxAddressAutofill as any;
 
+  type ApiErrorResponse = {
+    message?: string;
+    status?: number;
+    timestamp?: string;
+  };
+
+  async function readApiError(response: Response): Promise<string> {
+    const contentType = response.headers.get("content-type") ?? "";
+
+    try {
+      if (contentType.includes("application/json")) {
+        const body = (await response.json()) as ApiErrorResponse;
+        return body.message || `Request failed with status ${response.status}`;
+      }
+
+      const text = await response.text();
+      return text || `Request failed with status ${response.status}`;
+    } catch {
+      return `Request failed with status ${response.status}`;
+    }
+  }
+
   const createVehicle = async (): Promise<void> => {
     const inputs = document.querySelectorAll("form input");
     const inputValues = Array.from(inputs).map(input => {
@@ -65,7 +87,8 @@ export const CreateVehiclePanel = (props: {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        const message = await readApiError(response);
+        throw new Error(message);
       }
 
       const data = await response.json();
@@ -74,8 +97,8 @@ export const CreateVehiclePanel = (props: {
       // the "/api/vehicle" API are created in the present time.
       navigate(`/driver-view/${data.id}`);
     } catch (error) {
-      console.error("Error creating new vehicle:", error);
-      alert("Failed to create new vehicle.");
+      console.error(error);
+      alert(error);
     }
   };
 
