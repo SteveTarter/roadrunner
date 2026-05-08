@@ -133,10 +133,20 @@ export const AppNavBar = ({ additionalMenuItems }: { additionalMenuItems?: React
               )}
             </Nav>
 
-            <Nav navbar>
+            <Nav navbar className="align-items-center">
               {isAuthenticated && (
                 <>
                   {additionalMenuItems}
+                  <NavItem className="d-flex align-items-center" style={{ fontSize: "1.1rem" }}>
+                    <NavLink
+                      tag={RouterNavLink}
+                      to="/about"
+                      className="router-link-exact-active"
+                    >
+                      About
+                    </NavLink>
+                  </NavItem>
+
                   <UncontrolledDropdown nav inNavbar>
                     <DropdownToggle nav caret>
                       {user?.picture ? (
