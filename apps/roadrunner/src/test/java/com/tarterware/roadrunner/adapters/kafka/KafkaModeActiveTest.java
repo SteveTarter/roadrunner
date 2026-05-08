@@ -30,11 +30,13 @@ import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
+import com.tarterware.roadrunner.security.UserPrincipalFactory;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.services.IdentityService;
 import com.tarterware.roadrunner.services.IsochroneService;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
+import com.tarterware.roadrunner.services.VehicleUsageService;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 
@@ -73,6 +75,12 @@ public class KafkaModeActiveTest
 
     @MockitoBean
     private IdentityService identityService;
+
+    @MockitoBean
+    private UserPrincipalFactory userPrincipalFactory;
+
+    @MockitoBean
+    private VehicleUsageService vehicleUsageService;
 
     @MockitoBean
     private SecurityConfig securityConfig;

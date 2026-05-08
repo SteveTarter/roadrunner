@@ -36,53 +36,82 @@ import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
 import com.tarterware.roadrunner.ports.SimulationRegistry;
+import com.tarterware.roadrunner.security.UserPrincipal;
+import com.tarterware.roadrunner.security.UserPrincipalFactory;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
 import com.tarterware.roadrunner.services.IdentityService;
+import com.tarterware.roadrunner.services.VehicleUsageService;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 /**
- * REST controller providing API endpoints for vehicle management and state
- * retrieval.
+ * REST controller providing API endpoints for Roadrunner vehicle management,
+ * simulation creation, and simulation-state retrieval.
  *
  * <p>
- * The {@code VehicleController} handles external requests to create new
- * simulation instances, generate bulk vehicle scenarios, and fetch real-time
- * telemetry. It acts as a primary user of the
- * {@link ControllerVehicleStateStore} port to provide a read-optimized view of
- * the simulation state to the UI.
+ * The {@code VehicleController} handles external requests to create individual
+ * vehicles, generate bulk vehicle scenarios, retrieve real-time vehicle state,
+ * retrieve route geometry, list simulation sessions, and reset the running
+ * simulation. It acts as the HTTP boundary for the Roadrunner UI and delegates
+ * vehicle lifecycle, state persistence, routing, geocoding, identity lookup,
+ * and usage-limit enforcement to application services and ports.
+ * </p>
+ *
+ * <p>
+ * Vehicle creation endpoints require an authenticated JWT. The token is mapped
+ * to a {@link UserPrincipal}, then checked by {@link VehicleUsageService}
+ * before a vehicle is created. This allows the demo application to limit
+ * non-privileged users while allowing configured superusers to bypass normal
+ * daily limits.
  * </p>
  *
  * @see VehicleManager
  * @see ControllerVehicleStateStore
+ * @see SimulationRegistry
+ * @see VehicleUsageService
  * @see VehicleState
  */
 @RestController
 @RequestMapping("/api/vehicle")
 public class VehicleController
 {
-    private VehicleManager vehicleManager;
+    private final VehicleManager vehicleManager;
 
-    private ControllerVehicleStateStore vehicleStateStore;
+    private final ControllerVehicleStateStore vehicleStateStore;
 
-    private SimulationRegistry simulationRegistry;
+    private final SimulationRegistry simulationRegistry;
 
-    private DirectionsService directionsService;
+    private final DirectionsService directionsService;
 
-    private GeocodingService geocodingService;
+    private final GeocodingService geocodingService;
 
-    private IdentityService identityService;
+    private final IdentityService identityService;
+
+    private final UserPrincipalFactory userPrincipalFactory;
+
+    private final VehicleUsageService vehicleUsageService;
 
     private static final Logger log = LoggerFactory.getLogger(VehicleController.class);
 
     /**
-     * Constructs the controller with the required management and state store
-     * components.
+     * Constructs a controller with the services and ports required to create,
+     * manage, query, and reset vehicle simulations.
      *
-     * @param vehicleManager    the service responsible for vehicle lifecycle and
-     *                          domain logic
-     * @param vehicleStateStore the port providing access to the current persisted
-     *                          vehicle states
+     * @param vehicleManager       service responsible for vehicle lifecycle and
+     *                             domain behavior
+     * @param vehicleStateStore    port providing access to current persisted
+     *                             vehicle states and active vehicle identifiers
+     * @param simulationRegistry   port used to retrieve and reset recorded
+     *                             simulation sessions
+     * @param directionsService    service used to retrieve and reset cached route
+     *                             directions
+     * @param geocodingService     service used to reset cached geocoding data
+     * @param identityService      service used to resolve authenticated Cognito
+     *                             subjects to user-facing identity information
+     * @param userPrincipalFactory factory that maps authenticated JWTs to
+     *                             application-level user principals
+     * @param vehicleUsageService  service that enforces per-user vehicle-start
+     *                             limits
      */
     VehicleController(
             VehicleManager vehicleManager,
@@ -90,7 +119,9 @@ public class VehicleController
             SimulationRegistry simulationRegistry,
             DirectionsService directionsService,
             GeocodingService geocodingService,
-            IdentityService identityService)
+            IdentityService identityService,
+            UserPrincipalFactory userPrincipalFactory,
+            VehicleUsageService vehicleUsageService)
     {
         this.vehicleManager = vehicleManager;
         this.vehicleStateStore = vehicleStateStore;
@@ -98,6 +129,8 @@ public class VehicleController
         this.directionsService = directionsService;
         this.geocodingService = geocodingService;
         this.identityService = identityService;
+        this.userPrincipalFactory = userPrincipalFactory;
+        this.vehicleUsageService = vehicleUsageService;
 
         log.info("vehicleStateStore is {}", vehicleStateStore);
     }
@@ -105,11 +138,24 @@ public class VehicleController
     /**
      * Creates a single new vehicle based on the provided trip plan.
      *
-     * @param tripPlan the plan containing stops and routing information
-     * @param jwt      The {@link Jwt} object containing the authenticated user's
-     *                 claims, representing the bearer token passed in the
-     *                 Authorization header.
-     * @return a {@link ResponseEntity} containing the initial {@link VehicleState}
+     * <p>
+     * The authenticated JWT is converted into a {@link UserPrincipal} and checked
+     * against the configured usage limits before the vehicle is created. If the
+     * user has exceeded the daily limit, {@link VehicleUsageService} throws an
+     * exception and no vehicle is created.
+     * </p>
+     *
+     * <p>
+     * When creation succeeds, the vehicle's initial state is saved to the
+     * controller state store and the vehicle is marked as active.
+     * </p>
+     *
+     * @param tripPlan plan containing stops and routing information for the new
+     *                 vehicle
+     * @param jwt      authenticated JWT from the bearer token supplied in the
+     *                 {@code Authorization} header
+     * @return response containing the initial {@link VehicleState} for the newly
+     *         created vehicle
      */
     @PostMapping("/create-new")
     ResponseEntity<VehicleState> getNewVehicle(
@@ -118,8 +164,12 @@ public class VehicleController
             @AuthenticationPrincipal
             Jwt jwt)
     {
-        String userEmail = identityService.getEmailBySub(jwt.getSubject());
+        // First, ensure user is allowed to start a vehicle.
+        UserPrincipal user = userPrincipalFactory.fromJwt(jwt);
+        vehicleUsageService.assertCanStartVehicles(user);
 
+        // Exception is thrown if we're not allowed
+        String userEmail = identityService.getEmailBySub(jwt.getSubject());
         Vehicle vehicle = vehicleManager.createVehicle(tripPlan, userEmail);
         VehicleState vehicleState = vehicle.getVehicleState();
         vehicleStateStore.saveVehicle(vehicleState);
@@ -133,16 +183,19 @@ public class VehicleController
      * across a central coordinate.
      *
      * <p>
-     * Vehicles are spawned at the perimeter of a circle and assigned trip plans
-     * that pass through the center to the opposite side.
+     * Vehicles are spawned around the perimeter of a circle and assigned trip plans
+     * that travel through the center point to the opposite side. Each vehicle
+     * creation is checked against the authenticated user's usage limit. If the user
+     * reaches the limit partway through the request, the service throws an
+     * exception and the request stops.
      * </p>
      *
-     * @param crissCrossPlan configuration for the scenario, including vehicle count
-     *                       and radius
-     * @param jwt            The {@link Jwt} object containing the authenticated
-     *                       user's claims, representing the bearer token passed in
-     *                       the Authorization header.
-     * @return a list of {@link VehicleState} objects for the created vehicles
+     * @param crissCrossPlan configuration for the scenario, including center
+     *                       coordinate, vehicle count, and radius
+     * @param jwt            authenticated JWT from the bearer token supplied in the
+     *                       {@code Authorization} header
+     * @return response containing the list of initial {@link VehicleState}
+     *         instances for the created vehicles
      */
     @PostMapping("/create-crisscross")
     ResponseEntity<List<VehicleState>> createCrissCrossVehicles(
@@ -151,6 +204,7 @@ public class VehicleController
             @AuthenticationPrincipal
             Jwt jwt)
     {
+        UserPrincipal user = userPrincipalFactory.fromJwt(jwt);
         String userEmail = identityService.getEmailBySub(jwt.getSubject());
 
         List<VehicleState> listVehicleStates = new ArrayList<VehicleState>();
@@ -163,6 +217,9 @@ public class VehicleController
         double degStartBearing = degIncrement / 2.0;
         for (int i = 0; i < crissCrossPlan.getVehicleCount(); ++i)
         {
+            // Ensure user can start a vehicle. An exception will be thrown
+            // if the user is limited.
+            vehicleUsageService.assertCanStartVehicles(user);
             double degEndBearing = degStartBearing + 180.0;
             if (degEndBearing > 360.0)
             {
@@ -202,11 +259,11 @@ public class VehicleController
     }
 
     /**
-     * Retrieves the current state for a specific vehicle by its ID.
+     * Retrieves the current state for a specific vehicle by its identifier.
      *
-     * @param vehicleId the UUID of the vehicle as a string
-     * @return the {@link VehicleState} if found, otherwise
-     *         {@code HttpStatus.NOT_FOUND}
+     * @param vehicleId UUID of the vehicle as a string
+     * @return response containing the {@link VehicleState} when found, or
+     *         {@code 404 Not Found} when no matching vehicle state exists
      */
     @GetMapping("/get-vehicle-state/{vehicleId}")
     ResponseEntity<VehicleState> getVehicleStateFor(
@@ -226,9 +283,9 @@ public class VehicleController
      * Retrieves the Mapbox directions and route geometry associated with a specific
      * vehicle.
      *
-     * @param vehicleId the UUID of the vehicle as a string
-     * @return the {@link Directions} if found, otherwise
-     *         {@code HttpStatus.NOT_FOUND}
+     * @param vehicleId UUID of the vehicle as a string
+     * @return response containing the {@link Directions} when found, or
+     *         {@code 404 Not Found} when no route data exists for the vehicle
      */
     @GetMapping("/get-vehicle-directions/{vehicleId}")
     ResponseEntity<Directions> getVehicleDirectionsFor(
@@ -247,9 +304,15 @@ public class VehicleController
     /**
      * Provides a paginated view of all active vehicle states in the simulation.
      *
-     * @param page     the zero-based page index to retrieve
-     * @param pageSize the number of records per page
-     * @return a {@link PagedModel} containing the requested slice of vehicle states
+     * <p>
+     * The returned {@link PagedModel} contains only the requested slice of active
+     * vehicles, along with pagination metadata derived from the current active
+     * vehicle count.
+     * </p>
+     *
+     * @param page     zero-based page index to retrieve
+     * @param pageSize number of vehicle states to include in the page
+     * @return response containing a paginated model of active vehicle states
      */
     @GetMapping("/get-all-vehicle-states")
     ResponseEntity<PagedModel<VehicleState>> getAllVehicleStates(
@@ -274,6 +337,21 @@ public class VehicleController
         return new ResponseEntity<>(pagedModel, HttpStatus.OK);
     }
 
+    /**
+     * Provides a paginated view of recorded simulation sessions.
+     *
+     * <p>
+     * Simulation sessions are retrieved from the configured
+     * {@link SimulationRegistry}. The method creates a page slice in memory and
+     * wraps it in a {@link PagedModel} for use by the frontend table.
+     * </p>
+     *
+     * @param page     zero-based page index to retrieve
+     * @param pageSize number of simulation sessions to include in the page
+     * @return response containing a paginated model of simulation sessions
+     * @throws IllegalArgumentException if the requested page starts outside the
+     *                                  available session list
+     */
     @GetMapping("/simulation-sessions")
     ResponseEntity<PagedModel<SimulationSession>> getSimulationSessions(
             @RequestParam(defaultValue = "0")
@@ -318,9 +396,15 @@ public class VehicleController
     }
 
     /**
-     * Resets the entire simulation server, clearing all vehicles and trip plans.
+     * Resets the simulation server and clears active runtime state.
      *
-     * @return an empty list and {@code HttpStatus.OK}
+     * <p>
+     * This endpoint resets the vehicle manager, vehicle state store, cached
+     * directions, cached geocoding data, and simulation registry. It is intended
+     * for demo or administrative use.
+     * </p>
+     *
+     * @return response containing an empty list and {@code 200 OK}
      */
     @GetMapping("/reset-server")
     ResponseEntity<List<VehicleState>> resetServer()
@@ -335,13 +419,19 @@ public class VehicleController
     }
 
     /**
-     * Helper method to fetch a paginated map of vehicle states from the state
-     * store.
+     * Fetches a paginated map of active vehicle states from the state store.
+     *
+     * <p>
+     * The method reads the current active vehicle identifiers, selects the
+     * requested slice, and retrieves the corresponding vehicle states in a single
+     * state-store call.
+     * </p>
      *
      * @param page     zero-based page index
      * @param pageSize number of records to return
-     * @return a map of vehicle UUIDs to their current {@link VehicleState}
-     * @throws IllegalArgumentException if the requested page is out of bounds
+     * @return map of vehicle UUIDs to their current {@link VehicleState}
+     * @throws IllegalArgumentException if the requested page starts outside the
+     *                                  active vehicle list
      */
     public Map<UUID, VehicleState> getVehicleMap(
             int page,

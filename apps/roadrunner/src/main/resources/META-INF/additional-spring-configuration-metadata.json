@@ -88,5 +88,20 @@
     "name": "com.tarterware.roadrunner.playback-cache-size",
     "type": "java.lang.String",
     "description": "A description for 'com.tarterware.roadrunner.playback-cache-size'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.usage-limits.counter-ttl-hours",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.usage-limits.counter-ttl-hours'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.usage-limits.redis-key-prefix",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.usage-limits.redis-key-prefix'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.usage-limits.default-daily-vehicle-starts",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.usage-limits.default-daily-vehicle-starts'"
   }
 ]}
