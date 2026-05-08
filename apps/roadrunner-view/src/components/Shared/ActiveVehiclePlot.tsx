@@ -29,6 +29,7 @@ export const ActiveVehiclePlot = (props: {
   const [touchStartDist, setTouchStartDist] = useState<number | null>(null);
   const [midX, setMidX] = useState<number | null>(null);
   const [msXPoint, setMsXPoint] = useState<number | null>(null);
+  const [allowResize, setAllowResize] = useState(true);
 
   const chartRef = React.useRef<HTMLDivElement>(null);
 
@@ -102,7 +103,8 @@ export const ActiveVehiclePlot = (props: {
     // If a vehicle ID was provided, restrict the window to that vehicle's timespan.
     if (props.vehicleId) {
       const driverSession = simulationSessionMap.get(props.vehicleId);
-      if (driverSession) {
+      if (allowResize && driverSession) {
+        setAllowResize(false);
         const startDate = new Date(driverSession.start);
         const endDate = driverSession.end ? new Date(driverSession.end) : new Date();
         setDomain([startDate.getTime(), endDate.getTime()]);
@@ -114,7 +116,7 @@ export const ActiveVehiclePlot = (props: {
 
     return data;
 
-  }, [sortedCountKeys, activeCountMap, simulationSessionMap, props.vehicleId]);
+  }, [sortedCountKeys, activeCountMap, simulationSessionMap, props.vehicleId, allowResize]);
 
   const getMidnightTicks = (start: number, end: number) => {
     const ticks = [];

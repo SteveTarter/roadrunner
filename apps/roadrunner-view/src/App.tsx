@@ -10,6 +10,7 @@ import { library } from '@fortawesome/fontawesome-svg-core';
 import fontawesome from '@fortawesome/fontawesome'
 import { faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faArrowLeft, faArrowRight, fa0 } from '@fortawesome/free-solid-svg-icons';
 import { faPowerOff, faUser } from '@fortawesome/fontawesome-free-solid'
+import { AboutPage } from './components/AboutPage/AboutPage';
 
 library.add(faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faArrowLeft, faArrowRight, fa0 );
 fontawesome.library.add(faPowerOff, faUser);
@@ -25,6 +26,9 @@ export const App = () => {
         <Route
         path='/home'
         element={<AuthenticationGuard component={HomePage} />} />
+        <Route
+        path='/about'
+        element={<AuthenticationGuard component={AboutPage} />} />
         <Route
         path="/profile"
         element={<AuthenticationGuard component={ProfilePage} />}
