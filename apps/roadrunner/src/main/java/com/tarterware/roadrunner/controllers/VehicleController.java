@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -257,6 +258,62 @@ public class VehicleController
         }
 
         return new ResponseEntity<List<VehicleState>>(listVehicleStates, HttpStatus.OK);
+    }
+
+    /**
+     * Creates a single new vehicle based on the provided trip plan.
+     *
+     * <p>
+     * The authenticated JWT is converted into a {@link UserPrincipal} and checked
+     * against the configured usage limits before the vehicle is created. If the
+     * user has exceeded the daily limit, {@link VehicleUsageService} throws an
+     * exception and no vehicle is created.
+     * </p>
+     *
+     * <p>
+     * When creation succeeds, the vehicle's initial state is saved to the
+     * controller state store and the vehicle is marked as active.
+     * </p>
+     *
+     * @param tripPlan plan containing stops and routing information for the new
+     *                 vehicle
+     * @param jwt      authenticated JWT from the bearer token supplied in the
+     *                 {@code Authorization} header
+     * @return response containing the initial {@link VehicleState} for the newly
+     *         created vehicle
+     */
+    @DeleteMapping("/delete/{vehicleId}")
+    ResponseEntity<Void> deleteVehicle(
+            @PathVariable
+            String vehicleId,
+            @AuthenticationPrincipal
+            Jwt jwt)
+    {
+        // First, ensure user is allowed to start a vehicle.
+        UserPrincipal user = userPrincipalFactory.fromJwt(jwt);
+        if (!user.isSuperuser())
+        {
+            throw new AccessDeniedException("User " + user.email() + " must be superuser to delete vehicles!");
+        }
+
+        boolean deleted = false;
+        try
+        {
+            deleted = vehicleManager.deleteVehicle(UUID.fromString(vehicleId));
+        }
+        catch (IllegalArgumentException ex)
+        {
+            throw new AccessDeniedException(ex.getMessage());
+        }
+
+        if (deleted)
+        {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT); // 204 No Content is standard for successful deletes
+        }
+        else
+        {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND); // 404 if the ID doesn't exist
+        }
     }
 
     /**
