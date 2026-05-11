@@ -105,6 +105,8 @@ public class MaintenanceService
 
         for (SimulationSession session : orphans)
         {
+            log.debug("Considering Vehicle {}.", session.getId());
+
             // Step 1: Check if it's currently in the memory store
             if (hotStore.getVehicle(session.getId()) != null)
             {
@@ -128,6 +130,7 @@ public class MaintenanceService
 
         // Default to start time if no messages found
         Instant lastFoundTime = session.getStart();
+        log.debug("Vehicle {} start time is {}.", session.getId(), session.getStart().toEpochMilli());
 
         // Grab 1 minute worth of data at a time. When we encounter a buffer without
         // the vehicle ID, the search is over.
