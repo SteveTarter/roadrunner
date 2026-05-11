@@ -301,6 +301,32 @@ public class VehicleManager
     }
 
     /**
+     * Marks a Vehicle for deletion based on a TripPlan.
+     *
+     * @param vehicleId The ID of the Vehicle to be deleted.
+     */
+    public boolean deleteVehicle(UUID vehicleId)
+    {
+        if (vehicleId == null)
+        {
+            throw new IllegalArgumentException("vehicleID cannot be null!");
+        }
+
+        Vehicle vehicle = vehicleMap.get(vehicleId);
+        if (vehicle == null)
+        {
+            throw new IllegalArgumentException("vehicleID " + vehicleId + " not found!");
+        }
+
+        vehicleMap.remove(vehicleId);
+        cleanupDeletedVehicle(vehicleId);
+
+        logger.info("Vehicle {} has been deleted.", vehicleId);
+
+        return true;
+    }
+
+    /**
      * Processes a TripPlan to generate route geometry and line segment data for a
      * Vehicle. This method performs the following steps: *
      * <ol>
@@ -668,11 +694,31 @@ public class VehicleManager
         // Remove the Vehicle and vehicle states
         deletionSet.forEach(vehicleId ->
         {
-            this.vehicleMap.remove(vehicleId);
-            this.vehicleStateStore.removeActiveVehicle(vehicleId);
-            this.vehicleStateStore.deleteVehicle(vehicleId);
-            this.vehicleEventPublisher.publishVehicleDeleted(vehicleId);
+            cleanupDeletedVehicle(vehicleId);
         });
+    }
+
+    /**
+     * Cleans up deleted vehicle by its data from Redis and local caches and the
+     * configured state store and repository. This method performs the following
+     * actions: *
+     * <ul>
+     * <li>Removes the vehicle ID from the configured state store and
+     * repository.</li>
+     * <li>Removes the vehicle's directions and line segment data from the local
+     * maps.</li>
+     * <li>Removes the vehicle's state from the configured state store and
+     * repository.</li>
+     * </ul>
+     * * @param deletionSet The set of vehicle IDs to be deleted.
+     */
+    private void cleanupDeletedVehicle(UUID vehicleId)
+    {
+        // Remove the Vehicle and vehicle states
+        this.vehicleMap.remove(vehicleId);
+        this.vehicleStateStore.removeActiveVehicle(vehicleId);
+        this.vehicleStateStore.deleteVehicle(vehicleId);
+        this.vehicleEventPublisher.publishVehicleDeleted(vehicleId);
     }
 
     /**
