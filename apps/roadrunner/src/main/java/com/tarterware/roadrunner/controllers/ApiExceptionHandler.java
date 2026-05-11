@@ -3,6 +3,7 @@ package com.tarterware.roadrunner.controllers;
 import java.time.Instant;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -42,6 +43,29 @@ public class ApiExceptionHandler
         return new ErrorResponse(
                 ex.getMessage(),
                 HttpStatus.TOO_MANY_REQUESTS.value(),
+                Instant.now());
+    }
+
+    /**
+     * Handles requests that exceed the authority granted to the calling user.
+     *
+     * <p>
+     * The response uses HTTP {@code 403 Forbidden} and includes a small JSON body
+     * containing the exception message, HTTP status code, and response timestamp.
+     * The frontend can read the {@code message} field and display it to the user.
+     * </p>
+     *
+     * @param ex the exception thrown when the authenticated user does not have the
+     *           authority to perform the requested action.
+     * @return a structured error response for the failed request
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handleAccessDenied(AccessDeniedException ex)
+    {
+        return new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.FORBIDDEN.value(),
                 Instant.now());
     }
 

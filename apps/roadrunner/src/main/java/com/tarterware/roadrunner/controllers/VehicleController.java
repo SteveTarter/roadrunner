@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -407,8 +408,16 @@ public class VehicleController
      * @return response containing an empty list and {@code 200 OK}
      */
     @GetMapping("/reset-server")
-    ResponseEntity<List<VehicleState>> resetServer()
+    ResponseEntity<List<VehicleState>> resetServer(
+            @AuthenticationPrincipal
+            Jwt jwt)
     {
+        UserPrincipal user = userPrincipalFactory.fromJwt(jwt);
+        if (!user.isSuperuser())
+        {
+            throw new AccessDeniedException("User " + user.email() + " must be superuser to message /reset-server!");
+        }
+
         vehicleManager.reset();
         vehicleStateStore.reset();
         directionsService.reset();
