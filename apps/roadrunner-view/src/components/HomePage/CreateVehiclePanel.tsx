@@ -247,61 +247,77 @@ export const CreateVehiclePanel = (props: {
     <Card.Title className="text-center">Create Vehicle</Card.Title>
     <>
       <Form>
-        <FormLabel style={{ fontSize: "1.1rem" }}>Origin Address</FormLabel>
-        <Button
-          variant={isSelectingOriginOnMap ? "warning" : "outline-primary"}
-          size="sm"
-          className="mb-2 w-100"
-          onClick={() => setIsSelectingOriginOnMap(!isSelectingOriginOnMap)}
-        >
-          {isSelectingOriginOnMap ? "Click a point on the map..." : "Choose point on map"}
-        </Button>
         <AddressAutofill accessToken={mapboxToken}>
-          <div>
-            <Input
-              name="originPoint"
-              placeholder="Address"
-              value={selectedOrigin ? `${selectedOrigin.lat.toFixed(6)}, ${selectedOrigin.lng.toFixed(6)}` : ""}
-              readOnly={!!selectedOrigin}
-              onChange={() => {}}
-              style={{ marginBottom: "10px", width: "100%" }}
-            />
-            {/* Hidden field to track the source */}
-            <input
-              type="hidden"
-              name="originAddressSource"
-              value={selectedOrigin ? "NumericEntry" : "Mapbox"}
-            />
-          </div>
-          <div>
-            <Input
-              name="originAddress"
-              autoComplete="address-line1"
-              placeholder="Address"
-              style={{ marginBottom: "10px", width: "100%" }} />
-            <Input
-              name="originApartment"
-              autoComplete="address-line2"
-              placeholder="Apartment"
-              style={{ marginBottom: "10px", width: "100%" }} />
-          </div>
-          <div className="d-flex justify-content-between">
-            <Input
-              name="originCity"
-              autoComplete="address-level2"
-              placeholder="City"
-              style={{ flex: 2, marginRight: "5px" }} />
-            <Input
-              name="originState"
-              autoComplete="address-level1"
-              placeholder="State"
-              style={{ flex: 1, marginRight: "5px" }} />
-            <Input
-              name="originZip"
-              autoComplete="postal-code"
-              placeholder="ZIP"
-              style={{ flex: 1 }} />
-          </div>
+          <FormLabel style={{ fontSize: "1.1rem" }}>Origin Address</FormLabel>
+          <Button
+            variant={isSelectingOriginOnMap ? "warning" : "outline-primary"}
+            size="sm"
+            className="mb-2 w-100"
+            onClick={() => setIsSelectingOriginOnMap(!isSelectingOriginOnMap)}
+          >
+            {isSelectingOriginOnMap ? "Click a point on the map..." : "Choose point on map"}
+          </Button>
+          {(isSelectingOriginOnMap || selectedOrigin) &&
+            <div>
+              <Input
+                name="originPoint"
+                placeholder="Lat Lng"
+                value={selectedOrigin ? `${selectedOrigin.lat.toFixed(6)}, ${selectedOrigin.lng.toFixed(6)}` : ""}
+                readOnly={!!selectedOrigin}
+                onChange={() => {}}
+                style={{ marginBottom: "10px", width: "100%" }}
+              />
+              {/* Hidden field to track the source */}
+              <input
+                type="hidden"
+                name="originAddressSource"
+                value={selectedOrigin ? "NumericEntry" : "Mapbox"}
+              />
+            </div>
+          }
+          {selectedOrigin &&
+            <Button
+              variant={isSelectingOriginOnMap ? "warning" : "outline-primary"}
+              size="sm"
+              className="mb-2 w-100"
+              onClick={() => setSelectedOrigin(null)}
+            >
+              Clear Origin Point
+            </Button>
+          }
+          {(!selectedOrigin && !isSelectingOriginOnMap) &&
+            <>
+              <div>
+                <Input
+                  name="originAddress"
+                  autoComplete="address-line1"
+                  placeholder="Address"
+                  style={{ marginBottom: "10px", width: "100%" }} />
+                <Input
+                  name="originApartment"
+                  autoComplete="address-line2"
+                  placeholder="Apartment"
+                  style={{ marginBottom: "10px", width: "100%" }} />
+              </div>
+              <div className="d-flex justify-content-between">
+                <Input
+                  name="originCity"
+                  autoComplete="address-level2"
+                  placeholder="City"
+                  style={{ flex: 2, marginRight: "5px" }} />
+                <Input
+                  name="originState"
+                  autoComplete="address-level1"
+                  placeholder="State"
+                  style={{ flex: 1, marginRight: "5px" }} />
+                <Input
+                  name="originZip"
+                  autoComplete="postal-code"
+                  placeholder="ZIP"
+                  style={{ flex: 1 }} />
+              </div>
+            </>
+          }
         </AddressAutofill>
         <AddressAutofill accessToken={mapboxToken}>
           <FormLabel style={{ fontSize: "1.1rem", marginTop: "20px" }}>Destination Address</FormLabel>
@@ -313,51 +329,67 @@ export const CreateVehiclePanel = (props: {
           >
             {isSelectingDestinationOnMap ? "Click a point on the map..." : "Choose point on map"}
           </Button>
-          <div>
-            <Input
-              name="destinationPoint"
-              placeholder="Address"
-              value={selectedDestination ? `${selectedDestination.lat.toFixed(6)}, ${selectedDestination.lng.toFixed(6)}` : ""}
-              readOnly={!!selectedDestination}
-              onChange={() => {}}
-              style={{ marginBottom: "10px", width: "100%" }}
-            />
-            {/* Hidden field to track the source */}
-            <input
-              type="hidden"
-              name="destinationAddressSource"
-              value={selectedDestination ? "NumericEntry" : "Mapbox"}
-            />
-          </div>
-          <div>
-            <Input
-              name="destinationAddress"
-              autoComplete="address-line1"
-              placeholder="Address"
-              style={{ marginBottom: "10px", width: "100%" }} />
-            <Input
-              name="destinationApartment"
-              autoComplete="address-line2"
-              placeholder="Apartment"
-              style={{ marginBottom: "10px", width: "100%" }} />
-          </div>
-          <div className="d-flex justify-content-between">
-            <Input
-              name="destinationCity"
-              autoComplete="address-level2"
-              placeholder="City"
-              style={{ flex: 2, marginRight: "5px" }} />
-            <Input
-              name="destinationState"
-              autoComplete="address-level1"
-              placeholder="State"
-              style={{ flex: 1, marginRight: "5px" }} />
-            <Input
-              name="destinationZip"
-              autoComplete="postal-code"
-              placeholder="ZIP"
-              style={{ flex: 1 }} />
-          </div>
+          {(isSelectingDestinationOnMap || selectedDestination) &&
+            <div>
+              <Input
+                name="destinationPoint"
+                placeholder="Lat Lng"
+                value={selectedDestination ? `${selectedDestination.lat.toFixed(6)}, ${selectedDestination.lng.toFixed(6)}` : ""}
+                readOnly={!!selectedDestination}
+                onChange={() => {}}
+                style={{ marginBottom: "10px", width: "100%" }}
+              />
+              {/* Hidden field to track the source */}
+              <input
+                type="hidden"
+                name="destinationAddressSource"
+                value={selectedDestination ? "NumericEntry" : "Mapbox"}
+              />
+            </div>
+          }
+          {selectedDestination &&
+            <Button
+              variant={isSelectingDestinationOnMap ? "warning" : "outline-primary"}
+              size="sm"
+              className="mb-2 w-100"
+              onClick={() => setSelectedDestination(null)}
+            >
+              Clear Destination Point
+            </Button>
+          }
+          {(!selectedDestination && !isSelectingDestinationOnMap) &&
+            <>
+              <div>
+                <Input
+                  name="destinationAddress"
+                  autoComplete="address-line1"
+                  placeholder="Address"
+                  style={{ marginBottom: "10px", width: "100%" }} />
+                <Input
+                  name="destinationApartment"
+                  autoComplete="address-line2"
+                  placeholder="Apartment"
+                  style={{ marginBottom: "10px", width: "100%" }} />
+              </div>
+              <div className="d-flex justify-content-between">
+                <Input
+                  name="destinationCity"
+                  autoComplete="address-level2"
+                  placeholder="City"
+                  style={{ flex: 2, marginRight: "5px" }} />
+                <Input
+                  name="destinationState"
+                  autoComplete="address-level1"
+                  placeholder="State"
+                  style={{ flex: 1, marginRight: "5px" }} />
+                <Input
+                  name="destinationZip"
+                  autoComplete="postal-code"
+                  placeholder="ZIP"
+                  style={{ flex: 1 }} />
+              </div>
+            </>
+          }
         </AddressAutofill>
         <div style={{ marginTop: '20px', display: "flex", justifyContent: "space-between" }}>
           <Button onClick={cancelCreateVehicle} value="CancelCreateVehicle" variant="secondary">
