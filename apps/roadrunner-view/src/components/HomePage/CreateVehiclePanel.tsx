@@ -81,14 +81,24 @@ export const CreateVehiclePanel = (props: {
     // Remove existing marker if it exists
     if (originMarkerRef.current) originMarkerRef.current.remove();
 
-    console.log("Adding destination marker to map instance:", map);
+    // Create a popup to serve as a label
+    const originPopup = new mapboxgl.Popup({
+      offset: 25,
+      closeButton: false,
+      closeOnClick: false,
+      className: 'marker-label'
+    })
+    .setText('Origin') //
+    .addTo(map); //
 
     // Create new green marker for Origin
     const marker = new mapboxgl.Marker({ color: '#28a745' })
       .setLngLat([selectedOrigin.lng, selectedOrigin.lat])
+      .setPopup(originPopup)
       .addTo(map);
 
-    marker.getElement().style.zIndex = "2000";
+    // Manually trigger the popup to stay open
+    marker.togglePopup();
 
     originMarkerRef.current = marker;
 
@@ -104,14 +114,24 @@ export const CreateVehiclePanel = (props: {
 
     if (destinationMarkerRef.current) destinationMarkerRef.current.remove();
 
-    console.log("Adding destination marker to map instance:", map);
+    // Create a popup to serve as a label
+    const destinationPopup = new mapboxgl.Popup({
+      offset: 25,
+      closeButton: false,
+      closeOnClick: false,
+      className: 'marker-label'
+    })
+    .setText('Destination') //
+    .addTo(map); //
 
     // Create new red marker for Destination
     const marker = new mapboxgl.Marker({ color: '#dc3545' })
       .setLngLat([selectedDestination.lng, selectedDestination.lat])
+      .setPopup(destinationPopup)
       .addTo(map);
 
-    marker.getElement().style.zIndex = "2000";
+      // Manually trigger the popup to stay open
+      marker.togglePopup();
 
     destinationMarkerRef.current = marker;
 

@@ -16,28 +16,45 @@
 
   /* end of screen rules. */
 
-  }
-  .map-container {
-    position: absolute;
-    top: 80px;       /* must match navbar height */
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1;      /* under the navbar’s z-index */
-  }
+}
 
-  .control-panel {
-    position: absolute;
-    top: 0;
-    right: 0;
-    max-width: 320px;
-    background: #fff;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    padding: 12px 24px;
-    margin: 20px;
-    font-size: 13px;
-    line-height: 2;
-    color: #6b6b76;
-    text-transform: uppercase;
-    outline: none;
-    }
+.map-container {
+  position: absolute;
+  top: 80px;       /* must match navbar height */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;      /* under the navbar’s z-index */
+}
+
+.control-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  max-width: 320px;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  padding: 12px 24px;
+  margin: 20px;
+  font-size: 13px;
+  line-height: 2;
+  color: #6b6b76;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.marker-label .mapboxgl-popup-content {
+  padding: 5px 10px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+  border: none;
+  box-shadow: none;
+}
+
+/* Remove the little arrow/tip for a floating label look */
+.marker-label .mapboxgl-popup-tip {
+  display: none;
+}
