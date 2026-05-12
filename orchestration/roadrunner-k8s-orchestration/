@@ -1,0 +1,97 @@
+[1mdiff --git a/main.tf b/main.tf[m
+[1mindex a6a1863..d9fff30 100644[m
+[1m--- a/main.tf[m
+[1m+++ b/main.tf[m
+[36m@@ -121,8 +121,10 @@[m [mmodule "roadrunner" {[m
+   mapbox_api_key               = var.mapbox_api_key[m
+   spring_mail_username         = var.spring_mail_username[m
+   spring_mail_password         = var.spring_mail_password[m
+[32m+[m[32m  roadrunner_user_pool_arn     = var.roadrunner_user_pool_arn[m
+   cognito_authority            = var.cognito_authority[m
+   cognito_client_id            = var.cognito_client_id[m
+[32m+[m[32m  cognito_user_pool_id         = var.cognito_user_pool_id[m
+   tarterware_cert_arn          = var.tarterware_cert_arn[m
+   redis_host                   = module.redis.redis_host[m
+   redis_password               = module.redis.redis_password[m
+[1mdiff --git a/modules/roadrunner/configmap.tf b/modules/roadrunner/configmap.tf[m
+[1mindex 6411cb4..3c41e26 100644[m
+[1m--- a/modules/roadrunner/configmap.tf[m
+[1m+++ b/modules/roadrunner/configmap.tf[m
+[36m@@ -21,6 +21,9 @@[m [mcom.tarterware.redis.port=6379[m
+ com.tarterware.redis.password=${var.redis_password}[m
+ com.tarterware.roadrunner.vehicle-update-period=250ms[m
+ com.tarterware.roadrunner.jitter-stat-capacity=200[m
+[32m+[m[32mcom.tarterware.roadrunner.vehicle-state-buffer-period=2s[m
+[32m+[m[32mcom.tarterware.roadrunner.playback-cache-timeout=1m[m
+[32m+[m[32mcom.tarterware.roadrunner.playback-cache-size=100[m
+ logging.level.org.apache.kafka.clients.consumer.internals.LegacyKafkaConsumer=WARN[m
+ logging.level.org.apache.kafka.clients.consumer.internals.SubscriptionState=WARN[m
+ spring.profiles.active=${terraform.workspace}[m
+[36m@@ -45,6 +48,7 @@[m [mmanagement.endpoints.web.exposure.include=health,info,metrics,prometheus[m
+ management.endpoint.health.show-details=always[m
+ spring.security.oauth2.resourceserver.jwt.issuer-uri=${var.cognito_authority}[m
+ cognito.app-client-id=${var.cognito_client_id}[m
+[32m+[m[32mcom.tarterware.roadrunner.aws.cognito.user-pool-id=${var.cognito_user_pool_id}[m
+ prometheus.secret.namespace=monitoring[m
+ prometheus.secret.name=prometheus-token-secret[m
+ EOT[m
+[1mdiff --git a/modules/roadrunner/deployment.tf b/modules/roadrunner/deployment.tf[m
+[1mindex d36064a..c121b4e 100644[m
+[1m--- a/modules/roadrunner/deployment.tf[m
+[1m+++ b/modules/roadrunner/deployment.tf[m
+[36m@@ -59,8 +59,13 @@[m [mresource "kubernetes_deployment" "roadrunner" {[m
+ [m
+           # Dynamic args[m
+           args = terraform.workspace == "minikube" ? [[m
+[31m-            "--com.tarterware.redis.password=$(REDIS_PASSWORD)"[m
+[31m-          ] : [][m
+[32m+[m[32m            "--com.tarterware.redis.password=$(REDIS_PASSWORD)",[m
+[32m+[m[32m            "-XX:MaxDirectMemorySize=512M",[m
+[32m+[m[32m            "-Xmx512M"[m
+[32m+[m[32m          ] : [[m
+[32m+[m[32m            "-XX:MaxDirectMemorySize=512M",[m
+[32m+[m[32m            "-Xmx512M"[m
+[32m+[m[32m          ][m
+ [m
+           volume_mount {[m
+             name       = "application-conf"[m
+[1mdiff --git a/modules/roadrunner/variables.tf b/modules/roadrunner/variables.tf[m
+[1mindex 5fc14a4..48bb74e 100644[m
+[1m--- a/modules/roadrunner/variables.tf[m
+[1m+++ b/modules/roadrunner/variables.tf[m
+[36m@@ -27,6 +27,18 @@[m [mvariable "spring_mail_password" {[m
+   type        = string[m
+ }[m
+ [m
+[32m+[m[32mvariable "roadrunner_user_pool_arn" {[m
+[32m+[m[32m  description = "The ARN for the Cognito User Pool used by Roadrunner."[m
+[32m+[m[32m  sensitive   = true[m
+[32m+[m[32m  type        = string[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvariable "cognito_user_pool_id" {[m
+[32m+[m[32m  description = "The User Pool ID for the Cognito application."[m
+[32m+[m[32m  sensitive   = true[m
+[32m+[m[32m  type        = string[m
+[32m+[m[32m}[m
+[32m+[m
+ variable "cognito_authority" {[m
+   description = "The authority URL for Cognito."[m
+   sensitive   = true[m
+[1mdiff --git a/variables.tf b/variables.tf[m
+[1mindex 5773a6d..1e4ac6b 100644[m
+[1m--- a/variables.tf[m
+[1m+++ b/variables.tf[m
+[36m@@ -45,6 +45,12 @@[m [mvariable "spring_mail_password" {[m
+   type        = string[m
+ }[m
+ [m
+[32m+[m[32mvariable "roadrunner_user_pool_arn" {[m
+[32m+[m[32m  description = "The ARN for the Cognito User Pool used by Roadrunner."[m
+[32m+[m[32m  sensitive   = true[m
+[32m+[m[32m  type        = string[m
+[32m+[m[32m}[m
+[32m+[m
+ variable "cognito_redirect_sign_in" {[m
+   description = "The redirect sign in URL for the Cognito application."[m
+   sensitive   = true[m

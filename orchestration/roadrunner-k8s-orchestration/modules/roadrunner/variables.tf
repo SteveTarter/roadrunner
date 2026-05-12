@@ -27,6 +27,18 @@ variable "spring_mail_password" {
   type        = string
 }
 
+variable "roadrunner_user_pool_arn" {
+  description = "The ARN for the Cognito User Pool used by Roadrunner."
+  sensitive   = true
+  type        = string
+}
+
+variable "cognito_user_pool_id" {
+  description = "The User Pool ID for the Cognito application."
+  sensitive   = true
+  type        = string
+}
+
 variable "cognito_authority" {
   description = "The authority URL for Cognito."
   sensitive   = true

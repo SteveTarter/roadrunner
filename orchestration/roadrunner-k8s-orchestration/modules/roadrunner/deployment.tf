@@ -59,8 +59,13 @@ resource "kubernetes_deployment" "roadrunner" {
 
           # Dynamic args
           args = terraform.workspace == "minikube" ? [
-            "--com.tarterware.redis.password=$(REDIS_PASSWORD)"
-          ] : []
+            "--com.tarterware.redis.password=$(REDIS_PASSWORD)",
+            "-XX:MaxDirectMemorySize=512M",
+            "-Xmx512M"
+          ] : [
+            "-XX:MaxDirectMemorySize=512M",
+            "-Xmx512M"
+          ]
 
           volume_mount {
             name       = "application-conf"
