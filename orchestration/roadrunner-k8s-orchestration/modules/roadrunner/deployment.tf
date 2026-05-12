@@ -25,6 +25,8 @@ resource "kubernetes_deployment" "roadrunner" {
       }
 
       spec {
+        service_account_name = kubernetes_service_account.roadrunner_sa.metadata[0].name
+
         container {
           name  = "roadrunner"
           image = "tarterware/roadrunner:latest"
@@ -43,6 +45,33 @@ resource "kubernetes_deployment" "roadrunner" {
                 secret_key_ref {
                   name = "redis"
                   key = "redis-password"
+                }
+              }
+            }
+          }
+
+          # AWS Secrets for Minikube
+          dynamic "env" {
+            for_each = terraform.workspace == "minikube" ? [1] : []
+            content {
+              name = "AWS_ACCESS_KEY_ID"
+              value_from {
+                secret_key_ref {
+                  name = "aws-credentials"
+                  key  = "access-key-id"
+                }
+              }
+            }
+          }
+
+          dynamic "env" {
+            for_each = terraform.workspace == "minikube" ? [1] : []
+            content {
+              name = "AWS_SECRET_ACCESS_KEY"
+              value_from {
+                secret_key_ref {
+                  name = "aws-credentials"
+                  key  = "secret-access-key"
                 }
               }
             }

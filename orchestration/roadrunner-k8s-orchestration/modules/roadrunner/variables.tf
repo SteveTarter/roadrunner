@@ -39,6 +39,24 @@ variable "cognito_user_pool_id" {
   type        = string
 }
 
+variable "aws_access_key_id" {
+  description = "The AWS access key ID."
+  sensitive   = true
+  type        = string
+}
+
+variable "aws_secret_access_key" {
+  description = "The AWS secret access key."
+  sensitive   = true
+  type        = string
+}
+
+variable "eks_oidc_provider_arn" {
+  description = "The EKS OpenID Connect provider URL."
+  sensitive   = true
+  type        = string
+}
+
 variable "cognito_authority" {
   description = "The authority URL for Cognito."
   sensitive   = true

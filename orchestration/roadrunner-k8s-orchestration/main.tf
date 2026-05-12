@@ -126,6 +126,9 @@ module "roadrunner" {
   cognito_client_id            = var.cognito_client_id
   cognito_user_pool_id         = var.cognito_user_pool_id
   tarterware_cert_arn          = var.tarterware_cert_arn
+  aws_access_key_id            = var.aws_access_key_id
+  aws_secret_access_key        = var.aws_secret_access_key
+  eks_oidc_provider_arn        = var.eks_oidc_provider_arn
   redis_host                   = module.redis.redis_host
   redis_password               = module.redis.redis_password
   prometheus_release_name      = module.prometheus.prometheus_release_name
