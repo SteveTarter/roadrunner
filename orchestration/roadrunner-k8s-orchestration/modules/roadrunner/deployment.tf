@@ -36,6 +36,11 @@ resource "kubernetes_deployment" "roadrunner" {
             container_port = 8080
           }
 
+          env {
+            name  = "AWS_REGION"
+            value = var.region
+          }
+
           # Redis password is only needed on minikube; eks uses IAM
           dynamic "env" {
             for_each = terraform.workspace == "minikube" ? [1] : []

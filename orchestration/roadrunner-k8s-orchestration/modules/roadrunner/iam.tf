@@ -1,7 +1,13 @@
+locals {
+  count       = terraform.workspace == "eks" ? 1 : 0
+  # Extracts 'tarterware-eks' from 'arn:aws:eks:...:cluster/tarterware-eks'
+  cluster_short_name = element(split("/", var.cluster_name), length(split("/", var.cluster_name)) - 1)
+}
+
 # IAM Policy for Cognito access (EKS only)
 resource "aws_iam_policy" "cognito_access" {
   count       = terraform.workspace == "eks" ? 1 : 0
-  name        = "${var.cluster_name}-cognito-access"
+  name        = "${local.cluster_short_name}-cognito-access"
   description = "Allows Roadrunner to list users in Cognito for email lookups"
 
   policy = jsonencode({
@@ -22,7 +28,7 @@ module "iam_eks_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.30"
 
-  role_name = "${var.cluster_name}-roadrunner-irsa"
+  role_name = "${local.cluster_short_name}-roadrunner-irsa"
 
   role_policy_arns = {
     policy = aws_iam_policy.cognito_access[0].arn

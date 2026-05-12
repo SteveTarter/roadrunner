@@ -3,6 +3,12 @@ variable "cluster_name" {
   type        = string
 }
 
+variable "region" {
+  description = "The AWS region of the EKS."
+  type        = string
+  default     = "us-east-1"
+}
+
 variable "roadrunner_namespace" {
   description = "The Kubernetes namespace where the Roadrunner application resources will be deployed."
   type = string

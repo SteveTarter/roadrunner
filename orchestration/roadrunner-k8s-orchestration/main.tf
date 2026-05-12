@@ -117,6 +117,7 @@ module "roadrunner" {
   # This module sets up the core infrastructure for the Roadrunner application, including networking, IAM roles, and Kubernetes resources.
 
   cluster_name                 = var.cluster_name
+  region                       = var.region
   roadrunner_namespace         = var.roadrunner_namespace
   mapbox_api_key               = var.mapbox_api_key
   spring_mail_username         = var.spring_mail_username

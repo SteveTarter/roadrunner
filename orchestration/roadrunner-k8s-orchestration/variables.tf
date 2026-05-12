@@ -6,7 +6,7 @@ variable "cluster_name" {
 variable "region" {
   description = "The AWS region of the EKS."
   type        = string
-  default     = "~/.kube/config"
+  default     = "us-east-1"
 }
 
 variable "kubeconfig_path" {
