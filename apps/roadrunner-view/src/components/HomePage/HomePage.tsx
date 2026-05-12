@@ -1,6 +1,6 @@
 import './HomePage.css';
-import Map, { useMap } from "react-map-gl";
-import { useState, useCallback, useMemo } from "react";
+import Map, { MapRef, useMap } from "react-map-gl";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { SpinnerLoading } from "../Utils/SpinnerLoading"
 import { VehicleIcon } from './VehicleIcon';
 import { VehicleDisplay } from '../../models/VehicleDisplay';
@@ -28,6 +28,8 @@ export const HomePage = () => {
   const [isCreateVehicleActive, setIsCreateVehicleActive] = useState(false)
   const [showSimTable, setShowSimTable] = useState(false);
   const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
+
+  const mapRef = useRef<MapRef | null>(null);
 
   const {
     clearPlayback
@@ -184,6 +186,7 @@ export const HomePage = () => {
       <div className="map-container">
         <Map
           id="homePageMap"
+          ref={mapRef}
           {...homeMapViewState}
           mapStyle={mapStyle}
           mapboxAccessToken={mapboxToken}
@@ -206,6 +209,7 @@ export const HomePage = () => {
                 <CreateVehiclePanel
                   returnToNow={returnToNow}
                   setIsCreateVehicleActive={setIsCreateVehicleActive}
+                  mapRef={mapRef}
                 />
               )}
               <div style={{ position: "fixed", top: 100, left: 10 }}>
