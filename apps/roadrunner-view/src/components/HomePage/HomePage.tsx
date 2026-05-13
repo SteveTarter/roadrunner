@@ -1,6 +1,6 @@
 import './HomePage.css';
 import Map, { MapRef, useMap } from "react-map-gl";
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { SpinnerLoading } from "../Utils/SpinnerLoading"
 import { VehicleIcon } from './VehicleIcon';
 import { VehicleDisplay } from '../../models/VehicleDisplay';
@@ -70,6 +70,34 @@ export const HomePage = () => {
     return Array.from(vehicleStateMap.values());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version, vehicleStateMap]);
+
+  // Set initial location to be in user's area.
+  useEffect(() => {
+    async function setInitialLocation() {
+      try {
+        // Fetch approximate location via IP (No permission pop-up required)
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+
+        if (data.latitude && data.longitude) {
+          console.log("Setting location to {}, {}", data.latitude, data.longitude);
+          setHomeMapViewState((prev: any) => ({
+            ...prev,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            zoom: 10 // Start with a city-level zoom
+          }));
+        }
+      } catch (error) {
+        console.error("IP Geolocation failed, falling back to default.", error);
+      }
+    }
+
+    // Only trigger this if we haven't manually moved the map yet
+    if (homeMapViewState.latitude === 32.75 && homeMapViewState.longitude === -97.5) {
+      setInitialLocation();
+    }
+  }, [homeMapViewState.latitude, homeMapViewState.longitude, setHomeMapViewState]);
 
   const fitAllOnScreen = useCallback(() => {
     if (!isDataLoaded || vehicleStateMap.size() === 0) return;
