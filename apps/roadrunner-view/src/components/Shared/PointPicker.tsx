@@ -25,6 +25,7 @@ export const PointPicker = ({
   addressPrefix
 }: PointPickerProps) => {
   const [isSelecting, setIsSelecting] = useState(false);
+  const [autofillFired, setAutofillFired] = useState(false);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
 
   // Handle Map Clicks
@@ -85,83 +86,96 @@ export const PointPicker = ({
     return () => { if (markerRef.current) markerRef.current.remove(); };
   }, [selectedPoint, mapRef, color, label]);
 
+  // Handler to snap marker to address location
+  const handleRetrieve = (res: any) => {
+    const feature = res.features[0];
+    if (feature && feature.geometry && feature.geometry.coordinates) {
+      const [lng, lat] = feature.geometry.coordinates;
+      // This updates the state, which triggers the marker useEffect
+      onPointChange({ lat, lng });
+      setAutofillFired(true);
+    }
+  };
+
   const AddressAutofill = MapboxAddressAutofill as any;
 
   return (
-    <div className="mb-4">
-      <FormLabel style={{ fontSize: "1.1rem" }}>Origin Address</FormLabel>
-      <Button
-        variant={isSelecting ? "warning" : "outline-primary"}
-        size="sm"
-        className="mb-2 w-100"
-        onClick={() => setIsSelecting(!isSelecting)}
-      >
-        {isSelecting ? "Click a point on the map..." : `Choose ${label} on map`}
-      </Button>
+    <AddressAutofill
+      accessToken={mapboxToken}
+      onRetrieve={handleRetrieve}
+    >
+      <div className="mb-4">
+        <FormLabel style={{ fontSize: "1.1rem" }}>{label} Address</FormLabel>
+        <Button
+          variant={isSelecting ? "warning" : "outline-primary"}
+          size="sm"
+          className="mb-2 w-100"
+          onClick={() => setIsSelecting(!isSelecting)}
+        >
+          {isSelecting ? "Click a point on the map..." : `Choose ${label} on map`}
+        </Button>
 
-      {(isSelecting || selectedPoint) ? (
-        <div>
-          <Input
-            name={`${addressPrefix}Point`}
-            placeholder="Lat, Lng"
-            value={selectedPoint ? `${selectedPoint.lat.toFixed(6)}, ${selectedPoint.lng.toFixed(6)}` : ""}
-            readOnly={!!selectedPoint}
-            onChange={() => {}}
-            className="mb-2"
-          />
-          {/* Hidden field to track the source */}
-          <input type="hidden" name={`${addressPrefix}AddressSource`} value="NumericEntry" />
+        {/* Always render the Point display when a point is selected */}
+        {(!autofillFired && (isSelecting || selectedPoint)) && (
+          <div>
+            <Input
+              name={`${addressPrefix}Point`}
+              placeholder="Lat, Lng"
+              value={selectedPoint ? `${selectedPoint.lat.toFixed(6)}, ${selectedPoint.lng.toFixed(6)}` : ""}
+              readOnly={!!selectedPoint}
+              onChange={() => {}}
+            />
+            {/* Hidden field to track the source */}
+            <input type="hidden" name={`${addressPrefix}AddressSource`} value="NumericEntry" />
 
-          {selectedPoint && (
-            <Button
-              variant="link"
-              size="sm"
-              className="p-0 text-danger"
-              onClick={() => onPointChange(null)}
-            >
-              Clear {label}
-            </Button>
-          )}
-        </div>
-      ) : (
-        <AddressAutofill accessToken={mapboxToken}>
-          <input type="hidden" name={`${addressPrefix}AddressSource`} value="Mapbox" />
+            {selectedPoint && (
+              <Button
+                variant="link"
+                size="sm"
+                className="p-0 text-danger"
+                onClick={() => onPointChange(null)}
+              >
+                Clear {label}
+              </Button>
+            )}
+          </div>
+        )}
+        <div style={{ display: (!autofillFired && (isSelecting || selectedPoint)) ? 'none' : 'block' }}>
           <div>
             <Input
               name={`${addressPrefix}Address`}
               autoComplete="address-line1"
-              placeholder={`${label} Street Address`}
+              placeholder="Address"
               style={{ marginBottom: "10px", width: "100%" }}
-              className="mb-2"
             />
             <Input
               name={`${addressPrefix}Apartment`}
               autoComplete="address-line2"
-              placeholder={`${label} Apartment`}
+              placeholder="Apartment"
               style={{ marginBottom: "10px", width: "100%" }}
-              className="mb-2"
             />
           </div>
           <div className="d-flex justify-content-between">
             <Input
               name={`${addressPrefix}City`}
               autoComplete="address-level2"
-              placeholder={`${label} City`}
+              placeholder="City"
               style={{ flex: 2, marginRight: "5px" }}
             />
             <Input
               name={`${addressPrefix}State`}
               autoComplete="address-level1"
-              placeholder={`${label} State`}
+              placeholder="State"
               style={{ flex: 1, marginRight: "5px" }} />
             <Input
-              name={`${addressPrefix}Zip`}
+              name={`${addressPrefix}ZIP`}
               autoComplete="postal-code"
-              placeholder={`${label} ZIP`}
+              placeholder="ZIP"
               style={{ flex: 1 }} />
           </div>
-        </AddressAutofill>
-      )}
-    </div>
+          <Input type="hidden" name={`${addressPrefix}AddressSource`} value="Mapbox" />
+        </div>
+      </div>
+    </AddressAutofill>
   );
 };
