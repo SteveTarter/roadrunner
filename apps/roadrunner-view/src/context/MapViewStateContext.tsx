@@ -21,7 +21,7 @@ export const MapViewStateProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const [homeMapViewState, setViewState] = useState<ViewState>(() => {
     const saved = sessionStorage.getItem(storageKey);
-    return saved ? JSON.parse(saved) : {
+    return saved && (saved !== 'undefined') ? JSON.parse(saved) : {
       longitude: -97.5,
       latitude: 32.75,
       zoom: 10,
