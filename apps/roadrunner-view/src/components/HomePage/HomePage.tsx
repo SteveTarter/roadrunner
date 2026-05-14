@@ -18,6 +18,7 @@ import { usePlayback } from "../../context/PlaybackContext";
 import { useMapViewState } from '../../context/MapViewStateContext';
 import { useVehicleData } from '../../hooks/useVehicleData';
 import { ActiveVehiclePlot } from '../Shared/ActiveVehiclePlot';
+import { CrissCrossPanel } from './CrissCrossPanel';
 
 export const HomePage = () => {
   const { homePageMap } = useMap();
@@ -26,6 +27,7 @@ export const HomePage = () => {
   const [vehicleSize, setVehicleSize] = useState(5);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isCreateVehicleActive, setIsCreateVehicleActive] = useState(false)
+  const [isCrissCrossActive, setIsCrissCrossActive] = useState(false)
   const [showSimTable, setShowSimTable] = useState(false);
   const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
 
@@ -168,6 +170,10 @@ export const HomePage = () => {
     setIsCreateVehicleActive(true);
   }, []);
 
+  const openCrissCross = useCallback(() => {
+    setIsCrissCrossActive(true);
+  }, []);
+
   const toggleSimTable = useCallback(() => {
     setShowSimTable(!showSimTable);
     setShowActiveVehiclePlot(false);
@@ -225,6 +231,7 @@ export const HomePage = () => {
           <AppNavBar additionalMenuItems={
             <ManageMenu
               openCreateVehicle={openCreateVehicle}
+              openCrissCross={openCrissCross}
               toggleSimTable={toggleSimTable}
               toggleShowActiveVehiclePlot={toggleShowActiveVehiclePlot}
             />
@@ -237,6 +244,13 @@ export const HomePage = () => {
                 <CreateVehiclePanel
                   returnToNow={returnToNow}
                   setIsCreateVehicleActive={setIsCreateVehicleActive}
+                  mapRef={mapRef}
+                />
+              )}
+              {isCrissCrossActive && (
+                <CrissCrossPanel
+                  returnToNow={returnToNow}
+                  setIsCrissCrossActive={setIsCrissCrossActive}
                   mapRef={mapRef}
                 />
               )}
