@@ -75,7 +75,7 @@ public class VehicleUsageService
      * vehicle. For non-superuser accounts, it increments the user's Redis counter
      * for the current UTC day. If the incremented value exceeds the configured
      * daily limit, the request is rejected by throwing a
-     * {@link VehicleLimitExceededException}.
+     * {@link VehicleCreationException}.
      * </p>
      *
      * <p>
@@ -84,7 +84,7 @@ public class VehicleUsageService
      * </p>
      *
      * @param user authenticated user principal for the request
-     * @throws VehicleLimitExceededException if the user cannot be identified or has
+     * @throws VehicleCreationException if the user cannot be identified or has
      *                                       exceeded the daily vehicle-start limit
      * @throws IllegalStateException         if Redis does not return a counter
      *                                       value after incrementing
@@ -93,7 +93,12 @@ public class VehicleUsageService
     {
         if (user == null || user.sub() == null || user.sub().isBlank())
         {
-            throw new VehicleLimitExceededException("Unable to determine authenticated user.");
+            throw new VehicleCreationException("Unable to determine authenticated user.");
+        }
+
+        if (!user.isCreator())
+        {
+            throw new VehicleCreationException("User must be member of the \"creator\" group.");
         }
 
         if (user.isSuperuser())
@@ -123,7 +128,7 @@ public class VehicleUsageService
                     count,
                     defaultDailyVehicleStarts);
 
-            throw new VehicleLimitExceededException(
+            throw new VehicleCreationException(
                     "Daily vehicle limit reached. Please try again tomorrow.");
         }
 
