@@ -30,7 +30,38 @@ Before deploying, ensure you have the following:
 
 ## Configuration
 Preparation involves setting up your variable files. Sensitive data belongs in `terraform.tfvars`, while environment-specific settings are split by workspace.
-
+The variables are described below:
+| Variable                      | Description                                                                              |
+|-------------------------------|------------------------------------------------------------------------------------------|
+| cluster_name                  | The name of the EKS cluster to be created, used for identification and tagging.          |
+| region                        | The AWS region of the EKS.                                                               |
+| roadrunner_version            | The Roadrunner tag version to run.                                                       |
+| roadrunner_view_version       | The Roadrunner Viewer tag version to run.                                                |
+| kubeconfig_path               | The path to the kubeconfig file used for Kubernetes cluster access.                      |
+| roadrunner_namespace          | The Kubernetes namespace where the Roadrunner application resources will be deployed.    |
+| roadrunner_rest_url_base      | The base URL for the Roadrunner REST API.                                                |
+| roadrunner_view_url_base      | The public base URL for the Roadrunner View application.                                 |
+| mapbox_api_key                | The API key used to access Mapbox services.                                              |
+| spring_mail_username          | The username for the Spring Mail service.                                                |
+| spring_mail_password          | The password for the Spring Mail service.                                                |
+| roadrunner_user_pool_arn      | The ARN for the Cognito User Pool used by Roadrunner.                                    |
+| aws_access_key_id             | The AWS access key ID.                                                                   |
+| aws_secret_access_key         | The AWS secret access key.                                                               |
+| eks_oidc_provider_arn         | The EKS OpenID Connect provider URL.                                                     |
+| cognito_redirect_sign_in      | The redirect sign in URL for the Cognito application.                                    |
+| cognito_redirect_sign_out     | The redirect sign outin URL for the Cognito application.                                 |
+| cognito_authority             | The authority URL for Cognito.                                                           |
+| cognito_client_id             | The client ID for the Cognito app                                                        |
+| cognito_redirect_uri          | The redirect URL for the Cognito application.                                            |
+| cognito_user_pool_id          | The User Pool ID for the Cognito application.                                            |
+| cognito_user_pool_client_id   | The User Pool ID for the Cognito application.                                            |
+| cognito_domain                | The domain for the Cognito application.                                                  |
+| tarterware_cert_arn           | The ARN of the SSL/TLS certificate for securing communication with Tarterware services.  |
+| tarterware_api_audience       | The Auth0 audience value for the Tarterware API.                                         |
+| kafka_storage_type            | Kafka storage type                                                                       |
+| kafka_storage_size            | Kafka storage size                                                                       |
+| kafka_storage_class           | Kafka storage class                                                                      |
+  
 1. **Global Secrets (`terraform.tfvars`)**
 Create this file in the root directory to store credentials:
 ```terraform
