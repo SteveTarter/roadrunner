@@ -4,6 +4,12 @@ variable "roadrunner_namespace" {
   default     = "roadrunner"
 }
 
+variable "roadrunner_view_version" {
+  description = "The Roadrunner Viewer tag version to run."
+  type        = string
+  default     = "latest"
+}
+
 variable "roadrunner_rest_url_base" {
   description = "The base URL for the Roadrunner REST API."
   sensitive   = true

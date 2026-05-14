@@ -9,6 +9,18 @@ variable "region" {
   default     = "us-east-1"
 }
 
+variable "roadrunner_version" {
+  description = "The Roadrunner tag version to run."
+  type        = string
+  default     = "latest"
+}
+
+variable "roadrunner_view_version" {
+  description = "The Roadrunner Viewer tag version to run."
+  type        = string
+  default     = "latest"
+}
+
 variable "kubeconfig_path" {
   description = "The path to the kubeconfig file used for Kubernetes cluster access."
   type        = string

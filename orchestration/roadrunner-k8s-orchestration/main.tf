@@ -118,6 +118,7 @@ module "roadrunner" {
 
   cluster_name                 = var.cluster_name
   region                       = var.region
+  roadrunner_version           = var.roadrunner_version
   roadrunner_namespace         = var.roadrunner_namespace
   mapbox_api_key               = var.mapbox_api_key
   spring_mail_username         = var.spring_mail_username
@@ -144,6 +145,7 @@ module "roadrunner_view" {
   # The dependency ensures that the backend is fully set up before the frontend configuration is applied.
 
   roadrunner_namespace         = var.roadrunner_namespace
+  roadrunner_view_version      = var.roadrunner_view_version
   roadrunner_rest_url_base     = var.roadrunner_rest_url_base
   roadrunner_view_url_base     = var.roadrunner_view_url_base
   mapbox_api_key               = var.mapbox_api_key

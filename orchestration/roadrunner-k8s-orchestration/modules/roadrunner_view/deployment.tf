@@ -64,7 +64,7 @@ resource "kubernetes_deployment" "roadrunner_view_deployment" {
 
         container {
           name  = "roadrunner-view"
-          image = "tarterware/roadrunner-view:latest"
+          image = "tarterware/roadrunner-view:${var.roadrunner_view_version}"
           image_pull_policy = "Always"
 
           resources {

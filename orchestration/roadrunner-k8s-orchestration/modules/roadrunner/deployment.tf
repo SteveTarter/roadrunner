@@ -29,7 +29,7 @@ resource "kubernetes_deployment" "roadrunner" {
 
         container {
           name  = "roadrunner"
-          image = "tarterware/roadrunner:latest"
+          image = "tarterware/roadrunner:${var.roadrunner_version}"
           image_pull_policy = "Always"
 
           port {
