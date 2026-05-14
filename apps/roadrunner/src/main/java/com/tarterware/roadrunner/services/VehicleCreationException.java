@@ -11,7 +11,7 @@ package com.tarterware.roadrunner.services;
  * {@code 429 Too Many Requests} response.
  * </p>
  */
-public class VehicleLimitExceededException extends RuntimeException
+public class VehicleCreationException extends RuntimeException
 {
     /**
      * Serialization identifier for this exception class.
@@ -24,7 +24,7 @@ public class VehicleLimitExceededException extends RuntimeException
      *
      * @param message human-readable explanation of the limit violation
      */
-    public VehicleLimitExceededException(String message)
+    public VehicleCreationException(String message)
     {
         super(message);
     }

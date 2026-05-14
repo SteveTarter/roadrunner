@@ -30,7 +30,8 @@ public record UserPrincipal(
      *
      * <p>
      * Superusers are treated as privileged demo users and may be exempt from normal
-     * usage limits, such as the daily vehicle-start limit.
+     * usage limits, such as the daily vehicle-start limit, or running maintenance
+     * commands.
      * </p>
      *
      * @return {@code true} if the user belongs to the {@code superuser} group;
@@ -40,4 +41,22 @@ public record UserPrincipal(
     {
         return groups != null && groups.contains("superuser");
     }
+
+    /**
+     * Indicates whether the user belongs to the Roadrunner creator group.
+     *
+     * <p>
+     * Creators are treated as privileged demo users that are allowed to create
+     * vehicles. Note that unless a user also has superuser group membership, daily
+     * vehicle-start limits will be enforced.
+     * </p>
+     *
+     * @return {@code true} if the user belongs to the {@code creator} group;
+     *         otherwise {@code false}
+     */
+    public boolean isCreator()
+    {
+        return groups != null && groups.contains("creator");
+    }
+
 }

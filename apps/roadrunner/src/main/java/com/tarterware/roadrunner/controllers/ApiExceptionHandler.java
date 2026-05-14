@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.tarterware.roadrunner.services.VehicleLimitExceededException;
+import com.tarterware.roadrunner.services.VehicleCreationException;
 
 /**
  * Centralized exception handler for Roadrunner REST controllers.
@@ -23,7 +23,7 @@ import com.tarterware.roadrunner.services.VehicleLimitExceededException;
 public class ApiExceptionHandler
 {
     /**
-     * Handles requests that exceed the allowed daily vehicle-start limit.
+     * Handles requests that exceed the user's vehicle creation privileges.
      *
      * <p>
      * The response uses HTTP {@code 429 Too Many Requests} and includes a small
@@ -36,9 +36,9 @@ public class ApiExceptionHandler
      *           allowed vehicle-start limit
      * @return a structured error response for the failed request
      */
-    @ExceptionHandler(VehicleLimitExceededException.class)
+    @ExceptionHandler(VehicleCreationException.class)
     @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
-    public ErrorResponse handleVehicleLimitExceeded(VehicleLimitExceededException ex)
+    public ErrorResponse handleVehicleCreationException(VehicleCreationException ex)
     {
         return new ErrorResponse(
                 ex.getMessage(),
