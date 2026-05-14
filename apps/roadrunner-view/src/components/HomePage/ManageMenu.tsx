@@ -1,5 +1,4 @@
 import { fetchAuthSession } from "aws-amplify/auth";
-import { useNavigate } from "react-router-dom";
 import { DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from "reactstrap";
 import { CONFIG } from "../../config";
 
@@ -8,7 +7,6 @@ export const ManageMenu = (props: {
   toggleSimTable: any,
   toggleShowActiveVehiclePlot: any
 }) => {
-  const navigate = useNavigate();
 
   type ApiErrorResponse = {
     message?: string;
@@ -72,38 +70,6 @@ export const ManageMenu = (props: {
     }
   };
 
-  const handleResetServer = async () => {
-      // Get the latest session right before the call
-      const session = await fetchAuthSession();
-      const accessToken = session.tokens?.accessToken?.toString();
-
-      if (!accessToken) {
-        console.error("Session expired");
-        return;
-      }
-
-    const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/reset-server`;
-    try {
-      const response = await fetch(url, {
-        method: 'get',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("Success:", data);
-      navigate("/home");
-    } catch (error) {
-      console.error("Error resetting server:", error);
-      alert("Failed to reset server.");
-    }
-  };
-
   function handleCreateVehicle() {
     props.openCreateVehicle();
   }
@@ -146,13 +112,6 @@ export const ManageMenu = (props: {
             onClick={() => handleToggleShowActiveVehiclePlot()}
           >
           Active Vehicle Plot
-          </DropdownItem>
-          <DropdownItem
-            id="resetServerBtn"
-            disabled={true}
-            onClick={() => handleResetServer()}
-          >
-            Reset server
           </DropdownItem>
         </DropdownMenu>
       </UncontrolledDropdown>
