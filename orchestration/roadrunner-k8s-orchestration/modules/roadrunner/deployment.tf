@@ -25,13 +25,20 @@ resource "kubernetes_deployment" "roadrunner" {
       }
 
       spec {
+        service_account_name = kubernetes_service_account.roadrunner_sa.metadata[0].name
+
         container {
           name  = "roadrunner"
-          image = "tarterware/roadrunner:latest"
+          image = "tarterware/roadrunner:${var.roadrunner_version}"
           image_pull_policy = "Always"
 
           port {
             container_port = 8080
+          }
+
+          env {
+            name  = "AWS_REGION"
+            value = var.region
           }
 
           # Redis password is only needed on minikube; eks uses IAM
@@ -48,6 +55,33 @@ resource "kubernetes_deployment" "roadrunner" {
             }
           }
 
+          # AWS Secrets for Minikube
+          dynamic "env" {
+            for_each = terraform.workspace == "minikube" ? [1] : []
+            content {
+              name = "AWS_ACCESS_KEY_ID"
+              value_from {
+                secret_key_ref {
+                  name = "aws-credentials"
+                  key  = "access-key-id"
+                }
+              }
+            }
+          }
+
+          dynamic "env" {
+            for_each = terraform.workspace == "minikube" ? [1] : []
+            content {
+              name = "AWS_SECRET_ACCESS_KEY"
+              value_from {
+                secret_key_ref {
+                  name = "aws-credentials"
+                  key  = "secret-access-key"
+                }
+              }
+            }
+          }
+
           env {
             name = "K8S_POD_NAME"
             value_from {
@@ -59,8 +93,13 @@ resource "kubernetes_deployment" "roadrunner" {
 
           # Dynamic args
           args = terraform.workspace == "minikube" ? [
-            "--com.tarterware.redis.password=$(REDIS_PASSWORD)"
-          ] : []
+            "--com.tarterware.redis.password=$(REDIS_PASSWORD)",
+            "-XX:MaxDirectMemorySize=512M",
+            "-Xmx512M"
+          ] : [
+            "-XX:MaxDirectMemorySize=512M",
+            "-Xmx512M"
+          ]
 
           volume_mount {
             name       = "application-conf"

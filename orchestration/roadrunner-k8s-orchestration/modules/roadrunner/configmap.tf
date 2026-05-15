@@ -21,6 +21,9 @@ com.tarterware.redis.port=6379
 com.tarterware.redis.password=${var.redis_password}
 com.tarterware.roadrunner.vehicle-update-period=250ms
 com.tarterware.roadrunner.jitter-stat-capacity=200
+com.tarterware.roadrunner.vehicle-state-buffer-period=2s
+com.tarterware.roadrunner.playback-cache-timeout=1m
+com.tarterware.roadrunner.playback-cache-size=100
 logging.level.org.apache.kafka.clients.consumer.internals.LegacyKafkaConsumer=WARN
 logging.level.org.apache.kafka.clients.consumer.internals.SubscriptionState=WARN
 spring.profiles.active=${terraform.workspace}
@@ -45,6 +48,7 @@ management.endpoints.web.exposure.include=health,info,metrics,prometheus
 management.endpoint.health.show-details=always
 spring.security.oauth2.resourceserver.jwt.issuer-uri=${var.cognito_authority}
 cognito.app-client-id=${var.cognito_client_id}
+com.tarterware.roadrunner.aws.cognito.user-pool-id=${var.cognito_user_pool_id}
 prometheus.secret.namespace=monitoring
 prometheus.secret.name=prometheus-token-secret
 EOT

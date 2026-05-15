@@ -3,6 +3,24 @@ variable "cluster_name" {
   type        = string
 }
 
+variable "region" {
+  description = "The AWS region of the EKS."
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "roadrunner_version" {
+  description = "The Roadrunner tag version to run."
+  type        = string
+  default     = "latest"
+}
+
+variable "roadrunner_view_version" {
+  description = "The Roadrunner Viewer tag version to run."
+  type        = string
+  default     = "latest"
+}
+
 variable "kubeconfig_path" {
   description = "The path to the kubeconfig file used for Kubernetes cluster access."
   type        = string
@@ -41,6 +59,30 @@ variable "spring_mail_username" {
 
 variable "spring_mail_password" {
   description = "The password for the Spring Mail service."
+  sensitive   = true
+  type        = string
+}
+
+variable "roadrunner_user_pool_arn" {
+  description = "The ARN for the Cognito User Pool used by Roadrunner."
+  sensitive   = true
+  type        = string
+}
+
+variable "aws_access_key_id" {
+  description = "The AWS access key ID."
+  sensitive   = true
+  type        = string
+}
+
+variable "aws_secret_access_key" {
+  description = "The AWS secret access key."
+  sensitive   = true
+  type        = string
+}
+
+variable "eks_oidc_provider_arn" {
+  description = "The EKS OpenID Connect provider URL."
   sensitive   = true
   type        = string
 }

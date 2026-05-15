@@ -117,13 +117,20 @@ module "roadrunner" {
   # This module sets up the core infrastructure for the Roadrunner application, including networking, IAM roles, and Kubernetes resources.
 
   cluster_name                 = var.cluster_name
+  region                       = var.region
+  roadrunner_version           = var.roadrunner_version
   roadrunner_namespace         = var.roadrunner_namespace
   mapbox_api_key               = var.mapbox_api_key
   spring_mail_username         = var.spring_mail_username
   spring_mail_password         = var.spring_mail_password
+  roadrunner_user_pool_arn     = var.roadrunner_user_pool_arn
   cognito_authority            = var.cognito_authority
   cognito_client_id            = var.cognito_client_id
+  cognito_user_pool_id         = var.cognito_user_pool_id
   tarterware_cert_arn          = var.tarterware_cert_arn
+  aws_access_key_id            = var.aws_access_key_id
+  aws_secret_access_key        = var.aws_secret_access_key
+  eks_oidc_provider_arn        = var.eks_oidc_provider_arn
   redis_host                   = module.redis.redis_host
   redis_password               = module.redis.redis_password
   prometheus_release_name      = module.prometheus.prometheus_release_name
@@ -138,6 +145,7 @@ module "roadrunner_view" {
   # The dependency ensures that the backend is fully set up before the frontend configuration is applied.
 
   roadrunner_namespace         = var.roadrunner_namespace
+  roadrunner_view_version      = var.roadrunner_view_version
   roadrunner_rest_url_base     = var.roadrunner_rest_url_base
   roadrunner_view_url_base     = var.roadrunner_view_url_base
   mapbox_api_key               = var.mapbox_api_key
