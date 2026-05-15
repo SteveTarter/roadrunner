@@ -18,6 +18,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -37,15 +39,40 @@ public class SecurityConfig
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception
     {
-        http.cors(Customizer.withDefaults()).csrf(csrf -> csrf.disable())
+        http.cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
+                        // Publicly accessible endpoints
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        // Protect sensitive metrics with RBAC
+                        .requestMatchers("/actuator/metrics/**", "/actuator/prometheus/**")
+                        .hasAuthority("ROLE_superuser")
                         // Allow unauthenticated access to actuator health and info endpoints
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                        // All other requests require authentication
+                        // All other requests require standard authentication
                         .anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(jwtDecoder())));
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt
+                                .decoder(jwtDecoder())
+                                .jwtAuthenticationConverter(jwtAuthenticationConverter())));
 
         return http.build();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter()
+    {
+        JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
+
+        // Tell Spring to look at 'cognito:groups' instead of 'scope'
+        authoritiesConverter.setAuthoritiesClaimName("cognito:groups");
+
+        // Prefix the groups with 'ROLE_' so .hasRole("ADMIN") works
+        authoritiesConverter.setAuthorityPrefix("ROLE_");
+
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+        return converter;
     }
 
     @Bean
