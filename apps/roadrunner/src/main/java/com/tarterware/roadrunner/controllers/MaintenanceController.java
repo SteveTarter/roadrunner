@@ -3,6 +3,8 @@ package com.tarterware.roadrunner.controllers;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,5 +30,14 @@ public class MaintenanceController
         return ResponseEntity.accepted().body(Map.of(
                 "status", "Operation Started",
                 "message", "Cleaning orphaned sessions in the background. Check logs for progress."));
+    }
+
+    @GetMapping("/whoami")
+    public Map<String, Object> debugAuth(Authentication auth)
+    {
+        return Map.of(
+                "username", auth.getName(),
+                "authorities", auth.getAuthorities() // You should see [ROLE_ADMIN, ...] here
+        );
     }
 }
