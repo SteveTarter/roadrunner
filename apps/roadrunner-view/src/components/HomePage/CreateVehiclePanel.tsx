@@ -49,11 +49,11 @@ export const CreateVehiclePanel = (props: {
     const buildAddress = (prefix: string, point: {lat: number, lng: number} | null) => {
       return new Address(
         formData.get(`${prefix}AddressSource`) as string,
-        formData.get(`${prefix}Address`) as string || "",
+        formData.get(`${prefix}Address address-search`) as string || "",
         formData.get(`${prefix}Apartment`) as string || "",
         formData.get(`${prefix}City`) as string || "",
         formData.get(`${prefix}State`) as string || "",
-        formData.get(`${prefix}Zip`) as string || "",
+        formData.get(`${prefix}ZIP`) as string || "",
         point?.lat || 0,
         point?.lng || 0
       );
