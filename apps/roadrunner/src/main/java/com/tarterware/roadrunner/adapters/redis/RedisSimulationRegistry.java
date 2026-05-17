@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -82,7 +81,7 @@ public class RedisSimulationRegistry implements SimulationRegistry
         session.setId(vehicle.getId());
         session.setUsername(username);
         session.setColorCode(vehicle.getColorCode());
-        session.setStart(startTime);
+        session.setStart(startTime.toEpochMilli());
         session.setEnd(null); // Explicitly null for active sessions
 
         saveToZSet(session);
@@ -90,7 +89,7 @@ public class RedisSimulationRegistry implements SimulationRegistry
     }
 
     @Override
-    public void recordEnd(UUID vehicleID, Instant endTime)
+    public void recordEnd(String vehicleID, Instant endTime)
     {
         // Find the existing session in the list to get its start time
         List<SimulationSession> sessions = getAllSessions();
@@ -103,7 +102,7 @@ public class RedisSimulationRegistry implements SimulationRegistry
                     removeFromZSet(session);
 
                     // Update with the end time and save
-                    session.setEnd(endTime);
+                    session.setEnd(endTime.toEpochMilli());
                     saveToZSet(session);
                     logger.info("Recorded end of simulation session: {}", vehicleID);
                 });
@@ -146,7 +145,7 @@ public class RedisSimulationRegistry implements SimulationRegistry
         try
         {
             String json = objectMapper.writeValueAsString(session);
-            double score = session.getStart().toEpochMilli();
+            double score = session.getStart();
             redisTemplate.opsForZSet().add(SESSIONS_KEY, json, score);
         }
         catch (JsonProcessingException e)
@@ -179,7 +178,6 @@ public class RedisSimulationRegistry implements SimulationRegistry
      * @param json the JSON data from Redis
      * @return the deserialized session, or null if deserialization fails
      */
-    @SuppressWarnings("unused")
     private SimulationSession deserialize(String json)
     {
         try

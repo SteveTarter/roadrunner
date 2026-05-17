@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.tarterware.roadrunner.utilities.StringUtilities;
 
 public class SimulationSessionSerializationTest
 {
@@ -22,14 +23,14 @@ public class SimulationSessionSerializationTest
         mapper.registerModule(new JavaTimeModule());
 
         // Create the original session with nanosecond precision
-        UUID vehicleId = UUID.randomUUID();
+        String vehicleId = StringUtilities.shortenedUUID(UUID.randomUUID());
         Instant endTime = Instant.now();
         Instant startTime = endTime.minusMillis(100000);
 
         // Simulate an ongoing session by leaving end null
         SimulationSession originalSession = new SimulationSession();
         originalSession.setId(vehicleId);
-        originalSession.setStart(startTime);
+        originalSession.setStart(startTime.toEpochMilli());
         originalSession.setEnd(null);
 
         // Serialize to JSON string
@@ -45,7 +46,7 @@ public class SimulationSessionSerializationTest
         assertEquals(originalSession.getEnd(), deserializedSession.getEnd(), "End time nanoseconds must match");
 
         // Repeat test with end time set
-        originalSession.setEnd(endTime);
+        originalSession.setEnd(endTime.toEpochMilli());
 
         // Serialize to JSON string
         json = mapper.writeValueAsString(originalSession);
@@ -58,9 +59,5 @@ public class SimulationSessionSerializationTest
         assertEquals(originalSession.getId(), deserializedSession.getId(), "IDs must match");
         assertEquals(originalSession.getStart(), deserializedSession.getStart(), "Start time nanoseconds must match");
         assertEquals(originalSession.getEnd(), deserializedSession.getEnd(), "End time nanoseconds must match");
-
-        // Explicitly check nanosecond equality
-        assertEquals(originalSession.getStart().getNano(), deserializedSession.getStart().getNano(),
-                "Nanosecond precision lost");
     }
 }

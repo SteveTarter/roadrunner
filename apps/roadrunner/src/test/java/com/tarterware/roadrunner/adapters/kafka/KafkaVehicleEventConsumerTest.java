@@ -35,6 +35,7 @@ import com.tarterware.roadrunner.services.IdentityService;
 import com.tarterware.roadrunner.services.IsochroneService;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 import com.tarterware.roadrunner.services.VehicleUsageService;
+import com.tarterware.roadrunner.utilities.StringUtilities;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 
@@ -116,9 +117,9 @@ public class KafkaVehicleEventConsumerTest
     {
         when(kafkaTopicMetadataService.getTopicRetention(anyString())).thenReturn(Duration.ofDays(7));
 
-        UUID id = UUID.randomUUID();
+        String vehicleId = StringUtilities.shortenedUUID(UUID.randomUUID());
         VehiclePositionEvent inital = new VehiclePositionEvent(
-                id.toString(),
+                vehicleId,
                 Instant.now(),
                 2000L,
                 10L,
@@ -136,7 +137,7 @@ public class KafkaVehicleEventConsumerTest
 
         // Update event to change position and back up in time
         VehiclePositionEvent stale = new VehiclePositionEvent(
-                id.toString(),
+                vehicleId,
                 Instant.now(),
                 1000L,
                 10L,
@@ -153,7 +154,7 @@ public class KafkaVehicleEventConsumerTest
         kafkaConsumer.receive(stale);
 
         // Get the vehicle state from the state store and ensure it hasn't changed
-        VehicleState state = stateStore.getVehicle(id);
+        VehicleState state = stateStore.getVehicle(vehicleId);
         assertEquals(32.0, state.getDegLatitude(), "State should remain at the newer coordinate");
     }
 }

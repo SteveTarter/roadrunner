@@ -17,6 +17,7 @@ import com.tarterware.roadrunner.models.mapbox.Annotation;
 import com.tarterware.roadrunner.models.mapbox.Directions;
 import com.tarterware.roadrunner.models.mapbox.RouteLeg;
 import com.tarterware.roadrunner.services.DirectionsService;
+import com.tarterware.roadrunner.utilities.StringUtilities;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
 import lombok.AllArgsConstructor;
@@ -56,7 +57,7 @@ public class Vehicle
     // Unique identifier for the vehicle instance.
     @Getter
     @JsonProperty
-    UUID id;
+    String id;
 
     // Current offset along the route in meters.
     @Getter
@@ -165,7 +166,7 @@ public class Vehicle
         super();
 
         // Initialize the vehicle with a unique identifier.
-        this.id = UUID.randomUUID();
+        this.id = StringUtilities.shortenedUUID(UUID.randomUUID());
 
         // Default acceleration (m/s^2) for the vehicle.
         this.mssAcceleration = 2.0;

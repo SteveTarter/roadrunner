@@ -8,7 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
-import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -131,7 +130,7 @@ class VehicleTest
         vehicle = vehicleManager.createVehicle(mockTripPlan, "testing@tarterware.com");
 
         // Ensure Redis returns the vehicle when asked by ID
-        UUID vehicleId = vehicle.getId();
+        String vehicleId = vehicle.getId();
 
         vehicle.setDirections(vehicleManager.getVehicleDirections(vehicleId, true));
         vehicle.setListLineSegmentData(vehicleManager.getLineSegmentData(vehicleId));

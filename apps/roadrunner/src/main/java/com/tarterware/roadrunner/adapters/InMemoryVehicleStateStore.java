@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.tarterware.roadrunner.adapters.kafka.KafkaControllerVehicleStateStore;
@@ -35,30 +34,30 @@ import com.tarterware.roadrunner.ports.VehicleStateStore;
 public class InMemoryVehicleStateStore implements VehicleStateStore
 {
     /** Set of IDs for vehicles currently active in the simulation. */
-    private Set<UUID> activeVehicleSet = ConcurrentHashMap.newKeySet();
+    private Set<String> activeVehicleSet = ConcurrentHashMap.newKeySet();
 
     /**
      * Map containing the latest known state for each vehicle, keyed by vehicle ID.
      */
-    private ConcurrentHashMap<UUID, VehicleState> vehicleStateMap = new ConcurrentHashMap<UUID, VehicleState>();
+    private ConcurrentHashMap<String, VehicleState> vehicleStateMap = new ConcurrentHashMap<String, VehicleState>();
 
     @Override
-    public VehicleState getVehicle(UUID vehicleId)
+    public VehicleState getVehicle(String vehicleId)
     {
         return vehicleStateMap.get(vehicleId);
     }
 
     @Override
-    public Map<UUID, VehicleState> getVehicles(Collection<UUID> vehicleIds)
+    public Map<String, VehicleState> getVehicles(Collection<String> vehicleIds)
     {
         if (vehicleIds == null)
         {
             throw new IllegalArgumentException("vehicleIds cannot be null!");
         }
 
-        Map<UUID, VehicleState> resultMap = new HashMap<UUID, VehicleState>();
+        Map<String, VehicleState> resultMap = new HashMap<String, VehicleState>();
 
-        for (UUID vehicleId : vehicleIds)
+        for (String vehicleId : vehicleIds)
         {
             VehicleState vehicleState = getVehicle(vehicleId);
             resultMap.put(vehicleId, vehicleState);
@@ -84,7 +83,7 @@ public class InMemoryVehicleStateStore implements VehicleStateStore
     }
 
     @Override
-    public void deleteVehicle(UUID vehicleId)
+    public void deleteVehicle(String vehicleId)
     {
         if (vehicleId == null)
         {
@@ -96,31 +95,31 @@ public class InMemoryVehicleStateStore implements VehicleStateStore
     }
 
     @Override
-    public Set<UUID> getActiveVehicleIds()
+    public Set<String> getActiveVehicleIds()
     {
         return activeVehicleSet;
     }
 
     @Override
-    public void addActiveVehicle(UUID vehicleId)
+    public void addActiveVehicle(String vehicleId)
     {
         activeVehicleSet.add(vehicleId);
     }
 
     @Override
-    public void removeActiveVehicle(UUID vehicleId)
+    public void removeActiveVehicle(String vehicleId)
     {
         activeVehicleSet.remove(vehicleId);
     }
 
     @Override
-    public boolean tryAcquireUpdateLock(UUID vehicleId)
+    public boolean tryAcquireUpdateLock(String vehicleId)
     {
         return true;
     }
 
     @Override
-    public void releaseUpdateLock(UUID vehicleId)
+    public void releaseUpdateLock(String vehicleId)
     {
         // No op
     }

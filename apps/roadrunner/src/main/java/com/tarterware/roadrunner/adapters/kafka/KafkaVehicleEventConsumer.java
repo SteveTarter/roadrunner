@@ -1,7 +1,6 @@
 package com.tarterware.roadrunner.adapters.kafka;
 
 import java.util.Collections;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.admin.AdminClient;
@@ -88,7 +87,6 @@ public class KafkaVehicleEventConsumer
     public void receive(@Payload
     VehiclePositionEvent event)
     {
-        UUID vehicleId;
         VehicleState vehicleState;
 
         log.debug("Kafka Event [{}]: Vehicle {} is at ({}, {}) heading {} degrees at {} m/s. Sequence: {}",
@@ -108,8 +106,7 @@ public class KafkaVehicleEventConsumer
 
                 // Create a new vehicleState and populate with the event
                 vehicleState = new VehicleState();
-                vehicleId = UUID.fromString(event.vehicleId());
-                vehicleState.setId(vehicleId);
+                vehicleState.setId(event.vehicleId());
                 vehicleState.setDegLatitude(event.latitude());
                 vehicleState.setDegLongitude(event.longitude());
                 vehicleState.setDegBearing(event.heading());
@@ -123,13 +120,12 @@ public class KafkaVehicleEventConsumer
 
                 // Add it to the vehicleStateStore
                 vehicleStateStore.saveVehicle(vehicleState);
-                vehicleStateStore.addActiveVehicle(vehicleId);
+                vehicleStateStore.addActiveVehicle(event.vehicleId());
                 break;
 
             case "MOVING":
                 log.debug("MOVING: {}", event.vehicleId());
-                vehicleId = UUID.fromString(event.vehicleId());
-                vehicleState = vehicleStateStore.getVehicle(vehicleId);
+                vehicleState = vehicleStateStore.getVehicle(event.vehicleId());
                 if (vehicleState == null)
                 {
                     // throw new RuntimeException("No vehicle with ID " + vehicleId);
@@ -140,7 +136,7 @@ public class KafkaVehicleEventConsumer
                 long sequenceNumber = event.sequenceNumber();
                 if (sequenceNumber > vehicleState.getMsEpochLastRun())
                 {
-                    vehicleState.setId(vehicleId);
+                    vehicleState.setId(event.vehicleId());
                     vehicleState.setDegLatitude(event.latitude());
                     vehicleState.setDegLongitude(event.longitude());
                     vehicleState.setDegBearing(event.heading());
@@ -160,9 +156,8 @@ public class KafkaVehicleEventConsumer
             case "DELETED":
                 log.debug("DELETED: {}", event.vehicleId());
 
-                vehicleId = UUID.fromString(event.vehicleId());
-                vehicleStateStore.deleteVehicle(vehicleId);
-                vehicleStateStore.removeActiveVehicle(vehicleId);
+                vehicleStateStore.deleteVehicle(event.vehicleId());
+                vehicleStateStore.removeActiveVehicle(event.vehicleId());
                 break;
 
             default:

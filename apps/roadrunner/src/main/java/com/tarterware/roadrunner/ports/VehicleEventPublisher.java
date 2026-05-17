@@ -1,7 +1,5 @@
 package com.tarterware.roadrunner.ports;
 
-import java.util.UUID;
-
 import com.tarterware.roadrunner.components.Vehicle;
 
 public interface VehicleEventPublisher
@@ -24,7 +22,7 @@ public interface VehicleEventPublisher
     /**
      * Publish that a Vehicle has been deleted.
      *
-     * @param vehicle New Vehicle to publish.
+     * @param vehicleId New Vehicle ID to delete.
      */
-    void publishVehicleDeleted(UUID vehicleId);
+    void publishVehicleDeleted(String vehicleId);
 }

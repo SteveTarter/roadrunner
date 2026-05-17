@@ -10,7 +10,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -223,7 +222,7 @@ public class PlaybackController
      * endpoint. If the vehicle does not have a state within that window, a
      * {@code 404 NOT FOUND} response is returned.
      *
-     * @param vehicleId    UUID string identifying the vehicle
+     * @param vehicleId    string identifying the vehicle
      * @param timestamp    ISO-8601 timestamp string, or "Unset" to use the current
      *                     time
      * @param windowPeriod ISO-8601 window length string (e.g., {@code 2s})
@@ -240,7 +239,7 @@ public class PlaybackController
     {
         List<VehicleState> latestStates = getStatesForTimestamp(timestamp, windowPeriod);
 
-        Map<UUID, VehicleState> uniqueLatestStates = latestStates.stream()
+        Map<String, VehicleState> uniqueLatestStates = latestStates.stream()
                 .collect(toMap(
                         VehicleState::getId, // Key: Vehicle ID
                         state -> state, // Value: The state object
@@ -249,8 +248,7 @@ public class PlaybackController
                                 ? existing
                                 : replacement));
 
-        UUID id = UUID.fromString(vehicleId);
-        VehicleState vehicleState = uniqueLatestStates.get(id);
+        VehicleState vehicleState = uniqueLatestStates.get(vehicleId);
 
         if (vehicleState == null)
         {
@@ -377,7 +375,7 @@ public class PlaybackController
      */
     private List<VehicleState> queryHotStore()
     {
-        Set<UUID> vehicleIds = vehicleStateStore.getActiveVehicleIds();
+        Set<String> vehicleIds = vehicleStateStore.getActiveVehicleIds();
 
         List<VehicleState> stateList = vehicleStateStore
                 .getVehicles(vehicleIds)
@@ -401,11 +399,10 @@ public class PlaybackController
      */
     private void mapToLatestState(VehiclePositionEvent event, List<VehicleState> latestStates)
     {
-        UUID id = UUID.fromString(event.vehicleId());
         long eventMillis = event.eventTime().toEpochMilli();
 
         VehicleState vehicleState = new VehicleState();
-        vehicleState.setId(id);
+        vehicleState.setId(event.vehicleId());
         vehicleState.setPositionLimited(event.positionLimited());
         vehicleState.setPositionValid(event.positionValid());
         vehicleState.setDegLatitude(event.latitude());

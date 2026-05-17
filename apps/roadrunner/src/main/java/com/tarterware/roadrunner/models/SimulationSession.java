@@ -1,8 +1,5 @@
 package com.tarterware.roadrunner.models;
 
-import java.time.Instant;
-import java.util.UUID;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import lombok.Data;
@@ -28,7 +25,7 @@ public class SimulationSession
     /**
      * The unique identifier for the vehicle in this simulation session.
      */
-    UUID id;
+    String id;
 
     /**
      * The username that created this vehicle.
@@ -41,12 +38,12 @@ public class SimulationSession
     String colorCode;
 
     /**
-     * The precise timestamp when the simulation began.
+     * The precise ms Epoch timestamp when the simulation began.
      */
-    Instant start;
+    Long start;
 
     /**
-     * The precise timestamp when the simulation concluded.
+     * The precise ms Epoch timestamp when the simulation concluded.
      */
-    Instant end;
+    Long end;
 }

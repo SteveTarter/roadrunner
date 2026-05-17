@@ -2,7 +2,6 @@ package com.tarterware.roadrunner.ports;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 import com.tarterware.roadrunner.components.Vehicle;
 /**
@@ -33,11 +32,10 @@ public interface SimulationRegistry
     /**
      * Records the conclusion of a simulation session by updating its end timestamp.
      *
-     * @param vehicleID the unique identifier for the vehicle in the simulation
-     *                  session
+     * @param vehicleID the ID for the vehicle in the simulation session
      * @param endTime   the precise timestamp when the simulation concluded
      */
-    void recordEnd(UUID vehicleID, Instant startTime);
+    void recordEnd(String vehicleID, Instant startTime);
 
     /**
      * Retrieves a complete history of all recorded simulation sessions.
