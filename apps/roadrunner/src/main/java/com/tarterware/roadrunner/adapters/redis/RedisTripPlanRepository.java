@@ -1,7 +1,6 @@
 package com.tarterware.roadrunner.adapters.redis;
 
 import java.time.Duration;
-import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +43,7 @@ public class RedisTripPlanRepository implements TripPlanRepository
     }
 
     @Override
-    public TripPlan getTripPlan(UUID vehicleId)
+    public TripPlan getTripPlan(String vehicleId)
     {
         String cacheKey = getCacheKey(vehicleId);
 
@@ -63,7 +62,7 @@ public class RedisTripPlanRepository implements TripPlanRepository
     }
 
     @Override
-    public void saveTripPlan(UUID vehicleId, TripPlan tripPlan)
+    public void saveTripPlan(String vehicleId, TripPlan tripPlan)
     {
         if (tripPlan == null)
         {
@@ -75,13 +74,13 @@ public class RedisTripPlanRepository implements TripPlanRepository
     }
 
     @Override
-    public void deleteTripPlan(UUID vehicleId)
+    public void deleteTripPlan(String vehicleId)
     {
         redisTemplate.delete(getCacheKey(vehicleId));
     }
 
     @Override
-    public boolean exists(UUID vehicleId)
+    public boolean exists(String vehicleId)
     {
         return Boolean.TRUE.equals(redisTemplate.hasKey(getCacheKey(vehicleId)));
     }
@@ -99,8 +98,8 @@ public class RedisTripPlanRepository implements TripPlanRepository
         }
     }
 
-    private String getCacheKey(UUID vehicleId)
+    private String getCacheKey(String vehicleId)
     {
-        return KEY_PREFIX + vehicleId.toString();
+        return KEY_PREFIX + vehicleId;
     }
 }

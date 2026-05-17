@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -115,27 +114,28 @@ public class MaintenanceService
             }
 
             // Step 2: Search Kafka for the last known position
-            Instant finalTime = findLastEventTime(session);
+            Long finalTime = findLastEventTime(session);
+            Instant finalInstant = Instant.ofEpochMilli(finalTime);
 
             // Step 3: Record the end time
-            registry.recordEnd(session.getId(), finalTime);
+            registry.recordEnd(session.getId(), finalInstant);
             log.info("Cleansed session for vehicle {} with end time {}.  Start time was {}.",
                     session.getId(), finalTime, session.getStart());
         }
     }
 
-    private Instant findLastEventTime(SimulationSession session)
+    private Long findLastEventTime(SimulationSession session)
     {
-        UUID targetId = session.getId();
+        String targetId = session.getId();
 
         // Default to start time if no messages found
-        Instant lastFoundTime = session.getStart();
-        log.debug("Vehicle {} start time is {}.", session.getId(), session.getStart().toEpochMilli());
+        Long lastFoundTime = session.getStart();
+        log.debug("Vehicle {} start time is {}.", session.getId(), session.getStart());
 
         // Grab 1 minute worth of data at a time. When we encounter a buffer without
         // the vehicle ID, the search is over.
         long windowSizeMs = 60000;
-        long currentPointer = session.getStart().toEpochMilli();
+        long currentPointer = session.getStart();
         boolean searching = true;
 
         while (searching)
@@ -149,7 +149,7 @@ public class MaintenanceService
 
             if (latestInWindow.isPresent())
             {
-                lastFoundTime = Instant.ofEpochMilli(latestInWindow.get());
+                lastFoundTime = latestInWindow.get();
                 currentPointer += windowSizeMs; // Move pointer forward
             }
             else
@@ -258,11 +258,10 @@ public class MaintenanceService
 
     private void mapToLatestState(VehiclePositionEvent event, List<VehicleState> latestStates)
     {
-        UUID id = UUID.fromString(event.vehicleId());
         long eventMillis = event.eventTime().toEpochMilli();
 
         VehicleState vehicleState = new VehicleState();
-        vehicleState.setId(id);
+        vehicleState.setId(event.vehicleId());
         vehicleState.setPositionLimited(event.positionLimited());
         vehicleState.setPositionValid(event.positionValid());
         vehicleState.setDegLatitude(event.latitude());

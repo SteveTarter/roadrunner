@@ -1,42 +1,40 @@
 package com.tarterware.roadrunner.ports;
 
-import java.util.UUID;
-
 import com.tarterware.roadrunner.models.TripPlan;
 
 public interface TripPlanRepository
 {
 
     /**
-     * Retrieve TripPlan for Vehicle by its UUID.
+     * Retrieve TripPlan for Vehicle by its ID.
      *
-     * @param uuid The UUID of the Vehicle.
+     * @param vehicleId The ID of the Vehicle.
      * @return The corresponding TripPlan, or null if not found.
      */
-    TripPlan getTripPlan(UUID vehicleId);
+    TripPlan getTripPlan(String vehicleId);
 
     /**
-     * Save TripPlan for Vehicle by its UUID.
+     * Save TripPlan for Vehicle by its ID.
      *
-     * @param uuid     The UUID of the Vehicle.
-     * @param tripPlan TripPlan to save
+     * @param vehicleId The ID of the Vehicle.
+     * @param tripPlan  TripPlan to save
      */
-    void saveTripPlan(UUID vehicleId, TripPlan tripPlan);
+    void saveTripPlan(String vehicleId, TripPlan tripPlan);
 
     /**
-     * Delete TripPlan for Vehicle by its UUID.
+     * Delete TripPlan for Vehicle by its ID.
      *
-     * @param uuid The UUID of the Vehicle.
+     * @param vehicleId The ID of the Vehicle.
      */
-    void deleteTripPlan(UUID vehicleId);
+    void deleteTripPlan(String vehicleId);
 
     /**
-     * Retrieve TripPlan for Vehicle by its UUID.
+     * Retrieve TripPlan for Vehicle by its ID.
      *
-     * @param uuid The UUID of the Vehicle.
+     * @param vehicleId The ID of the Vehicle.
      * @return true if TripPlan for Vehicle exists.
      */
-    boolean exists(UUID vehicleId);
+    boolean exists(String vehicleId);
 
     /**
      * Reset the TripPlanRepository, clearing all resources.

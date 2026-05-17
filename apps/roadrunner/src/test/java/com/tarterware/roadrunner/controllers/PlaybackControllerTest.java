@@ -46,6 +46,7 @@ import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 import com.tarterware.roadrunner.services.PlaybackResultCache;
+import com.tarterware.roadrunner.utilities.StringUtilities;
 
 @ExtendWith(MockitoExtension.class)
 class PlaybackControllerTest
@@ -130,7 +131,7 @@ class PlaybackControllerTest
 
         controller.init();
 
-        UUID vehicleId = UUID.randomUUID();
+        String vehicleId = StringUtilities.shortenedUUID(UUID.randomUUID());
         Instant now = Instant.now();
 
         VehicleState vehicleState = new VehicleState();
@@ -145,7 +146,7 @@ class PlaybackControllerTest
         vehicleState.setManagerHost("host-a");
         vehicleState.setMsEpochLastRun(now.toEpochMilli());
 
-        Map<UUID, VehicleState> vehicleMap = new HashMap<UUID, VehicleState>();
+        Map<String, VehicleState> vehicleMap = new HashMap<String, VehicleState>();
         vehicleMap.put(vehicleId, vehicleState);
 
         when(vehicleStateStore.getVehicles(any())).thenReturn(vehicleMap);
@@ -188,8 +189,8 @@ class PlaybackControllerTest
 
         when(playbackConsumer.offsetsForTimes(anyMap())).thenReturn(offsets);
 
-        UUID id1 = UUID.randomUUID();
-        UUID id2 = UUID.randomUUID();
+        String id1 = StringUtilities.shortenedUUID(UUID.randomUUID());
+        String id2 = StringUtilities.shortenedUUID(UUID.randomUUID());
 
         ConsumerRecord<String, VehiclePositionEvent> r1 = record(tp0, 100L, startMillis + 500,
                 event(id1, Instant.ofEpochMilli(startMillis + 500), 32.70, -97.30, 10.0, 5.5, "#111111", "host-1",
@@ -200,11 +201,13 @@ class PlaybackControllerTest
                         200L, "MOVING"));
 
         ConsumerRecord<String, VehiclePositionEvent> r3 = record(tp0, 101L, endTime.toEpochMilli() + 1,
-                event(UUID.randomUUID(), Instant.ofEpochMilli(endTime.toEpochMilli() + 1), 0, 0, 0, 0, "#000000",
+                event(StringUtilities.shortenedUUID(UUID.randomUUID()),
+                        Instant.ofEpochMilli(endTime.toEpochMilli() + 1), 0, 0, 0, 0, "#000000",
                         "done", 0L, "MOVING"));
 
         ConsumerRecord<String, VehiclePositionEvent> r4 = record(tp1, 201L, endTime.toEpochMilli() + 1,
-                event(UUID.randomUUID(), Instant.ofEpochMilli(endTime.toEpochMilli() + 1), 0, 0, 0, 0, "#000000",
+                event(StringUtilities.shortenedUUID(UUID.randomUUID()),
+                        Instant.ofEpochMilli(endTime.toEpochMilli() + 1), 0, 0, 0, 0, "#000000",
                         "done", 0L, "MOVING"));
 
         when(playbackConsumer.poll(any())).thenReturn(records(Map.of(
@@ -237,11 +240,11 @@ class PlaybackControllerTest
 
         Instant now = Instant.now();
 
-        UUID id1 = UUID.randomUUID();
-        UUID id2 = UUID.randomUUID();
-        UUID id3 = UUID.randomUUID();
+        String id1 = StringUtilities.shortenedUUID(UUID.randomUUID());
+        String id2 = StringUtilities.shortenedUUID(UUID.randomUUID());
+        String id3 = StringUtilities.shortenedUUID(UUID.randomUUID());
 
-        Map<UUID, VehicleState> vehicleMap = new HashMap<UUID, VehicleState>();
+        Map<String, VehicleState> vehicleMap = new HashMap<String, VehicleState>();
 
         VehicleState vehicleState1 = new VehicleState();
         vehicleState1.setId(id1);
@@ -324,7 +327,8 @@ class PlaybackControllerTest
         when(playbackConsumer.offsetsForTimes(anyMap())).thenReturn(offsets);
 
         ConsumerRecord<String, VehiclePositionEvent> r1 = record(tp0, 100L, endTime.toEpochMilli() + 1,
-                event(UUID.randomUUID(), Instant.ofEpochMilli(endTime.toEpochMilli() + 1), 0, 0, 0, 0, "#000000",
+                event(StringUtilities.shortenedUUID(UUID.randomUUID()),
+                        Instant.ofEpochMilli(endTime.toEpochMilli() + 1), 0, 0, 0, 0, "#000000",
                         "done", 0L, "MOVING"));
 
         when(playbackConsumer.poll(any())).thenReturn(records(Map.of(tp0, List.of(r1))));
@@ -344,7 +348,7 @@ class PlaybackControllerTest
     }
 
     private VehiclePositionEvent event(
-            UUID id,
+            String vehicleId,
             Instant eventTime,
             double latitude,
             double longitude,
@@ -356,7 +360,7 @@ class PlaybackControllerTest
             String status)
     {
         return new VehiclePositionEvent(
-                id.toString(),
+                vehicleId,
                 eventTime,
                 eventTime.toEpochMilli(),
                 nsLastExec,

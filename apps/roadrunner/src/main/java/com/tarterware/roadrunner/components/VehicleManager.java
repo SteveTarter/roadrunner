@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -93,18 +92,18 @@ public class VehicleManager
     private final ExecutorService directionsExecutor = Executors.newFixedThreadPool(10);
 
     // Map of Directions by Vehicle ID.
-    private final ConcurrentMap<UUID, Directions> directionsMap = new ConcurrentHashMap<UUID, Directions>();
+    private final ConcurrentMap<String, Directions> directionsMap = new ConcurrentHashMap<String, Directions>();
 
     // LineSegmentData by Vehicle ID.
-    private final ConcurrentMap<UUID, List<LineSegmentData>> lineSegmentDataMap = new ConcurrentHashMap<UUID, List<LineSegmentData>>();
+    private final ConcurrentMap<String, List<LineSegmentData>> lineSegmentDataMap = new ConcurrentHashMap<String, List<LineSegmentData>>();
 
     // Thread‑safe map to keep track of vehicles currently loading directions.
-    private final ConcurrentMap<UUID, Future<Directions>> directionsLoadingMap = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Future<Directions>> directionsLoadingMap = new ConcurrentHashMap<>();
 
     // Thread‑safe map of vehicles.
-    private ConcurrentHashMap<UUID, Vehicle> vehicleMap = new ConcurrentHashMap<UUID, Vehicle>();
+    private ConcurrentHashMap<String, Vehicle> vehicleMap = new ConcurrentHashMap<String, Vehicle>();
 
-    private CopyOnWriteArrayList<UUID> activeIdsList = new CopyOnWriteArrayList<UUID>();
+    private CopyOnWriteArrayList<String> activeIdsList = new CopyOnWriteArrayList<String>();
 
     // Service to retrieve directions for trip plans
     private DirectionsService directionsService;
@@ -238,26 +237,26 @@ public class VehicleManager
     }
 
     /**
-     * Retrieves a specific Vehicle by its UUID.
+     * Retrieves a specific Vehicle by its ID.
      *
-     * @param uuid The UUID of the Vehicle.
+     * @param vehicleId The ID of the Vehicle.
      * @return The corresponding Vehicle, or null if not found.
      */
-    public VehicleState getVehicle(UUID uuid)
+    public VehicleState getVehicle(String vehicleId)
     {
-        return this.vehicleStateStore.getVehicle(uuid);
+        return this.vehicleStateStore.getVehicle(vehicleId);
     }
 
     /**
      * Returns the standardized storage key used to store a Vehicle object. The key
      * is formatted as "{vehicle}:<vehicleId>".
      *
-     * @param vehicleId The UUID of the Vehicle.
+     * @param vehicleId The ID of the Vehicle.
      * @return The standardized storage key for the Vehicle.
      */
-    public String getVehicleKey(UUID vehicleId)
+    public String getVehicleKey(String vehicleId)
     {
-        return String.format("{vehicle}:%s", vehicleId.toString());
+        return String.format("{vehicle}:%s", vehicleId);
     }
 
     /**
@@ -305,7 +304,7 @@ public class VehicleManager
      *
      * @param vehicleId The ID of the Vehicle to be deleted.
      */
-    public boolean deleteVehicle(UUID vehicleId)
+    public boolean deleteVehicle(String vehicleId)
     {
         if (vehicleId == null)
         {
@@ -342,10 +341,10 @@ public class VehicleManager
      * later use.</li>
      * </ol>
      *
-     * @param vehicleId The UUID of the Vehicle.
+     * @param vehicleId The ID of the Vehicle.
      * @param tripPlan  The TripPlan containing route and stop information.
      */
-    public void processTripPlanData(UUID vehicleId, TripPlan tripPlan)
+    public void processTripPlanData(String vehicleId, TripPlan tripPlan)
     {
         // Check for a valid trip plan.
         if (tripPlan == null)
@@ -443,12 +442,12 @@ public class VehicleManager
     /**
      * Retrieves the Directions associated with a Vehicle.
      *
-     * @param vehicleId     The UUID of the Vehicle.
+     * @param vehicleId     The ID of the Vehicle.
      * @param waitForResult True if the caller wants to wait for the result of the
      *                      DirectionsService call; false otherwise.
      * @return The Directions object for the Vehicle.
      */
-    public Directions getVehicleDirections(UUID vehicleId, boolean waitForResult)
+    public Directions getVehicleDirections(String vehicleId, boolean waitForResult)
     {
         // Try to get Directions from the already computed map.
         Directions directions = directionsMap.get(vehicleId);
@@ -502,10 +501,10 @@ public class VehicleManager
     /**
      * Retrieves the line segment data for a Vehicle.
      *
-     * @param vehicleId The UUID of the Vehicle.
+     * @param vehicleId The ID of the Vehicle.
      * @return A list of LineSegmentData objects.
      */
-    public List<LineSegmentData> getLineSegmentData(UUID vehicleId)
+    public List<LineSegmentData> getLineSegmentData(String vehicleId)
     {
         return lineSegmentDataMap.get(vehicleId);
     }
@@ -546,17 +545,17 @@ public class VehicleManager
         long currentEpochMillis = Instant.now().toEpochMilli();
         long msEpochTimeoutTime = currentEpochMillis - (1000 * SECS_VEHICLE_TIMEOUT);
 
-        Set<UUID> deletionSet = new HashSet<>();
+        Set<String> deletionSet = new HashSet<String>();
 
         int readyVehicleCount = 0;
         long vehicleCount = this.vehicleStateStore.getActiveVehicleCount();
-        Set<UUID> readyVehicles = this.vehicleStateStore.getActiveVehicleIds();
+        Set<String> readyVehicles = this.vehicleStateStore.getActiveVehicleIds();
         if (readyVehicles != null)
         {
             int index = 0;
             readyVehicleCount = readyVehicles.size();
 
-            for (UUID vehicleId : readyVehicles)
+            for (String vehicleId : readyVehicles)
             {
                 long nsVehicleStartTime = System.nanoTime();
 
@@ -689,7 +688,7 @@ public class VehicleManager
      * </ul>
      * * @param deletionSet The set of vehicle IDs to be deleted.
      */
-    private void cleanupDeletedVehicles(Set<UUID> deletionSet)
+    private void cleanupDeletedVehicles(Set<String> deletionSet)
     {
         // Remove the Vehicle and vehicle states
         deletionSet.forEach(vehicleId ->
@@ -712,7 +711,7 @@ public class VehicleManager
      * </ul>
      * * @param deletionSet The set of vehicle IDs to be deleted.
      */
-    private void cleanupDeletedVehicle(UUID vehicleId)
+    private void cleanupDeletedVehicle(String vehicleId)
     {
         // Remove the Vehicle and vehicle states
         this.vehicleMap.remove(vehicleId);
@@ -758,7 +757,7 @@ public class VehicleManager
     public void getCurrentVehicleList()
     {
         // Grab the members of the active Vehicle Set and convert it to a Java List
-        Set<UUID> idSet = this.vehicleStateStore.getActiveVehicleIds();
+        Set<String> idSet = this.vehicleStateStore.getActiveVehicleIds();
 
         // Update the shared instance variable. Note that CopyOnWriteArrayList,
         // iterators operate on a snapshot of the list at the time the iterator was

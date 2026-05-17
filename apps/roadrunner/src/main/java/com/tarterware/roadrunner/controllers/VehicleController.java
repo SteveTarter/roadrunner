@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -299,7 +298,7 @@ public class VehicleController
         boolean deleted = false;
         try
         {
-            deleted = vehicleManager.deleteVehicle(UUID.fromString(vehicleId));
+            deleted = vehicleManager.deleteVehicle(vehicleId);
         }
         catch (IllegalArgumentException ex)
         {
@@ -319,7 +318,7 @@ public class VehicleController
     /**
      * Retrieves the current state for a specific vehicle by its identifier.
      *
-     * @param vehicleId UUID of the vehicle as a string
+     * @param vehicleId ID of the vehicle as a string
      * @return response containing the {@link VehicleState} when found, or
      *         {@code 404 Not Found} when no matching vehicle state exists
      */
@@ -328,7 +327,7 @@ public class VehicleController
             @PathVariable
             String vehicleId)
     {
-        VehicleState vehicleState = vehicleStateStore.getVehicle(UUID.fromString(vehicleId));
+        VehicleState vehicleState = vehicleStateStore.getVehicle(vehicleId);
         if (vehicleState == null)
         {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
@@ -341,7 +340,7 @@ public class VehicleController
      * Retrieves the Mapbox directions and route geometry associated with a specific
      * vehicle.
      *
-     * @param vehicleId UUID of the vehicle as a string
+     * @param vehicleId ID of the vehicle
      * @return response containing the {@link Directions} when found, or
      *         {@code 404 Not Found} when no route data exists for the vehicle
      */
@@ -350,7 +349,7 @@ public class VehicleController
             @PathVariable
             String vehicleId)
     {
-        Directions directions = vehicleManager.getVehicleDirections(UUID.fromString(vehicleId), true);
+        Directions directions = vehicleManager.getVehicleDirections(vehicleId, true);
         if (directions == null)
         {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
@@ -380,7 +379,7 @@ public class VehicleController
             int pageSize)
     {
         // Get the vehicles for the current page
-        Map<UUID, VehicleState> vehicleMap = getVehicleMap(page, pageSize);
+        Map<String, VehicleState> vehicleMap = getVehicleMap(page, pageSize);
         List<VehicleState> listVehicleStates = vehicleMap.values().stream()
                 .collect(Collectors.toList());
 
@@ -495,16 +494,16 @@ public class VehicleController
      *
      * @param page     zero-based page index
      * @param pageSize number of records to return
-     * @return map of vehicle UUIDs to their current {@link VehicleState}
+     * @return map of vehicle IDs to their current {@link VehicleState}
      * @throws IllegalArgumentException if the requested page starts outside the
      *                                  active vehicle list
      */
-    public Map<UUID, VehicleState> getVehicleMap(
+    public Map<String, VehicleState> getVehicleMap(
             int page,
             int pageSize)
     {
         // Create a Map of Vehicles to return
-        Map<UUID, VehicleState> vMap = new HashMap<>();
+        Map<String, VehicleState> vMap = new HashMap<>();
 
         int size = (int) this.vehicleStateStore.getActiveVehicleCount();
         if (size == 0)
@@ -521,11 +520,11 @@ public class VehicleController
 
         // Now, loop through the cursor, filling up to "pageSize" vehicleId elements.
         int recordsToFill = pageSize;
-        List<UUID> idList = new ArrayList<>();
-        List<UUID> activeIdsList = this.vehicleStateStore.getActiveVehicleIds().stream().toList();
+        List<String> idList = new ArrayList<>();
+        List<String> activeIdsList = this.vehicleStateStore.getActiveVehicleIds().stream().toList();
         while ((recordsToFill > 0) && (index < size))
         {
-            UUID vehicleId = activeIdsList.get(index++);
+            String vehicleId = activeIdsList.get(index++);
             idList.add(vehicleId);
             recordsToFill--;
         }

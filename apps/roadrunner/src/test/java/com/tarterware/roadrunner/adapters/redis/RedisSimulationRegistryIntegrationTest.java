@@ -152,7 +152,7 @@ public class RedisSimulationRegistryIntegrationTest
         List<SimulationSession> sessions = registry.getAllSessions();
         assertEquals(1, sessions.size(), "Should have one session");
         assertEquals(vehicle.getId(), sessions.get(0).getId());
-        assertEquals(startTime, sessions.get(0).getStart());
+        assertEquals(startTime.toEpochMilli(), sessions.get(0).getStart());
         assertNull(sessions.get(0).getEnd(), "End time should be null for active session");
     }
 
@@ -172,8 +172,8 @@ public class RedisSimulationRegistryIntegrationTest
         // Verify
         List<SimulationSession> sessions = registry.getAllSessions();
         assertEquals(1, sessions.size(), "Should still only have one session entry");
-        assertEquals(endTime, sessions.get(0).getEnd(), "End time should be updated");
-        assertEquals(startTime, sessions.get(0).getStart(), "Start time should be preserved");
+        assertEquals(endTime.toEpochMilli(), sessions.get(0).getEnd(), "End time should be updated");
+        assertEquals(startTime.toEpochMilli(), sessions.get(0).getStart(), "Start time should be preserved");
     }
 
     @Test

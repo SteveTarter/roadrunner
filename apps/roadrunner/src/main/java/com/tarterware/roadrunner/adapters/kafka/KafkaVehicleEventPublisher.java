@@ -1,7 +1,6 @@
 package com.tarterware.roadrunner.adapters.kafka;
 
 import java.time.Instant;
-import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,7 +79,7 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
     }
 
     @Override
-    public void publishVehicleDeleted(UUID vehicleId)
+    public void publishVehicleDeleted(String vehicleId)
     {
         simulationRegistry.recordEnd(vehicleId, Instant.now());
 
@@ -108,7 +107,7 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
     private void publishEvent(Vehicle vehicle, String status)
     {
         VehiclePositionEvent event = new VehiclePositionEvent(
-                vehicle.getId().toString(),
+                vehicle.getId(),
                 Instant.now(),
                 vehicle.getLastCalculationEpochMillis(), // Using timestamp as a sequence proxy
                 vehicle.getLastNsExecutionTime(),
@@ -128,7 +127,7 @@ public class KafkaVehicleEventPublisher implements VehicleEventPublisher
     /**
      * Executes the actual message transmission via {@link KafkaTemplate}. *
      * <p>
-     * Messages are keyed by the vehicle's UUID string. Keying by vehicleId ensures
+     * Messages are keyed by the vehicle's ID string. Keying by vehicleId ensures
      * that all sequential updates for a specific vehicle are routed to the same
      * Kafka partition, thereby guaranteeing ordered delivery to consumers.
      * </p>
