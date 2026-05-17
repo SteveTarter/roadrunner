@@ -5,6 +5,17 @@ import { CONFIG } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
 import { Button } from "react-bootstrap";
 
+const timeFormatOptions: Intl.DateTimeFormatOptions = {
+    timeZone: 'UTC',
+    month: 'numeric',
+    day: 'numeric',
+    year: '2-digit',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+};
+
 export const SimulationTable = (props: {
   toggleSimTable: any,
   returnToNow: any,
@@ -68,8 +79,7 @@ export const SimulationTable = (props: {
       accessorKey: 'id',
       header: 'Vehicle',
       size: 150,
-      // Shorten the UUID like a git commit ID (first 7-8 characters)
-      Cell: ({ cell }: any) => cell.getValue()?.substring(0, 8)
+      Cell: ({ cell }: any) => cell.getValue()
     },
     {
       accessorKey: 'username',
@@ -81,6 +91,7 @@ export const SimulationTable = (props: {
       accessorKey: 'start',
       header: 'Start Time',
       size: 200,
+      Cell: ({ cell }: any) => new Date(cell.getValue()).toLocaleTimeString([], timeFormatOptions) + 'Z'
     },
     {
       header: 'Actions',
