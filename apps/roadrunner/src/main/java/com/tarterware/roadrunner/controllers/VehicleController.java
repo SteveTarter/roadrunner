@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -450,6 +451,33 @@ public class VehicleController
 
         return new ResponseEntity<>(pagedModel, HttpStatus.OK);
 
+    }
+
+    /**
+     * Retrieves the SimulationSession for a specific vehicle by its identifier.
+     *
+     * @param vehicleId ID of the vehicle as a string
+     * @return response containing the {@link VehicleState} when found, or
+     *         {@code 404 Not Found} when no matching vehicle session exists
+     */
+
+    @GetMapping("/get-vehicle-session/{vehicleId}")
+    ResponseEntity<SimulationSession> getVehicleSimulationSession(
+            @PathVariable
+            String vehicleId)
+    {
+        List<SimulationSession> allSessions = simulationRegistry.getAllSessions();
+
+        Optional<SimulationSession> session = allSessions.stream()
+                .filter(s -> s.getId().equals(vehicleId))
+                .findFirst();
+
+        if (!session.isPresent())
+        {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        return new ResponseEntity<>(session.get(), HttpStatus.OK);
     }
 
     /**
