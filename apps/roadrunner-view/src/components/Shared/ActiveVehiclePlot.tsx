@@ -103,11 +103,13 @@ export const ActiveVehiclePlot = (props: {
     // If a vehicle ID was provided, restrict the window to that vehicle's timespan.
     if (props.vehicleId) {
       const driverSession = simulationSessionMap.get(props.vehicleId);
-      if (allowResize && driverSession) {
-        setAllowResize(false);
-        const startDate = new Date(driverSession.start);
-        const endDate = driverSession.end ? new Date(driverSession.end) : new Date();
-        setDomain([startDate.getTime(), endDate.getTime()]);
+      if (driverSession) {
+        if (allowResize) {
+          setAllowResize(false);
+          const startDate = new Date(driverSession.start);
+          const endDate = driverSession.end ? new Date(driverSession.end) : new Date();
+          setDomain([startDate.getTime(), endDate.getTime()]);
+        }
       }
       else {
         console.error("Didn't find session for vehicle ID", props.vehicleId);

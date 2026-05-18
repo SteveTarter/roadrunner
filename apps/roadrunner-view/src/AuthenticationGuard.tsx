@@ -10,7 +10,7 @@ interface AuthenticationGuardProps {
 type Status = "checking" | "authed" | "unauth" | "error";
 
 export const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({
-   component,
+  component,
   autoRedirect = true
 }) => {
   const Component = component;
@@ -22,16 +22,28 @@ export const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({
   const redirectStartedRef = useRef(false);
 
   useEffect(() => {
-      let cancelled = false;
+    let cancelled = false;
 
-      async function ensureAuthenticated() {
+    async function ensureAuthenticated() {
 
       try {
         const session = await fetchAuthSession();
         const accessToken = session.tokens?.accessToken?.toString();
 
         if (accessToken) {
-          if (!cancelled) setStatus("authed");
+          if (!cancelled) {
+            // Handle Post-Login Redirection
+            // Check if there is a saved deep link from a previous unauthenticated session
+            const deepLink = sessionStorage.getItem("redirect_after_login");
+
+            if (deepLink && deepLink !== window.location.pathname) {
+              sessionStorage.removeItem("redirect_after_login"); // Clear immediately to prevent infinite loops
+              window.location.replace(deepLink); // Perform a browser reload to the deep-linked path
+              return;
+            }
+
+            setStatus("authed");
+          }
           return;
         }
 
@@ -40,6 +52,13 @@ export const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({
 
         if (autoRedirect && !redirectStartedRef.current) {
           redirectStartedRef.current = true;
+
+          // Save Intended Destination Before Redirect
+          // Capture the exact deep link path (e.g., /driver-view/deb6907a)
+          if (window.location.pathname && window.location.pathname !== "/") {
+            sessionStorage.setItem("redirect_after_login", window.location.pathname);
+          }
+
           await signInWithRedirect();
         }
       } catch (err: any) {
@@ -57,6 +76,14 @@ export const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({
       cancelled = true;
     };
   }, [autoRedirect]);
+
+  // Helper function to handle manual login clicks
+  const handleManualLogin = async () => {
+    if (window.location.pathname && window.location.pathname !== "/") {
+      sessionStorage.setItem("redirect_after_login", window.location.pathname);
+    }
+    await signInWithRedirect();
+  };
 
   if (status === "checking") {
     return (
@@ -79,7 +106,7 @@ export const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({
         ) : (
           <div style={{ marginBottom: 12 }}>Not logged in.</div>
         )}
-        <button onClick={() => signInWithRedirect()}>Log in</button>
+        <button onClick={handleManualLogin}>Log in</button>
       </div>
     </div>
   );

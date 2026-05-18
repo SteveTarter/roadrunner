@@ -13,18 +13,21 @@ interface PointPickerProps {
   selectedPoint: { lat: number; lng: number } | null;
   onPointChange: (point: { lat: number; lng: number } | null) => void;
   addressPrefix: string; // e.g., "origin" or "destination"}
+  isSelecting: boolean;
+  setIsSelecting: (selecting: boolean) => void;
 }
 
 export const PointPicker = ({
- label,
+  label,
   color,
   mapRef,
   mapboxToken,
   selectedPoint,
   onPointChange,
-  addressPrefix
+  addressPrefix,
+  isSelecting,
+  setIsSelecting
 }: PointPickerProps) => {
-  const [isSelecting, setIsSelecting] = useState(false);
   const [autofillFired, setAutofillFired] = useState(false);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
 
@@ -46,7 +49,7 @@ export const PointPicker = ({
       map.off('click', handleMapClick);
       map.getCanvas().style.cursor = '';
     };
-  }, [isSelecting, mapRef, onPointChange]);
+  }, [isSelecting, setIsSelecting, mapRef, onPointChange]);
 
   // Handle Marker and Label rendering
   useEffect(() => {

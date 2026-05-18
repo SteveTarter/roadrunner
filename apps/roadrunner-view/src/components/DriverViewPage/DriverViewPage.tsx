@@ -14,6 +14,7 @@ import { CONFIG } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
 import { usePlayback } from "../../context/PlaybackContext";
 import { useMapViewState } from '../../context/MapViewStateContext';
+import { fetchAuthSession } from 'aws-amplify/auth';
 
 export const DriverViewPage = () => {
   // Get the Vehicle ID from the URL in the window
@@ -35,11 +36,12 @@ export const DriverViewPage = () => {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
   const [goingHome, setGoingHome] = useState(false);
+  const [isSearchingSession, setIsSearchingSession] = useState(false);
 
   // Driver view offset from straight ahead
   const [degViewOffset, setDegViewOffset] = useState(0);
 
-  const { playbackOffset } = usePlayback();
+  const { playbackOffset, setPlaybackSession } = usePlayback();
 
   const {
     homeMapViewState,
@@ -78,12 +80,72 @@ export const DriverViewPage = () => {
     navigate('/home');
   }, [navigate, vehicleState, homeMapViewState, setHomeMapViewState, goingHome]);
 
+  // Check if vehicle is absent in active tracking and query historical session if needed
+  useEffect(() => {
+    // Only query if basic data loaded, target vehicle is missing, and a search isn't already running
+    if (!isDataLoaded || !vehicleId || vehicleStateMap.has(vehicleId) || isSearchingSession) return;
+
+    async function fetchHistoricalSession() {
+      setIsSearchingSession(true);
+      try {
+        const session = await fetchAuthSession(); //
+        const accessToken = session.tokens?.accessToken?.toString(); //
+
+        if (!accessToken) {
+          console.error("Session expired"); //
+          return;
+        }
+
+        const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/get-vehicle-session/${vehicleId}`;
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          }
+        });
+
+        if (!res.ok) {
+          throw new Error(`Session not found on server (status ${res.status})`);
+        }
+
+        const sessionData = await res.json();
+
+        // Match playback window with the historical start point
+        if (sessionData && sessionData.start) {
+          const msEpochPlayback = new Date().getTime() - playbackOffset;
+
+          // If there is no end time, but the current time is after the start,
+          // don't mess with the clock
+          if(!sessionData.end && (msEpochPlayback > sessionData.start)) {
+            console.debug("Running simulation within our time: Not messing with time");
+          }
+          else if ((msEpochPlayback > sessionData.start) && (msEpochPlayback < sessionData.end)) {
+            console.debug("Within start/end window: Not messing with time")
+          }
+          else {
+            console.log("Setting playback session to ", sessionData.start);
+            setPlaybackSession(sessionData.start);
+          }
+        }
+      } catch (error) {
+        console.error("Historical session lookup failed, exiting to home:", error);
+        gotoHomePage(); // Fallback to home if simulation context cannot be resolved
+      } finally {
+        setIsSearchingSession(false);
+      }
+    }
+
+    fetchHistoricalSession();
+  }, [isDataLoaded, vehicleStateMap, vehicleId, gotoHomePage, isSearchingSession, navigate, playbackOffset, setPlaybackSession]);
+
+
   // Handle Auto-Redirects as a Side Effect
   useEffect(() => {
     const msCurrentTime = Date.now() - playbackOffset;
 
     // Case 1: Data has gone stale
-    if (lastState && (lastState.msEpochLastRun < msCurrentTime - (30 * 1000))) {
+    if ((playbackOffset === 0) && lastState && (lastState.msEpochLastRun < msCurrentTime - (30 * 1000))) {
       gotoHomePage();
     }
 
@@ -119,13 +181,6 @@ export const DriverViewPage = () => {
     const map = driverViewPageMap?.getMap();
     if (!data || !map || !isMapReady || !assetsLoaded) return;
 
-    // Check for timeouts
-    const MS_VEHICLE_TIMEOUT = 30 * 1000;
-    const msCurrentTime = Date.now() - playbackOffset;
-     if ((msCurrentTime - data.msEpochLastRun) >= MS_VEHICLE_TIMEOUT) {
-      gotoHomePage();
-    }
-
     // Warping to (0, 0) signals loss of data feed
     if(data.degLatitude === 0 && data.degLongitude === 0) {
       gotoHomePage();
@@ -156,8 +211,7 @@ export const DriverViewPage = () => {
     getCoordinateAtBearingAndRange,
     isMapReady,
     assetsLoaded,
-    gotoHomePage,
-    playbackOffset
+    gotoHomePage
   ]);
 
   // React to vehicle updates from the hook
@@ -297,7 +351,7 @@ export const DriverViewPage = () => {
   }, [showActiveVehiclePlot]);
 
   // Show the map if we have isDataLoaded OR we have a lastState to show
-  const shouldShowMap = (isDataLoaded || lastState) && vehicleState;
+  const shouldShowMap = (isDataLoaded || lastState) && vehicleState && !isSearchingSession;
 
   return (
     <div className="body row scroll-y">

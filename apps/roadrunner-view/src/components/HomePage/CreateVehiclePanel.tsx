@@ -17,6 +17,8 @@ export const CreateVehiclePanel = (props: {
 
   const [selectedOrigin, setSelectedOrigin] = useState<{lat: number, lng: number} | null>(null);
   const [selectedDestination, setSelectedDestination] = useState<{lat: number, lng: number} | null>(null);
+  const [isPickingOriginCenter, setIsPickingOriginCenter] = useState(false);
+  const [isPickingDestinationCenter, setIsPickingDestinationCenter] = useState(false);
 
   type ApiErrorResponse = {
     message?: string;
@@ -110,7 +112,8 @@ export const CreateVehiclePanel = (props: {
     <Card.Title className="text-center">Create Vehicle</Card.Title>
     <>
       <Form>
-        <PointPicker
+        {!isPickingDestinationCenter && (
+          <PointPicker
             label="Origin"
             color="#28a745"
             mapRef={props.mapRef}
@@ -118,7 +121,11 @@ export const CreateVehiclePanel = (props: {
             selectedPoint={selectedOrigin}
             onPointChange={setSelectedOrigin}
             addressPrefix="origin"
+            isSelecting={isPickingOriginCenter}
+            setIsSelecting={setIsPickingOriginCenter}
           />
+        )}
+        {!isPickingOriginCenter && (
           <PointPicker
             label="Destination"
             color="#dc3545"
@@ -127,8 +134,10 @@ export const CreateVehiclePanel = (props: {
             selectedPoint={selectedDestination}
             onPointChange={setSelectedDestination}
             addressPrefix="destination"
+            isSelecting={isPickingDestinationCenter}
+            setIsSelecting={setIsPickingDestinationCenter}
           />
-
+        )}
         <div style={{ marginTop: '20px', display: "flex", justifyContent: "space-between" }}>
           <Button onClick={cancelCreateVehicle} value="CancelCreateVehicle" variant="secondary">
             Cancel
