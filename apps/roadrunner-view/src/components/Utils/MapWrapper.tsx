@@ -14,6 +14,10 @@ export class MapWrapper<K, V> {
     this.wrappedMap.delete(key)
   }
 
+  public has(key: K) {
+    return this.wrappedMap.has(key);
+  }
+
   public forEach(callbackfn: any) {
     this.wrappedMap.forEach(callbackfn);
   }

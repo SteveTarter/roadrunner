@@ -4,6 +4,7 @@ import { MaterialReactTable } from 'material-react-table';
 import { CONFIG } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
 import { Button } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 
 const timeFormatOptions: Intl.DateTimeFormatOptions = {
     timeZone: 'UTC',
@@ -20,6 +21,8 @@ export const SimulationTable = (props: {
   toggleSimTable: any,
   returnToNow: any,
 }) => {
+  const navigate = useNavigate();
+
   const [data, setData] = useState([]);
   const [rowCount, setRowCount] = useState(0);
 
@@ -103,14 +106,14 @@ export const SimulationTable = (props: {
            size="sm"
            onClick={() => {
             setPlaybackSession(row.original.start);
-            props.toggleSimTable();
+            navigate(`/driver-view/${row.original.id}`);
           }}>
             ▶️ Playback
           </Button>
         );
       }
     }
-  ], [props]);
+  ], [navigate]);
 
   return (
     <div
