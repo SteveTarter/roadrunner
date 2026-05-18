@@ -180,18 +180,28 @@ public class KafkaVehicleEventConsumer
     @PreDestroy
     public void cleanup()
     {
-        String groupId = "KafkaVehicleEventConsumer-${K8S_POD_NAME:default}";
+        String podName = System.getenv("K8S_POD_NAME");
+        String strictAlphanumericRegex = "^[a-zA-Z0-9]+$";
+
+        if (podName == null || !podName.matches(strictAlphanumericRegex))
+        {
+            log.error("Warning: K8S_POD_NAME is missing or invalid. Falling back to 'default'.");
+            podName = "default";
+        }
+
+        String groupId = "KafkaVehicleEventConsumer-" + podName;
+
         try
         {
             // Explicitly delete the unique consumer group on pod exit
             adminClient.deleteConsumerGroups(Collections.singletonList(groupId))
                     .all()
                     .get(5, TimeUnit.SECONDS);
-            System.out.println("Successfully deleted Kafka consumer group: " + groupId);
+            log.info("Successfully deleted Kafka consumer group: {}", groupId);
         }
         catch (Exception e)
         {
-            System.err.println("Failed to delete Kafka consumer group: " + e.getMessage());
+            log.error("Failed to delete Kafka consumer group: {}", groupId, e);
         }
     }
 
