@@ -57,6 +57,7 @@ export const SimulationTable = (props: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
           },
+          credentials: 'include',
           signal: controller.signal,
         });
 

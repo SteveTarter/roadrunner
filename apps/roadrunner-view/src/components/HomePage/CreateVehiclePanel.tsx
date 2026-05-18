@@ -85,6 +85,7 @@ export const CreateVehiclePanel = (props: {
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(tripPlan),
+        credentials: 'include'
       });
 
       if (!response.ok) {

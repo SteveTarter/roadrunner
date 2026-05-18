@@ -75,7 +75,10 @@ export const useVehicleData = ({
         }
 
         const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${accessToken}` }
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          },
+          credentials: 'include'
         });
         if (!response.ok) break; // Exit loop on error
 

@@ -59,7 +59,8 @@ export const VehicleIcon: React.FC<{
           method: 'get',
           headers: {
             Authorization: `Bearer ${token}`,
-          }
+          },
+          credentials: 'include'
         })
           .then(async response => response.json())
           .then(data => {
