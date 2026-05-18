@@ -102,7 +102,8 @@ export const DriverViewPage = () => {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
-          }
+          },
+          credentials: 'include'
         });
 
         if (!res.ok) {

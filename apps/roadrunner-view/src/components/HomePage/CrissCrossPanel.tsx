@@ -164,6 +164,7 @@ export const CrissCrossPanel = (props: {
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
+        credentials: 'include'
       });
 
       if (!response.ok) {
