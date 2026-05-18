@@ -14,6 +14,7 @@ export const CrissCrossPanel = (props: {
   const [vehicleCount, setVehicleCount] = useState<number>(15);
   const [kmRadius, setKmRadius] = useState<number>(10.0);
   const [inProgress, setInProgress] = useState(false);
+  const [isPickingCenter, setIsPickingCenter] = useState(false);
 
   // Helper to create a GeoJSON Circle Polygon
   const createGeoJSONCircle = (center: {lat: number, lng: number}, radiusInKm: number, points = 64) => {
@@ -191,27 +192,32 @@ export const CrissCrossPanel = (props: {
             selectedPoint={selectedCenter}
             onPointChange={setSelectedCenter}
             addressPrefix="center"
+            isSelecting={isPickingCenter}
+            setIsSelecting={setIsPickingCenter}
           />
 
-          <FormGroup className="mb-3">
-            <FormLabel>Vehicle Count</FormLabel>
-            <Input
-              type="number"
-              value={vehicleCount}
-              onChange={(e) => setVehicleCount(parseInt(e.target.value))}
-            />
-          </FormGroup>
+          {!isPickingCenter && (
+            <>
+              <FormGroup className="mb-3">
+                <FormLabel>Vehicle Count</FormLabel>
+                <Input
+                  type="number"
+                  value={vehicleCount}
+                  onChange={(e) => setVehicleCount(parseInt(e.target.value))}
+                />
+              </FormGroup>
 
-          <FormGroup className="mb-4">
-            <FormLabel>Radius (km)</FormLabel>
-            <Input
-              type="number"
-              step="0.1"
-              value={kmRadius}
-              onChange={(e) => setKmRadius(parseFloat(e.target.value))}
-            />
-          </FormGroup>
-
+              <FormGroup className="mb-4">
+                <FormLabel>Radius (km)</FormLabel>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={kmRadius}
+                  onChange={(e) => setKmRadius(parseFloat(e.target.value))}
+                />
+              </FormGroup>
+            </>
+          )}
           <div className="d-flex justify-content-between mt-3">
             <Button onClick={() => props.setIsCrissCrossActive(false)} variant="secondary">
               Cancel
