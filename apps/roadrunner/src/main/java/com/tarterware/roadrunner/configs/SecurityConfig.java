@@ -21,6 +21,8 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -40,7 +42,17 @@ public class SecurityConfig
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception
     {
         http.cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf.disable())
+                // Configure CSRF protection for the SPA
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(
+                                CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        /*
+                         * Spring Security 6+ defaults to a deferred CSRF token. We force it to load on
+                         * every request so the cookie is eagerly sent to the SPA without requiring a
+                         * custom filter wrapper.
+                         */
+                        .csrfTokenRequestHandler(
+                                new XorCsrfTokenRequestAttributeHandler()))
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                         // Publicly accessible endpoints
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
@@ -122,8 +134,7 @@ public class SecurityConfig
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setExposedHeaders(Arrays.asList("Authorization"));
 
-        // If you ever send cookies cross-site, you’d need:
-        // configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
