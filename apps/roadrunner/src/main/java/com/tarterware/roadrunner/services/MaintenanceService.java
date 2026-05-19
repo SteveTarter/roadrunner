@@ -102,15 +102,19 @@ public class MaintenanceService
         log.info("Background thread started. Found {} potentially orphaned sessions.",
                 orphans.size());
 
+        int cleanCount = 0;
+        long msEpochTimeout = Instant.now().toEpochMilli() - 30000;
         for (SimulationSession session : orphans)
         {
-            log.debug("Considering Vehicle {}.", session.getId());
-
             // Step 1: Check if it's currently in the memory store
-            if (hotStore.getVehicle(session.getId()) != null)
+            VehicleState vehicleState = hotStore.getVehicle(session.getId());
+            if (vehicleState != null)
             {
-                log.debug("Vehicle {} is still active in memory. Skipping.", session.getId());
-                continue;
+                if (vehicleState.getMsEpochLastRun() > msEpochTimeout)
+                {
+                    log.info("Vehicle {} is still active in memory. Skipping.", session.getId());
+                    continue;
+                }
             }
 
             // Step 2: Search Kafka for the last known position
@@ -118,10 +122,14 @@ public class MaintenanceService
             Instant finalInstant = Instant.ofEpochMilli(finalTime);
 
             // Step 3: Record the end time
+            ++cleanCount;
             registry.recordEnd(session.getId(), finalInstant);
             log.info("Cleansed session for vehicle {} with end time {}.  Start time was {}.",
                     session.getId(), finalTime, session.getStart());
         }
+
+        log.info("Background thread finished.  {} vehicles cleaned.", cleanCount);
+
     }
 
     private Long findLastEventTime(SimulationSession session)
