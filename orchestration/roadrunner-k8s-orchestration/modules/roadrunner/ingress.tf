@@ -17,6 +17,7 @@ resource "kubernetes_ingress_v1" "roadrunner_ingress" {
       "alb.ingress.kubernetes.io/ssl-policy"       = "ELBSecurityPolicy-2016-08"
       "alb.ingress.kubernetes.io/group.name"       = "shared-alb"
       "alb.ingress.kubernetes.io/healthcheck-path" = "/actuator/health"
+      "alb.ingress.kubernetes.io/wafv2-acl-arn"    = aws_wafv2_web_acl.roadrunner_waf[0].arn
     }
   }
 

@@ -16,8 +16,8 @@ resource "helm_release" "strimzi_operator" {
 
   values = [
     yamlencode({
-      watchAnyNamespace = false
-      watchNamespaces   = [var.watch_namespace]
+      watchAnyNamespace = true
+      watchNamespaces   = []
     })
   ]
 }
