@@ -1,6 +1,7 @@
 package com.tarterware.roadrunner.configs;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -38,6 +39,9 @@ public class SecurityConfig
     @Value("${cognito.app-client-id}")
     private String cognitoAppClientId;
 
+    @Value("${com.tarterware.roadrunner.cors.allowed-origins}")
+    private List<String> allowedOrigins;
+
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception
     {
@@ -72,7 +76,7 @@ public class SecurityConfig
     }
 
     @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter()
+    JwtAuthenticationConverter jwtAuthenticationConverter()
     {
         JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
 
@@ -128,10 +132,7 @@ public class SecurityConfig
     {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:3000",
-                "https://roadrunner-view.tarterware.info",
-                "https://roadrunner-view.tarterware.com"));
+        configuration.setAllowedOrigins(allowedOrigins);
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-XSRF-TOKEN"));
