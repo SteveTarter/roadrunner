@@ -1,6 +1,6 @@
-# Stage 1: Build the React application
+# STAGE 1: BUILD THE REACT APPLICATION
 # This stage uses a heavy Node image to compile the code
-FROM node:22-alpine AS build
+FROM node:22.22.3-alpine3.23 AS build
 
 WORKDIR /app
 
@@ -12,9 +12,9 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Stage 2: Serve the static files with Nginx
+# STAGE 2: SERVE THE STATIC FILES WITH NGINX
 # This stage results in a tiny, high-performance image
-FROM nginx:alpine
+FROM nginx:1.31.0-alpine3.23
 
 # Copy the NGINX config into place
 COPY nginx.conf /etc/nginx/conf.d/default.conf
@@ -25,4 +25,5 @@ COPY --from=build /app/build /usr/share/nginx/html
 # Nginx serves on port 80 by default
 EXPOSE 80
 
+# Start the server
 CMD ["nginx", "-g", "daemon off;"]

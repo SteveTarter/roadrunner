@@ -32,6 +32,8 @@ export const MapViewStateProvider: React.FC<{ children: ReactNode }> = ({ childr
   });
 
   const setHomeMapViewState = ((vs:any) => {
+    // Prevent warping to Null Island
+    if((vs.longitude === 0) && (vs.latitude === 0)) return;
     setViewState(vs);
     sessionStorage.setItem(storageKey, JSON.stringify(vs));
   })
