@@ -83,7 +83,7 @@ export const DriverViewPage = () => {
   // Check if vehicle is absent in active tracking and query historical session if needed
   useEffect(() => {
     // Only query if basic data loaded, target vehicle is missing, and a search isn't already running
-    if (!isDataLoaded || !vehicleId || vehicleStateMap.has(vehicleId) || isSearchingSession) return;
+    if (!isDataLoaded || !vehicleId || vehicleStateMap.has(vehicleId) || isSearchingSession || goingHome) return;
 
     async function fetchHistoricalSession() {
       setIsSearchingSession(true);
@@ -124,6 +124,10 @@ export const DriverViewPage = () => {
           else if ((msEpochPlayback > sessionData.start) && (msEpochPlayback < sessionData.end)) {
             console.debug("Within start/end window: Not messing with time")
           }
+          else if (lastState && sessionData.end && (msEpochPlayback >= sessionData.end)) {
+            console.log("Playback has reached the end of the session. Navigating home.");
+            gotoHomePage();
+          }
           else {
             console.log("Setting playback session to ", sessionData.start);
             setPlaybackSession(sessionData.start);
@@ -138,7 +142,7 @@ export const DriverViewPage = () => {
     }
 
     fetchHistoricalSession();
-  }, [isDataLoaded, vehicleStateMap, vehicleId, gotoHomePage, isSearchingSession, navigate, playbackOffset, setPlaybackSession]);
+  }, [isDataLoaded, vehicleStateMap, vehicleId, gotoHomePage, isSearchingSession, navigate, playbackOffset, setPlaybackSession, lastState, goingHome]);
 
 
   // Handle Auto-Redirects as a Side Effect
