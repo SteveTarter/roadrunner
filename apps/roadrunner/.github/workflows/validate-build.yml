@@ -31,6 +31,18 @@ jobs:
     - name: Build and Test with Maven
       run: mvn -B package --file pom.xml
 
+    # Run OWASP Dependency Check (Fails build on High/Critical CVEs)
+    - name: Run OWASP Dependency Check
+      run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7
+
+    # Archive the Dependency Check HTML Report
+    - name: Archive Dependency Check Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-check-report
+        path: target/dependency-check-report.html
+
     # Publish test results
     - name: Archive Test Results
       if: always()
