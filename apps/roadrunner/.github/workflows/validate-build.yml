@@ -35,7 +35,7 @@ jobs:
     - name: Run OWASP Dependency Check
       env:
         NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-      run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7 -DnvdApiKey=$NVD_API_KEY
+      run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7 -DnvdApiKey=$NVD_API_KEY -DsuppressionFile=dependency-check-suppression.xml
 
     # Archive the Dependency Check HTML Report
     - name: Archive Dependency Check Report

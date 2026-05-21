@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.4.4</version>
+		<version>3.4.13</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
     <repositories>
@@ -23,6 +23,9 @@
 	<properties>
 		<java.version>21</java.version>
 		<argLine />
+        <kafka.version>3.9.2</kafka.version>
+        <netty.version>4.1.133.Final</netty.version>
+        <okhttp3.version>4.12.0</okhttp3.version>
 	</properties>
 	<dependencyManagement>
         <dependencies>
