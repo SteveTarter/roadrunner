@@ -21,4 +21,9 @@
         <packageUrl regex="true">^pkg:maven/io\.prometheus/prometheus\-metrics\-model@.*$</packageUrl>
         <cpe>cpe:/a:prometheus:prometheus</cpe>
     </suppress>
+    <suppress>
+        <notes><![CDATA[file name: prometheus-metrics-model-*.jar]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.prometheus/prometheus\-metrics\-config@.*$</packageUrl>
+        <cpe>cpe:/a:prometheus:prometheus</cpe>
+    </suppress>
 </suppressions>
