@@ -36,6 +36,12 @@ resource "kubernetes_deployment" "roadrunner" {
             container_port = 8080
           }
 
+          # Standard JVM environmental flags to guarantee correct memory allocation during boot
+          env {
+            name  = "JAVA_TOOL_OPTIONS"
+            value = "-XX:MaxDirectMemorySize=600M -Xms128M -Xmx256M"
+          }
+
           env {
             name  = "AWS_REGION"
             value = var.region
@@ -93,13 +99,8 @@ resource "kubernetes_deployment" "roadrunner" {
 
           # Dynamic args
           args = terraform.workspace == "minikube" ? [
-            "--com.tarterware.redis.password=$(REDIS_PASSWORD)",
-            "-XX:MaxDirectMemorySize=512M",
-            "-Xmx512M"
-          ] : [
-            "-XX:MaxDirectMemorySize=512M",
-            "-Xmx512M"
-          ]
+            "--com.tarterware.redis.password=$(REDIS_PASSWORD)"
+          ] : []
 
           volume_mount {
             name       = "application-conf"

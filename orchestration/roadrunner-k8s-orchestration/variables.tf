@@ -33,6 +33,11 @@ variable "roadrunner_namespace" {
   default     = "roadrunner"
 }
 
+variable "allowed_cors_origins" {
+  description = "The allowed cross-origin resource sharing."
+  type        = string
+}
+
 variable "roadrunner_rest_url_base" {
   description = "The base URL for the Roadrunner REST API."
   sensitive   = true

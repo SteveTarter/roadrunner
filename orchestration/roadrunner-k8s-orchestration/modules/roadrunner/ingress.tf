@@ -9,6 +9,7 @@ resource "kubernetes_ingress_v1" "roadrunner_ingress" {
       "kubernetes.io/ingress.class"                = "nginx"
       "kubernetes.io/ingress.allow-http"           = "true"
       "nginx.ingress.kubernetes.io/ssl-redirect"   = "true"
+      "nginx.ingress.kubernetes.io/configuration-snippet" = "more_set_headers \"Content-Security-Policy: default-src 'self'; script-src 'self' https://api.mapbox.com; connect-src 'self' https://*.amazonaws.com https://api.mapbox.com;\";"
     } : {
       "alb.ingress.kubernetes.io/scheme"           = "internet-facing"
       "alb.ingress.kubernetes.io/target-type"      = "ip"

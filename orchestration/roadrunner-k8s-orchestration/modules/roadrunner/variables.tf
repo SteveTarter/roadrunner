@@ -21,6 +21,17 @@ variable "roadrunner_namespace" {
   default = "roadrunner"
 }
 
+variable "allowed_cors_origins" {
+  description = "The allowed cross-origin resource sharing."
+  type        = string
+}
+
+variable "roadrunner_view_url_base" {
+  description = "The public base URL for the Roadrunner View application."
+  sensitive   = true
+  type        = string
+}
+
 variable "mapbox_api_key" {
   description = "The API key used to access Mapbox services."
   type        = string

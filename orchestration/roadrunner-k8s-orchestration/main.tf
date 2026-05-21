@@ -120,6 +120,8 @@ module "roadrunner" {
   region                       = var.region
   roadrunner_version           = var.roadrunner_version
   roadrunner_namespace         = var.roadrunner_namespace
+  roadrunner_view_url_base     = var.roadrunner_view_url_base
+  allowed_cors_origins         = var.allowed_cors_origins
   mapbox_api_key               = var.mapbox_api_key
   spring_mail_username         = var.spring_mail_username
   spring_mail_password         = var.spring_mail_password
