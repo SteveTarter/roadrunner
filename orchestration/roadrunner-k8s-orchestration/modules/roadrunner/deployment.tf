@@ -27,10 +27,24 @@ resource "kubernetes_deployment" "roadrunner" {
       spec {
         service_account_name = kubernetes_service_account.roadrunner_sa.metadata[0].name
 
+        security_context {
+          run_as_non_root = true
+          run_as_user     = 1000
+          fs_group        = 1000
+        }
+
         container {
           name  = "roadrunner"
           image = "tarterware/roadrunner:${var.roadrunner_version}"
           image_pull_policy = "Always"
+
+          security_context {
+            read_only_root_filesystem  = true
+            allow_privilege_escalation = false
+            capabilities {
+              drop = ["ALL"]
+            }
+          }
 
           port {
             container_port = 8080
@@ -102,6 +116,12 @@ resource "kubernetes_deployment" "roadrunner" {
             "--com.tarterware.redis.password=$(REDIS_PASSWORD)"
           ] : []
 
+          # Add volume mount for /tmp to allow Spring Boot to write ephemeral files
+          volume_mount {
+            mount_path = "/tmp"
+            name       = "tmp-volume"
+          }
+
           volume_mount {
             name       = "application-conf"
             mount_path = "/config/application.properties"
@@ -119,6 +139,12 @@ resource "kubernetes_deployment" "roadrunner" {
             }
           }
 
+        }
+
+        # Add the backing emptyDir volume for /tmp
+        volume {
+          name = "tmp-volume"
+          empty_dir {}
         }
 
         volume {

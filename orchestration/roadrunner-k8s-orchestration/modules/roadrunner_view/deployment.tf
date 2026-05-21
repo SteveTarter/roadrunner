@@ -25,10 +25,25 @@ resource "kubernetes_deployment" "roadrunner_view_deployment" {
       }
 
       spec {
+        security_context {
+          run_as_non_root = true
+          run_as_user     = 101 # User ID 101 is standard for Nginx unprivileged images
+          fs_group        = 101
+        }
 
         # Create a shared temporary volume to pass the JS file between containers
         volume {
           name = "config-volume"
+          empty_dir {}
+        }
+
+        # Add backing empty_dir volumes for Nginx
+        volume {
+          name = "nginx-cache"
+          empty_dir {}
+        }
+        volume {
+          name = "nginx-pid"
           empty_dir {}
         }
 
@@ -37,6 +52,14 @@ resource "kubernetes_deployment" "roadrunner_view_deployment" {
           name  = "config-generator"
           image = "busybox"
           
+          security_context {
+            read_only_root_filesystem  = true
+            allow_privilege_escalation = false
+            capabilities {
+              drop = ["ALL"]
+            }
+          }
+
           # This script finds all env vars starting with REACT_APP_ and builds a JS object.
           # Note the double dollar signs ($$) which escape Terraform interpolation 
           # to ensure the shell handles the variable expansion at runtime.
@@ -67,6 +90,14 @@ resource "kubernetes_deployment" "roadrunner_view_deployment" {
           image = "tarterware/roadrunner-view:${var.roadrunner_view_version}"
           image_pull_policy = "Always"
 
+          security_context {
+            read_only_root_filesystem  = true
+            allow_privilege_escalation = false
+            capabilities {
+              drop = ["ALL"]
+            }
+          }
+
           resources {
             requests = {
               cpu    = "50m"
@@ -80,6 +111,16 @@ resource "kubernetes_deployment" "roadrunner_view_deployment" {
 
           port {
             container_port = 80
+          }
+
+          # Mount the Nginx directories as ephemeral writable volumes
+          volume_mount {
+            name       = "nginx-cache"
+            mount_path = "/var/cache/nginx"
+          }
+          volume_mount {
+            name       = "nginx-pid"
+            mount_path = "/var/run"
           }
 
           # Mount the generated config file into the Nginx web root
