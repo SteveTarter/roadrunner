@@ -10,7 +10,7 @@ export function configureAmplify() {
         loginWith: {
           oauth: {
             domain: CONFIG.COGNITO_DOMAIN, // e.g. your-domain.auth.us-east-1.amazoncognito.com
-            scopes: ["openid", "email", "profile", "aws.cognito.signin.user.admin"], // add "offline_access" if you want refresh tokens
+            scopes: ["openid", "email", "profile"],
             redirectSignIn: [CONFIG.COGNITO_REDIRECT_SIGN_IN],
             redirectSignOut: [CONFIG.COGNITO_REDIRECT_SIGN_OUT],
             responseType: "code", // Auth Code + PKCE
