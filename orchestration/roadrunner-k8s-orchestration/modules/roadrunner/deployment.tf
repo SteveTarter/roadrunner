@@ -8,7 +8,7 @@ resource "kubernetes_deployment" "roadrunner" {
   }
 
   spec {
-    replicas                = 1
+    replicas                = 2
     revision_history_limit  = 2
 
     selector {

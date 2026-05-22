@@ -21,22 +21,30 @@ resource "kubectl_manifest" "kafka_nodepool" {
     spec = {
       replicas = var.replicas
       roles    = ["broker", "controller"]
-      storage = var.storage_type == "persistent-claim" ? merge(
-        {
-          type        = "persistent-claim"
-          size        = var.storage_size
-          deleteClaim = false
-        },
-        var.storage_class != null ? {
-          class = var.storage_class
-        } : {}
-      ) : merge(
-        {
-          type = "ephemeral"
-        },
-        var.storage_size_limit != null ? {
-          sizeLimit = var.storage_size_limit
-        } : {}
+
+      # Use jsondecode/jsonencode to prevent Terraform from coercing the boolean to a string
+      storage = jsondecode(
+        var.storage_type == "persistent-claim" ? jsonencode(
+          merge(
+            {
+              type        = "persistent-claim"
+              size        = var.storage_size
+              deleteClaim = false
+            },
+            var.storage_class != null ? {
+              class = var.storage_class
+            } : {}
+          )
+        ) : jsonencode(
+          merge(
+            {
+              type = "ephemeral"
+            },
+            var.storage_size_limit != null ? {
+              sizeLimit = var.storage_size_limit
+            } : {}
+          )
+        )
       )
     }
   })
