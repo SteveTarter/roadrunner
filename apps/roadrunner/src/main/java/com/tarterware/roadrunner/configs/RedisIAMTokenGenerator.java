@@ -9,14 +9,12 @@ import software.amazon.awssdk.auth.signer.params.Aws4SignerParams;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 
 public class RedisIAMTokenGenerator
 {
 
     private static final String SERVICE_NAME = "memorydb"; // Service name for MemoryDB
-    // FIXME - Replace the hard-coded region below with a call to the Query the
-    // Instance Metadata Service
-    private static final String REGION = "us-east-1"; // Hard-coded region
 
     public String generateIAMAuthToken(String host, int port)
     {
@@ -24,6 +22,10 @@ public class RedisIAMTokenGenerator
         {
             AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
             Aws4Signer signer = Aws4Signer.create();
+
+            // Dynamically resolve the AWS Region (Checks AWS_REGION env var, then falls
+            // back to IMDSv2)
+            Region region = DefaultAwsRegionProviderChain.builder().build().getRegion();
 
             // Construct a URI with http:// to satisfy the AWS SDK
             URI signingUri = new URI(String.format("http://%s:%d", host, port));
@@ -34,8 +36,10 @@ public class RedisIAMTokenGenerator
 
             // Configure the signing parameters
             Aws4SignerParams signerParams = Aws4SignerParams.builder()
-                    .awsCredentials(credentialsProvider.resolveCredentials()).signingName(SERVICE_NAME)
-                    .signingRegion(Region.of(REGION)).build();
+                    .awsCredentials(credentialsProvider.resolveCredentials())
+                    .signingName(SERVICE_NAME)
+                    .signingRegion(region)
+                    .build();
 
             // Sign the request and extract the IAM token
             SdkHttpFullRequest signedRequest = signer.sign(unsignedRequest, signerParams);
