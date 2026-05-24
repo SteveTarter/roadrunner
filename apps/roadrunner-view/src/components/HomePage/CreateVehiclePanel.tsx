@@ -108,7 +108,7 @@ export const CreateVehiclePanel = (props: {
   }
 
   return (
-<Card style={{ width: '20rem', alignSelf: 'end', top: 60 }}>
+<Card style={{ width: '20rem', alignSelf: 'end', top: 10 }}>
   <Card.Body>
     <Card.Title className="text-center">Create Vehicle</Card.Title>
     <>

@@ -20,7 +20,7 @@
 
 .map-container {
   position: absolute;
-  top: 80px;       /* must match navbar height */
+  top: 55px;       /* must match navbar height */
   left: 0;
   right: 0;
   bottom: 0;
