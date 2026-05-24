@@ -1,4 +1,4 @@
-import { Button, Card, Form } from "react-bootstrap";
+import { Button, Card, Form, CardHeader, CardBody } from "react-bootstrap";
 import { fetchAuthSession } from "aws-amplify/auth";
 // eslint-disable-next-line
 import { useNavigate } from "react-router-dom";
@@ -7,6 +7,8 @@ import { Address } from '../../models/Address';
 import { TripPlan } from '../../models/TripPlan';
 import { PointPicker } from '../Shared/PointPicker';
 import { useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faTimes } from "@fortawesome/free-solid-svg-icons";
 
 export const CreateVehiclePanel = (props: {
   setIsCreateVehicleActive: any,
@@ -109,8 +111,14 @@ export const CreateVehiclePanel = (props: {
 
   return (
 <Card style={{ width: '20rem', alignSelf: 'end', top: 10 }}>
-  <Card.Body>
-    <Card.Title className="text-center">Create Vehicle</Card.Title>
+
+  <CardHeader className="d-flex justify-content-between align-items-center bg-dark text-white py-2">
+    <h6 className="mb-0">Create Vehicle</h6>
+    <Button onClick={cancelCreateVehicle} variant="white" className="text-white">
+      <FontAwesomeIcon icon={faTimes} />
+    </Button>
+  </CardHeader>
+  <CardBody>
     <>
       <Form>
         {!isPickingDestinationCenter && (
@@ -149,7 +157,7 @@ export const CreateVehiclePanel = (props: {
         </div>
       </Form>
     </>
-  </Card.Body>
+  </CardBody>
 </Card>
   );
 }
