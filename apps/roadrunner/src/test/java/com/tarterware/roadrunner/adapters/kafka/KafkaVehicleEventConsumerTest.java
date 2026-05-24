@@ -27,6 +27,7 @@ import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
 import com.tarterware.roadrunner.models.VehicleState;
+import com.tarterware.roadrunner.ports.BookmarkRepository;
 import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
 import com.tarterware.roadrunner.security.UserPrincipalFactory;
 import com.tarterware.roadrunner.services.DirectionsService;
@@ -103,6 +104,9 @@ public class KafkaVehicleEventConsumerTest
 
     @Autowired
     private KafkaVehicleEventConsumer kafkaConsumer;
+
+    @MockitoBean
+    private BookmarkRepository bookmarkRepository;
 
     @AfterEach
     void tearDown()
