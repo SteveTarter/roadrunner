@@ -228,14 +228,15 @@ export const HomePage = () => {
           onMove={onMove}
           onClick={(event) => onClick(event)}
         >
-          <AppNavBar additionalMenuItems={
+          <AppNavBar additionalMenuItems={(closeNavbar) => (
             <ManageMenu
               openCreateVehicle={openCreateVehicle}
               openCrissCross={openCrissCross}
               toggleSimTable={toggleSimTable}
               toggleShowActiveVehiclePlot={toggleShowActiveVehiclePlot}
+              closeNavbar={closeNavbar}
             />
-          }
+          )}
           />
           {(isDataLoaded && !isTransitioning) ?
             <>
@@ -254,17 +255,36 @@ export const HomePage = () => {
                   mapRef={mapRef}
                 />
               )}
-              <div style={{ position: "fixed", top: 100, left: 10 }}>
-                <Button onClick={fitAllOnScreen}>
+              {/* --- Responsive Map Tools Container --- */}
+              <div
+                className="map-tools-container"
+                style={{
+                  position: "absolute",
+                  top: "30px",
+                  right: "10px", // Pin to the right side (standard for map apps)
+                  display: "flex",
+                  flexDirection: "column", // Stacks the buttons vertically
+                  gap: "10px", // Adds consistent spacing between buttons
+                  zIndex: 1000, // Ensures they always float above the map canvas
+                }}
+              >
+                <Button
+                  variant="light"
+                  className="shadow-sm"
+                  onClick={fitAllOnScreen}
+                >
                   <FontAwesomeIcon
                     title="Fit All"
                     icon={faUpRightAndDownLeftFromCenter}
                     className="mr-3"
                   />
                 </Button>
-              </div>
-              <div style={{ position: "fixed", top: 100, left: 60 }}>
-                <Button onClick={toggleMapStyle}>
+
+                <Button
+                  variant="light"
+                  className="shadow-sm"
+                  onClick={toggleMapStyle}
+                >
                   {(mapStyle === MAP_STYLE_STREET) ?
                     <>
                       <FontAwesomeIcon
@@ -281,36 +301,51 @@ export const HomePage = () => {
                     />
                   }
                 </Button>
-              </div>
-              <div style={{ position: "fixed", top: 100, left: 110 }}>
-                <Button onClick={showAllRoutes}>
+
+                <Button
+                  variant="light"
+                  className="shadow-sm"
+                  onClick={showAllRoutes}
+                >
                   <FontAwesomeIcon
                     title="Show All Routes"
                     icon={faEye}
                     className="mr-3"
                   />
                 </Button>
-              </div>
-              <div style={{ position: "fixed", top: 100, left: 160 }}>
-                <Button onClick={hideAllRoutes}>
+
+                <Button
+                  variant="light"
+                  className="shadow-sm"
+                  onClick={hideAllRoutes}
+                >
                   <FontAwesomeIcon
                     title="Hide All Routes"
                     icon={faEyeSlash}
                     className="mr-3"
                   />
                 </Button>
-              </div>
-              <div style={{ position: "fixed", top: 100, left: 210 }}>
-                <Button onClick={() => setIsInterpolationEnabled(!isInterpolationEnabled)}>
+
+                <Button
+                  variant="light"
+                  className="shadow-sm"
+                  onClick={() => setIsInterpolationEnabled(!isInterpolationEnabled)}
+                >
                   <FontAwesomeIcon
                     icon={isInterpolationEnabled ? faMagic : faBars}
                     title={isInterpolationEnabled ? "Disable Smoothing" : "Enable Smoothing"}                    className="mr-3"
                   />
                 </Button>
-              </div>
-              <div style={{ position: "fixed", top: 100, left: 260 }}>
-                <Button onClick={() => setShowActiveVehiclePlot(!showActiveVehiclePlot)}>
-                  <FontAwesomeIcon icon={faChartLine}/>
+
+                <Button
+                  variant="light"
+                  className="shadow-sm"
+                  onClick={() => setShowActiveVehiclePlot(!showActiveVehiclePlot)}
+                >
+                  <FontAwesomeIcon
+                    title="Active Vehicle Plot"
+                    icon={faChartLine}
+                  />
                 </Button>
               </div>
               {showSimTable &&

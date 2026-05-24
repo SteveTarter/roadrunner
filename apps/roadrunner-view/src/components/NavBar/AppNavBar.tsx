@@ -27,7 +27,11 @@ type UserInfo = {
   picture?: string;
 };
 
-export const AppNavBar = ({ additionalMenuItems }: { additionalMenuItems?: React.ReactNode; }) => {
+export const AppNavBar = ({
+  additionalMenuItems
+}: {
+   additionalMenuItems?: (closeNavbar: () => void) => React.ReactNode;
+}) => {
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -97,6 +101,12 @@ export const AppNavBar = ({ additionalMenuItems }: { additionalMenuItems?: React
     }
   };
 
+  const closeNavbar = () => {
+    if (isOpen) {
+      setIsOpen(false);
+    }
+  };
+
   const login = async () => {
     await signInWithRedirect();
   };
@@ -107,8 +117,8 @@ export const AppNavBar = ({ additionalMenuItems }: { additionalMenuItems?: React
           <NavBarBrand />
           <NavbarToggler onClick={toggle} />
           <Collapse isOpen={isOpen} navbar>
-            <Nav className="me-auto" navbar>
-              <NavItem style={{ fontSize: "1.1rem" }}>
+            <Nav className="me-auto align-items-left" navbar>
+              <NavItem>
                 <NavLink
                   tag={RouterNavLink}
                   to="/"
@@ -131,13 +141,11 @@ export const AppNavBar = ({ additionalMenuItems }: { additionalMenuItems?: React
                   </Button>
                 </NavItem>
               )}
-            </Nav>
 
-            <Nav navbar className="align-items-center">
               {isAuthenticated && (
                 <>
-                  {additionalMenuItems}
-                  <NavItem className="d-flex align-items-center" style={{ fontSize: "1.1rem" }}>
+                  {additionalMenuItems && additionalMenuItems(closeNavbar)}
+                  <NavItem className="d-flex align-items-left">
                     <NavLink
                       tag={RouterNavLink}
                       to="/about"
@@ -154,15 +162,15 @@ export const AppNavBar = ({ additionalMenuItems }: { additionalMenuItems?: React
                           src={user?.picture}
                           alt="Profile"
                           className="nav-user-profile rounded-circle"
-                          width="50"
+                          width="40"
                         />
                       ) : (
                         // fallback: circle with first letter
                         <div
                           className="nav-user-profile rounded-circle"
                           style={{
-                            width: 50,
-                            height: 50,
+                            width: 40,
+                            height: 40,
                             display: "inline-flex",
                             alignItems: "center",
                             justifyContent: "center",

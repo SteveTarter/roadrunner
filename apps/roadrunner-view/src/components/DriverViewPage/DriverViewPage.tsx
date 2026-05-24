@@ -375,13 +375,33 @@ export const DriverViewPage = () => {
             maxZoom={24}
           >
             <PlaybackClock />
-            <div style={{ position: "fixed", top: 10, left: 10 }}>
-              <Button onClick={gotoHomePage}>
+            {/* --- Responsive Map Tools Container --- */}
+            <div
+              className="map-tools-container"
+              style={{
+                position: "absolute",
+                top: "60px",
+                right: "10px", // Pin to the right side (standard for map apps)
+                display: "flex",
+                flexDirection: "column", // Stacks the buttons vertically
+                gap: "10px", // Adds consistent spacing between buttons
+                zIndex: 1000, // Ensures they always float above the map canvas
+              }}
+            >
+              <FullscreenControl />
+              <Button
+                variant="light"
+                className="shadow-sm"
+                onClick={gotoHomePage}
+              >
                 <FontAwesomeIcon icon={faHome} className="mr-3" />
               </Button>
-            </div>
-            <div style={{ position: "fixed", top: 10, left: 60 }}>
-              <Button onClick={toggleMapStyle}>
+
+              <Button
+                variant="light"
+                className="shadow-sm"
+                onClick={toggleMapStyle}
+              >
                 {(mapStyle === MAP_STYLE_STREET) ?
                   <>
                     <FontAwesomeIcon title="Satellte Display" icon={faSatellite} className="mr-3" />
@@ -390,17 +410,22 @@ export const DriverViewPage = () => {
                   <FontAwesomeIcon title="Map Display" icon={faMap} className="mr-3" />
                 }
               </Button>
-            </div>
-            <div style={{ position: "fixed", top: 10, left: 110 }}>
-              <Button onClick={() => setIsInterpolationEnabled(!isInterpolationEnabled)}>
+
+              <Button
+                variant="light"
+                className="shadow-sm"
+                onClick={() => setIsInterpolationEnabled(!isInterpolationEnabled)}
+              >
                 <FontAwesomeIcon
                   icon={isInterpolationEnabled ? faMagic : faBars}
                   title={isInterpolationEnabled ? "Disable Smoothing" : "Enable Smoothing"}                    className="mr-3"
                 />
               </Button>
-            </div>
-            <div style={{ position: "fixed", top: 10, left: 160 }}>
-              <Button onClick={() => setShowActiveVehiclePlot(!showActiveVehiclePlot)}>
+              <Button
+                variant="light"
+                className="shadow-sm"
+                onClick={() => setShowActiveVehiclePlot(!showActiveVehiclePlot)}
+              >
                 <FontAwesomeIcon icon={faChartLine}/>
               </Button>
             </div>
@@ -431,7 +456,6 @@ export const DriverViewPage = () => {
                 vehicleId={vehicleId}
               />
             }
-            <FullscreenControl />
           </Map>
       ) : (
           <SpinnerLoading />

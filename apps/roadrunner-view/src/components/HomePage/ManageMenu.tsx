@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from "reactstrap";
+import { NavItem, NavLink } from "reactstrap";
 import { fetchAuthSession } from "aws-amplify/auth";
 
 export const ManageMenu = (props: {
   openCreateVehicle: any,
   openCrissCross: any,
   toggleSimTable: any,
-  toggleShowActiveVehiclePlot: any
+  toggleShowActiveVehiclePlot: any,
+  closeNavbar: () => void
 }) => {
 
   const [isCreator, setIsCreator] = useState(false);
@@ -29,59 +30,67 @@ export const ManageMenu = (props: {
 
   const handleCreateCrissCross = async () => {
     props.openCrissCross();
+    props.closeNavbar();
   };
 
   function handleCreateVehicle() {
     props.openCreateVehicle();
+    props.closeNavbar();
   }
 
   function handleToggleSimTable() {
     props.toggleSimTable();
+    props.closeNavbar();
   }
 
   function handleToggleShowActiveVehiclePlot() {
     props.toggleShowActiveVehiclePlot();
+    props.closeNavbar();
   }
 
   return (
-    <div className="d-flex justify-content-left align-items-center">
-      <UncontrolledDropdown nav inNavbar className="centered-dropdown">
-        <DropdownToggle nav caret style={{ fontSize: "1.1rem" }}>
-          Manage
-        </DropdownToggle>
-        <DropdownMenu className="wide-dropdown">
-          {/* Only show items that make vehicles to creator group members */}
-          {isCreator && (
-            <>
-              <DropdownItem
-                id="createVehicleBtn"
-                onClick={() => handleCreateVehicle()}
-              >
-                Create vehicle
-              </DropdownItem>
-              <DropdownItem
-                id="crissCrossBtn"
-                onClick={() => handleCreateCrissCross()}
-              >
-                Create criss-cross
-              </DropdownItem>
-              <DropdownItem divider />
-            </>
-          )}
-          <DropdownItem
+    <>
+      {/* Only show items that make vehicles to creator group members */}
+      {isCreator && (
+        <>
+          <NavItem>
+            <NavLink
+              id="createVehicleBtn"
+              onClick={() => handleCreateVehicle()}
+              style={{ cursor: "pointer" }}
+            >
+              Create vehicle
+            </NavLink>
+          </NavItem>
+          <NavItem>
+            <NavLink
+              id="crissCrossBtn"
+              onClick={() => handleCreateCrissCross()}
+              style={{ cursor: "pointer" }}
+            >
+              Create criss-cross
+            </NavLink>
+          </NavItem>
+        </>
+      )}
+      <NavItem>
+        <NavLink
             id="simTable"
             onClick={() => handleToggleSimTable()}
+            style={{ cursor: "pointer" }}
           >
           Sim Table
-          </DropdownItem>
-          <DropdownItem
-            id="simTable"
-            onClick={() => handleToggleShowActiveVehiclePlot()}
-          >
+        </NavLink>
+      </NavItem>
+      <NavItem>
+        <NavLink
+          id="simTable"
+          onClick={() => handleToggleShowActiveVehiclePlot()}
+          style={{ cursor: "pointer" }}
+        >
           Active Vehicle Plot
-          </DropdownItem>
-        </DropdownMenu>
-      </UncontrolledDropdown>
-    </div>
+        </NavLink>
+      </NavItem>
+    </>
   )
 }
