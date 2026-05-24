@@ -19,6 +19,8 @@ import { useMapViewState } from '../../context/MapViewStateContext';
 import { useVehicleData } from '../../hooks/useVehicleData';
 import { ActiveVehiclePlot } from '../Shared/ActiveVehiclePlot';
 import { CrissCrossPanel } from './CrissCrossPanel';
+import { useNavigate } from "react-router-dom";
+import { BookmarksPanel } from './BookmarksPanel';
 
 export const HomePage = () => {
   const { homePageMap } = useMap();
@@ -30,11 +32,14 @@ export const HomePage = () => {
   const [isCrissCrossActive, setIsCrissCrossActive] = useState(false)
   const [showSimTable, setShowSimTable] = useState(false);
   const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
+  const [showBookmarksPanel, setShowBookmarksPanel] = useState(false);
 
   const mapRef = useRef<MapRef | null>(null);
+  const navigate = useNavigate();
 
   const {
-    clearPlayback
+    clearPlayback,
+    setPlaybackSession
   } = usePlayback();
 
   const {
@@ -177,14 +182,40 @@ export const HomePage = () => {
   const toggleSimTable = useCallback(() => {
     setShowSimTable(!showSimTable);
     setShowActiveVehiclePlot(false);
+    setShowBookmarksPanel(false);
     clearData();
   }, [showSimTable, clearData]);
 
   const toggleShowActiveVehiclePlot = useCallback(() => {
     setShowActiveVehiclePlot(!showActiveVehiclePlot)
     setShowSimTable(false);
+    setShowBookmarksPanel(false);
     clearData();
   }, [showActiveVehiclePlot, clearData]);
+
+  const toggleBookmarksPanel = useCallback(() => {
+    setShowBookmarksPanel(!showBookmarksPanel);
+    setShowSimTable(false);
+    setShowActiveVehiclePlot(false);
+  }, [showBookmarksPanel]);
+
+  const handleSelectBookmark = useCallback((vehicleId: string, startTime: number) => {
+    const timeFormatOptions: Intl.DateTimeFormatOptions = {
+        timeZone: 'UTC',
+        month: 'numeric',
+        day: 'numeric',
+        year: '2-digit',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    };
+
+    const sessionTime = new Date(startTime).toLocaleTimeString([], timeFormatOptions) + 'Z'
+    setPlaybackSession(sessionTime);
+    navigate(`/driver-view/${vehicleId}`);
+    setShowBookmarksPanel(false);
+  }, [navigate, setPlaybackSession]);
 
   const returnToNow = useCallback(() => {
     clearPlayback();
@@ -234,6 +265,7 @@ export const HomePage = () => {
               openCrissCross={openCrissCross}
               toggleSimTable={toggleSimTable}
               toggleShowActiveVehiclePlot={toggleShowActiveVehiclePlot}
+              toggleBookmarksPanel={toggleBookmarksPanel}
               closeNavbar={closeNavbar}
             />
           )}
@@ -253,6 +285,12 @@ export const HomePage = () => {
                   returnToNow={returnToNow}
                   setIsCrissCrossActive={setIsCrissCrossActive}
                   mapRef={mapRef}
+                />
+              )}
+              {showBookmarksPanel && (
+                <BookmarksPanel
+                  onClose={() => setShowBookmarksPanel(false)}
+                  onSelectBookmark={handleSelectBookmark}
                 />
               )}
               {/* --- Responsive Map Tools Container --- */}

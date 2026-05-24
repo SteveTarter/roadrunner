@@ -7,6 +7,7 @@ export const ManageMenu = (props: {
   openCrissCross: any,
   toggleSimTable: any,
   toggleShowActiveVehiclePlot: any,
+  toggleBookmarksPanel: any
   closeNavbar: () => void
 }) => {
 
@@ -48,6 +49,11 @@ export const ManageMenu = (props: {
     props.closeNavbar();
   }
 
+  function handleToggleShowBookmarksPanel() {
+    props.toggleBookmarksPanel();
+    props.closeNavbar();
+  }
+
   return (
     <>
       {/* Only show items that make vehicles to creator group members */}
@@ -73,6 +79,15 @@ export const ManageMenu = (props: {
           </NavItem>
         </>
       )}
+      <NavItem>
+        <NavLink
+            id="bookmarks"
+            onClick={() => handleToggleShowBookmarksPanel()}
+            style={{ cursor: "pointer" }}
+          >
+          Bookmarks
+        </NavLink>
+      </NavItem>
       <NavItem>
         <NavLink
             id="simTable"

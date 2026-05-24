@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Button, Card, Form, FormGroup, FormLabel } from "react-bootstrap";
+import { Button, Card, CardBody, CardHeader, Form, FormGroup, FormLabel } from "react-bootstrap";
 import { Input } from "reactstrap";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { CONFIG } from "../../config";
 import { PointPicker } from '../Shared/PointPicker';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTimes } from "@fortawesome/free-solid-svg-icons";
 
 export const CrissCrossPanel = (props: {
   setIsCrissCrossActive: any,
@@ -180,10 +182,19 @@ export const CrissCrossPanel = (props: {
     }
   };
 
+  function cancelCrissCross() {
+    props.setIsCrissCrossActive(false);
+  }
+
   return (
     <Card style={{ width: '20rem', alignSelf: 'end', top: 20 }}>
-      <Card.Body>
-        <Card.Title className="text-center mb-4">Create Criss-Cross</Card.Title>
+      <CardHeader className="d-flex justify-content-between align-items-center bg-dark text-white py-2">
+        <h6 className="mb-0">Create Criss-Cross</h6>
+        <Button onClick={cancelCrissCross} variant="white" className="text-white">
+          <FontAwesomeIcon icon={faTimes} />
+        </Button>
+      </CardHeader>
+      <CardBody>
         <Form>
           <PointPicker
             label="Center"
@@ -232,7 +243,7 @@ export const CrissCrossPanel = (props: {
             </Button>
           </div>
         </Form>
-      </Card.Body>
+      </CardBody>
     </Card>
   );
 };
