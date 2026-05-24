@@ -31,6 +31,7 @@ import com.tarterware.roadrunner.components.Vehicle;
 import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.models.SimulationSession;
+import com.tarterware.roadrunner.ports.BookmarkRepository;
 import com.tarterware.roadrunner.ports.SimulationVehicleStateStore;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
@@ -123,6 +124,9 @@ public class RedisSimulationRegistryIntegrationTest
 
     @MockitoBean
     private KafkaTopicMetadataService kafkaTopicMetadataService;
+
+    @MockitoBean
+    private BookmarkRepository bookmarkRepository;
 
     @BeforeEach
     void setUp()

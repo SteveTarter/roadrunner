@@ -36,6 +36,7 @@ import com.tarterware.roadrunner.models.SimulationSession;
 import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.models.VehicleState;
 import com.tarterware.roadrunner.models.mapbox.Directions;
+import com.tarterware.roadrunner.ports.BookmarkRepository;
 import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
 import com.tarterware.roadrunner.ports.SimulationRegistry;
 import com.tarterware.roadrunner.security.UserPrincipal;
@@ -93,6 +94,8 @@ public class VehicleController
 
     private final VehicleUsageService vehicleUsageService;
 
+    private final BookmarkRepository bookmarkRepository;
+
     private static final Logger log = LoggerFactory.getLogger(VehicleController.class);
 
     /**
@@ -114,6 +117,7 @@ public class VehicleController
      *                             application-level user principals
      * @param vehicleUsageService  service that enforces per-user vehicle-start
      *                             limits
+     * @param bookmarkRepository   port providing access to bookmarks
      */
     VehicleController(
             VehicleManager vehicleManager,
@@ -123,7 +127,8 @@ public class VehicleController
             GeocodingService geocodingService,
             IdentityService identityService,
             UserPrincipalFactory userPrincipalFactory,
-            VehicleUsageService vehicleUsageService)
+            VehicleUsageService vehicleUsageService,
+            BookmarkRepository bookmarkRepository)
     {
         this.vehicleManager = vehicleManager;
         this.vehicleStateStore = vehicleStateStore;
@@ -133,6 +138,7 @@ public class VehicleController
         this.identityService = identityService;
         this.userPrincipalFactory = userPrincipalFactory;
         this.vehicleUsageService = vehicleUsageService;
+        this.bookmarkRepository = bookmarkRepository;
 
         log.info("vehicleStateStore is {}", vehicleStateStore);
     }
@@ -308,6 +314,9 @@ public class VehicleController
 
         if (deleted)
         {
+            vehicleStateStore.deleteVehicle(vehicleId);
+            bookmarkRepository.deleteBookmark(vehicleId);
+
             return new ResponseEntity<>(HttpStatus.NO_CONTENT); // 204 No Content is standard for successful deletes
         }
         else
@@ -507,6 +516,7 @@ public class VehicleController
         directionsService.reset();
         geocodingService.reset();
         simulationRegistry.reset();
+        bookmarkRepository.reset();
 
         return new ResponseEntity<List<VehicleState>>(new ArrayList<VehicleState>(), HttpStatus.OK);
     }
@@ -559,5 +569,4 @@ public class VehicleController
 
         return this.vehicleStateStore.getVehicles(idList);
     }
-
 }

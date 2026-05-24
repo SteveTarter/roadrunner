@@ -29,6 +29,7 @@ import org.testcontainers.utility.DockerImageName;
 import com.tarterware.roadrunner.configs.NoOpSchedulerConfig;
 import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
+import com.tarterware.roadrunner.ports.BookmarkRepository;
 import com.tarterware.roadrunner.security.UserPrincipalFactory;
 import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.services.GeocodingService;
@@ -103,6 +104,9 @@ class RoadrunnerApplicationTests
 
     @MockitoBean
     private KafkaTopicMetadataService kafkaTopicMetadataService;
+
+    @MockitoBean
+    private BookmarkRepository bookmarkRepository;
 
     @BeforeEach
     void setup() throws IOException

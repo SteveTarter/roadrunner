@@ -29,6 +29,7 @@ import com.tarterware.roadrunner.configs.NoOpSchedulerConfig;
 import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
+import com.tarterware.roadrunner.ports.BookmarkRepository;
 import com.tarterware.roadrunner.ports.VehicleEventPublisher;
 import com.tarterware.roadrunner.security.UserPrincipalFactory;
 import com.tarterware.roadrunner.services.DirectionsService;
@@ -108,6 +109,9 @@ public class KafkaModeActiveTest
 
     @MockitoBean
     private KafkaTopicMetadataService kafkaTopicMetadataService;
+
+    @MockitoBean
+    private BookmarkRepository bookmarkRepository;
 
     @Autowired
     private VehicleEventPublisher publisher;
