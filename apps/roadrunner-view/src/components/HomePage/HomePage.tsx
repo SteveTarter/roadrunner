@@ -173,28 +173,42 @@ export const HomePage = () => {
 
   const openCreateVehicle = useCallback(() => {
     setIsCreateVehicleActive(true);
+    setIsCrissCrossActive(false);
+    setShowBookmarksPanel(false);
+    setShowSimTable(false);
+    setShowActiveVehiclePlot(false);
   }, []);
 
   const openCrissCross = useCallback(() => {
     setIsCrissCrossActive(true);
+    setIsCreateVehicleActive(false);
+    setShowBookmarksPanel(false);
+    setShowSimTable(false);
+    setShowActiveVehiclePlot(false);
   }, []);
 
   const toggleSimTable = useCallback(() => {
     setShowSimTable(!showSimTable);
-    setShowActiveVehiclePlot(false);
+    setIsCreateVehicleActive(false);
+    setIsCrissCrossActive(false);
     setShowBookmarksPanel(false);
+    setShowActiveVehiclePlot(false);
     clearData();
   }, [showSimTable, clearData]);
 
   const toggleShowActiveVehiclePlot = useCallback(() => {
     setShowActiveVehiclePlot(!showActiveVehiclePlot)
-    setShowSimTable(false);
+    setIsCreateVehicleActive(false);
+    setIsCrissCrossActive(false);
     setShowBookmarksPanel(false);
+    setShowSimTable(false);
     clearData();
   }, [showActiveVehiclePlot, clearData]);
 
   const toggleBookmarksPanel = useCallback(() => {
     setShowBookmarksPanel(!showBookmarksPanel);
+    setIsCreateVehicleActive(false);
+    setIsCrissCrossActive(false);
     setShowSimTable(false);
     setShowActiveVehiclePlot(false);
   }, [showBookmarksPanel]);

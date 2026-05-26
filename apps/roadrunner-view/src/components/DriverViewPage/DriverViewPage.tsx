@@ -394,7 +394,10 @@ export const DriverViewPage = () => {
                 className="shadow-sm"
                 onClick={gotoHomePage}
               >
-                <FontAwesomeIcon icon={faHome} className="mr-3" />
+                <FontAwesomeIcon
+                  icon={faHome}
+                  title="Home"
+                  className="mr-3" />
               </Button>
 
               <Button
@@ -426,7 +429,9 @@ export const DriverViewPage = () => {
                 className="shadow-sm"
                 onClick={() => setShowActiveVehiclePlot(!showActiveVehiclePlot)}
               >
-                <FontAwesomeIcon icon={faChartLine}/>
+                <FontAwesomeIcon
+                  icon={faChartLine}
+                  title="Active Vehicle Plot"/>
               </Button>
             </div>
             <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "10rem" }}>
