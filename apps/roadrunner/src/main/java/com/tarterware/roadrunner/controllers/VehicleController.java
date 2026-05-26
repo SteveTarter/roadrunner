@@ -244,6 +244,11 @@ public class VehicleController
             startAddress.setLatitude(startCoordinate.getY());
             startAddress.setLongitude(startCoordinate.getX());
 
+            Address centerAddress = new Address();
+            centerAddress.setSource("NumericEntry");
+            centerAddress.setLatitude(crissCrossPlan.getDegLatitude());
+            centerAddress.setLongitude(crissCrossPlan.getDegLongitude());
+
             Address endAddress = new Address();
             endAddress.setSource("NumericEntry");
             endAddress.setLatitude(endCoordinate.getY());
@@ -252,6 +257,7 @@ public class VehicleController
             TripPlan tripPlan = new TripPlan();
             List<Address> listStops = new ArrayList<Address>();
             listStops.add(startAddress);
+            listStops.add(centerAddress);
             listStops.add(endAddress);
             tripPlan.setListStops(listStops);
 

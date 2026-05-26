@@ -143,6 +143,8 @@ public class Vehicle
     @Setter
     private List<LineSegmentData> listLineSegmentData;
 
+    private static final double MINIMUM_SPEED = 5.0;
+
     // Logger instance for logging vehicle activity and debug information.
     private static final Logger logger = LoggerFactory.getLogger(Vehicle.class);
 
@@ -459,7 +461,7 @@ public class Vehicle
     {
         // Determine what metersPerSecondDesired should be.
         double totalDistance = 0.0;
-        double speed = 0.0;
+        double speed = MINIMUM_SPEED;
         boolean distanceReached = false;
         List<RouteLeg> listLegs = directions.getRoutes().get(0).getLegs();
         for (int legIndex = 0; !distanceReached && (legIndex < listLegs.size()); ++legIndex)
@@ -467,7 +469,8 @@ public class Vehicle
             Annotation annotation = listLegs.get(legIndex).getAnnotation();
             for (int a = 0; !distanceReached && (a < annotation.getSpeed().size()); ++a)
             {
-                speed = annotation.getSpeed().get(a);
+                speed = Math.max(annotation.getSpeed().get(a), MINIMUM_SPEED);
+
                 totalDistance += annotation.getDistance().get(a);
                 if (totalDistance >= metersOffset)
                 {
