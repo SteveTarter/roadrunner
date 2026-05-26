@@ -86,7 +86,7 @@ export const ViewControl = (props: {
         </button>
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', fontSize: '1.1rem' }}>
-        Offset: {props.degViewOffset}°
+        View Offset: {props.degViewOffset}°
       </div>
     </div>
   );
