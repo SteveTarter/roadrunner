@@ -27,7 +27,9 @@ export const ActiveVehiclePlot = (props: {
   const {activeCountMap, sortedCountKeys} = activeCountData;
 
   const [touchStartDist, setTouchStartDist] = useState<number | null>(null);
-  const [midX, setMidX] = useState<number | null>(null);
+  const [mouseX, setMouseX] = useState<number | null>(null);
+  const [mouseY, setMouseY] = useState<number | null>(null);
+
   const [msXPoint, setMsXPoint] = useState<number | null>(null);
   const [allowResize, setAllowResize] = useState(true);
 
@@ -40,26 +42,33 @@ export const ActiveVehiclePlot = (props: {
   const [domain, setDomain] = useState<[number, number]>([INITIAL_START, INITIAL_END]);
 
   useEffect(() => {
-    if(!chartRef || !chartRef.current || !midX) return;
+    if(!chartRef || !chartRef.current || !mouseX || !mouseY) return;
 
     // Get the bounding box of the chart container
-    const rect = chartRef.current.getBoundingClientRect();
+    const rectChart = chartRef.current.getBoundingClientRect();
     const [currentStart, currentEnd] = domain;
 
-    const chartMarginLeft = 85;
-    const chartMarginRight = 24;
+    const chartMargins = {
+      left: 65,
+      right: 5,
+      top: 5,
+      bottom: 40,
+    };
 
     // If the mouse is outside the LineChart area, the msXPoint is invalid.
-    if((midX < chartMarginLeft + rect.x) || (midX > rect.width + rect.x - chartMarginRight)) {
+    if((mouseX < chartMargins.left + rectChart.left) ||
+       (mouseX > rectChart.right - chartMargins.right) ||
+       (mouseY < rectChart.top + chartMargins.top) ||
+       (mouseY > rectChart.bottom - chartMargins.bottom)) {
       setMsXPoint(null);
       return;
     }
 
     // Define the chart margins (Recharts defaults + Y-Axis width)
-    const chartWidth = rect.width - chartMarginLeft - chartMarginRight;
+    const chartWidth = rectChart.width - chartMargins.left - chartMargins.right;
 
     // Calculate where the mouse is relative to the start of the line area
-    const xInChart = midX - chartMarginLeft - rect.x;
+    const xInChart = mouseX - chartMargins.left - rectChart.x;
 
     const timeSpan = currentEnd - currentStart;
 
@@ -70,7 +79,7 @@ export const ActiveVehiclePlot = (props: {
     const exactMsTime = currentStart + (timeSpan * percentage);
 
     setMsXPoint(exactMsTime);
-  }, [chartRef, midX, domain]);
+  }, [mouseX, mouseY, domain]);
 
   // Generate Chart Data
   const chartData = useMemo(() => {
@@ -149,10 +158,10 @@ export const ActiveVehiclePlot = (props: {
   }, [domain]);
 
   const isRightOfCenter = useMemo(() => {
-    if (!chartRef.current || midX === null) return false;
+    if (!chartRef.current || !mouseX || !mouseY) return false;
     const rect = chartRef.current.getBoundingClientRect();
-    return (midX - rect.left) > (rect.width / 2);
-  }, [midX]);
+    return (mouseX - rect.left) > (rect.width / 2);
+  }, [mouseX, mouseY]);
 
   const midnightTicks = useMemo(() => {
     const span = domain[1] - domain[0];
@@ -301,7 +310,7 @@ export const ActiveVehiclePlot = (props: {
       const dist = getTouchDist(e);
       setTouchStartDist(dist);
       // Use the midpoint between two fingers as the zoom anchor
-      setMidX((e.touches[0].pageX + e.touches[1].pageX) / 2);
+      setMouseX((e.touches[0].pageX + e.touches[1].pageX) / 2);
     }
     if ((e.touches.length === 1) && !touchStartDist) {
       if (!msXPoint) return;
@@ -340,22 +349,23 @@ export const ActiveVehiclePlot = (props: {
 
   return (
     <div
-      ref={chartRef}
       className="active-vehicle-plot-container"
       onWheel={handleWheel}
       onMouseMove={(state) => {
         if (state && state.clientX) {
-          setMidX(state.clientX);
+          setMouseX(state.clientX);
+          setMouseY(state.clientY);
         }
       }}
       onMouseLeave={() => {
-        setMidX(null);
+        setMouseX(null);
+        setMouseY(null);
         setMsXPoint(null);
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={() => {
-        setMidX(null);
+        setMouseX(null);
         setMsXPoint(null);
         setTouchStartDist(null);
       }}
@@ -375,7 +385,10 @@ export const ActiveVehiclePlot = (props: {
     >
       <h5>{getDynamicTitle(domain[0], domain[1])}</h5>
 
-      <div style={{ width: '100%', height: 300 }}>
+      <div
+        ref={chartRef}
+        style={{ width: '100%', height: 300 }}
+      >
         <ResponsiveContainer>
           <LineChart
             data={chartData}
@@ -445,13 +458,13 @@ export const ActiveVehiclePlot = (props: {
           </LineChart>
         </ResponsiveContainer>
         {/* Tooltip tied to the ReferencePoint at the cursor X position */}
-        {msXPoint && midX && (
+        {msXPoint && mouseX && mouseY && (
           <div
             style={{
               position: 'fixed',
               // Dynamic anchoring logic:
-              left: isRightOfCenter ? 'auto' : midX + 15,
-              right: isRightOfCenter ? (window.innerWidth - midX) + 15 : 'auto',
+              left: isRightOfCenter ? 'auto' : mouseX + 15,
+              right: isRightOfCenter ? (window.innerWidth - mouseX) + 15 : 'auto',
               top: '50%',
               pointerEvents: 'none',
               background: 'white',
