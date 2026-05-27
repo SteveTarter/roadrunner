@@ -62,19 +62,11 @@ export const BookmarksPanel: React.FC<BookmarksPanelProps> = ({ onClose, onSelec
   }, []);
 
   return (
-    <Card
-      className="shadow-lg"
-      style={{
-        position: 'absolute',
-        top: '20px',
-        left: '10px',
-        width: '350px',
-        zIndex: 1000
-      }}
-    >
+    <Card style={{ width: '20rem', alignSelf: 'end', top: 10 }}>
+
       <CardHeader className="d-flex justify-content-between align-items-center bg-dark text-white py-2">
         <h6 className="mb-0">Bookmarks</h6>
-        <Button close onClick={onClose} variant="white" className="text-white">
+        <Button onClick={onClose} variant="white" className="text-white">
           <FontAwesomeIcon icon={faTimes} />
         </Button>
       </CardHeader>
