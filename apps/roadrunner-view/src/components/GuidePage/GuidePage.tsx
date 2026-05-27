@@ -21,7 +21,7 @@ export function GuidePage() {
 
     switch (guideId) {
       case 'overview':
-        docPath = '/guide/guide.md';
+        docPath = '/guide/UserGuide.md';
         setReturnPath('/home');
         break;
 
