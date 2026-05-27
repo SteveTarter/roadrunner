@@ -26,17 +26,17 @@ The top navigation bar contains additional management panels for running and mon
 
 ### Standard Features
 
-*   **Bookmarks:** Opens a panel where you can select from a curated list of previously saved simulation sessions. Selecting a bookmark will adjust the application clock and transport you to the Driver View for that specific vehicle's historical run.
+*   **Bookmarks:** Opens a panel where you can select from a curated list of previously saved simulation sessions. Selecting a bookmark will adjust the application clock and transport you to the Driver View for that specific vehicle's historical run.  [Learn more about the Bookmarks panel.](/guide/bookmarks)
 
-*   **Sim Table:** Opens a tabular layout displaying simulation sessions that have occured within the retention period.
+*   **Sim Table:** Opens a tabular layout displaying simulation sessions that have occured within the retention period.  [Learn more about the Sim Table.](/guide/sim-table)
 
-*   **Active Vehicle Plot:** Opens a chart displaying vehicle activity over the retention period.  Allows an alternate way to select a timeline to view past or current simulations.
+*   **Active Vehicle Plot:** Opens a chart displaying vehicle activity over the retention period.  Allows an alternate way to select a timeline to view past or current simulations.  [Learn more about the Active Vehicle Plot.](/guide/active-vehicle-plot)
 
 
 ### Creator Features
 
 _Note: The following features require your user account to be assigned to the 'creator' group in Amazon Cognito._
 
-*   **Create Vehicle:** Opens the creation panel, allowing you to establish a starting point, destination, and parameters for a new vehicle simulation.
+*   **Create Vehicle:** Opens the creation panel, allowing you to establish a starting point, destination, and parameters for a new vehicle simulation. [Learn more about the Create Vehicle Panel.](/guide/create-vehicle-panel)
 
-*   **Create criss-cross:** Opens a specialized panel designed to generate a "criss-cross" simulation scenario, ideal for testing intersection routing or specific demonstration paths.
+*   **Create criss-cross:** Opens a specialized panel designed to generate a "criss-cross" simulation scenario, ideal for testing intersection routing or specific demonstration paths.  [Learn more about the Create Criss-Cross Panel.](/guide/create-criss-cross-panel)

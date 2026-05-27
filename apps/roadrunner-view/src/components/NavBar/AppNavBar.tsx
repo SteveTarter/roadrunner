@@ -1,8 +1,8 @@
 import './AppNavBar.css'
-import React, { useEffect, useState } from "react";
-import { NavLink as RouterNavLink } from "react-router-dom";
+import React, { useCallback, useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { CONFIG } from "../../config";
+import { useNavigate } from 'react-router-dom';
 
 import {
   Collapse,
@@ -10,6 +10,7 @@ import {
   NavbarToggler,
   Nav,
   NavItem,
+  NavLink,
   Button,
   UncontrolledDropdown,
   DropdownToggle,
@@ -36,6 +37,7 @@ export const AppNavBar = ({
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
+  const navigate = useNavigate();
 
   const toggle = () => setIsOpen(!isOpen);
 
@@ -97,6 +99,10 @@ export const AppNavBar = ({
     }
   };
 
+  const gotoGuidePage = useCallback(() => {
+    navigate('/guide/overview');
+  }, [navigate]);
+
   return (
     <div className="nav-container">
       <Navbar color="light" light expand="md">
@@ -106,6 +112,16 @@ export const AppNavBar = ({
           {/* Left-aligned items */}
           <Nav className="me-auto" navbar>
             {additionalMenuItems && additionalMenuItems(() => setIsOpen(false))}
+            <NavItem>
+              <NavLink
+                to="/guide/overview"
+                id="guideOverviewBtn"
+                onClick={() => gotoGuidePage()}
+                style={{ cursor: "pointer" }}
+              >
+                User Guide
+              </NavLink>
+            </NavItem>
           </Nav>
 
           {/* Right-aligned items */}
@@ -157,7 +173,6 @@ export const AppNavBar = ({
                 <DropdownMenu>
                   <DropdownItem header>{user.name || user.email}</DropdownItem>
                   <DropdownItem
-                    tag={RouterNavLink}
                     to="/profile"
                     className="dropdown-profile"
                   >

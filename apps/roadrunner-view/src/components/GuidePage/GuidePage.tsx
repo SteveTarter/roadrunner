@@ -1,23 +1,65 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Button, Container } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 
 export function GuidePage() {
+  // Get the Guide ID from the URL in the window
+  const guideId = (window.location.pathname).split('/')[2];
+
   const [content, setContent] = useState("");
+
+  const [returnPath, setReturnPath] = useState("/home");
 
   const navigate = useNavigate();
 
-  const goHome = () => {
-    navigate(`/home`);
-  }
-
   useEffect(() => {
+    if (!guideId) return;
+
+    // Determine the file to display.
+    let docPath = '/guide/NoSuchGuide.md';
+
+    switch (guideId) {
+      case 'overview':
+        docPath = '/guide/guide.md';
+        setReturnPath('/home');
+        break;
+
+      case 'bookmarks':
+        docPath = '/guide/Bookmarks.md';
+        setReturnPath('/guide/overview')
+        break;
+
+      case 'sim-table':
+        docPath = '/guide/SimTable.md';
+        setReturnPath('/guide/overview')
+        break;
+
+      case 'active-vehicle-plot':
+        docPath = '/guide/ActiveVehiclePlot.md';
+        setReturnPath('/guide/overview')
+        break;
+
+      case 'criss-cross-panel':
+        docPath = '/guide/CreateCrissCrossPanel.md';
+        setReturnPath('/guide/overview')
+        break;
+
+      case 'create-vehicle-panel':
+        docPath = '/guide/CreateVehiclePanel.md';
+        setReturnPath('/guide/overview')
+        break;
+    }
+
     // Fetch the markdown file from the public directory
-    fetch("/guide/guide.md")
+    fetch(docPath)
       .then((res) => res.text())
       .then((text) => setContent(text));
-  }, []);
+  }, [guideId]);
+
+  const closePage = useCallback(() => {
+    navigate(returnPath);
+  },[navigate, returnPath]);
 
   return (
 <div
@@ -39,7 +81,7 @@ export function GuidePage() {
         <Button
           id="qsLoginBtn"
           variant="primary"
-          onClick={goHome}
+          onClick={closePage}
         >
           OK
         </Button>

@@ -31,7 +31,7 @@ export const App = () => {
         path='/about'
         element={<AuthenticationGuard component={AboutPage} />} />
         <Route
-        path='/guide'
+        path='/guide/:guideId'
         element={<AuthenticationGuard component={GuidePage} />} />
         <Route
         path="/profile"
