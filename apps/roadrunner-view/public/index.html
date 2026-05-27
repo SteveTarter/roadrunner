@@ -33,5 +33,13 @@
     crossorigin="anonymous"
   >
   </script>
+  <script>
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        console.log("Tab returned to focus or device woken up. Refreshing page...");
+        window.location.reload();
+      }
+    });
+  </script>
   </body>
 </html>
