@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { fetchAuthSession } from "aws-amplify/auth";
 import { CONFIG } from "../../config";
-import { Card, CardHeader, CardBody, Button, ListGroup, ListGroupItem, Spinner } from 'reactstrap';
+import { Card, CardHeader, CardBody, ListGroup, ListGroupItem, Spinner } from 'reactstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlay, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faTimes } from '@fortawesome/free-solid-svg-icons';
+import { Button } from "react-bootstrap";
 
 export type Bookmark = {
   vehicleId: string;
@@ -102,13 +103,11 @@ export const BookmarksPanel: React.FC<BookmarksPanelProps> = ({ onClose, onSelec
                     </p>
                   </div>
                   <Button
-                    color="success"
                     size="sm"
-                    className="flex-shrink-0 mt-1 shadow-sm"
                     onClick={() => onSelectBookmark(bookmark.vehicleId, bookmark.start)}
                     title="Jump to Scenario"
                   >
-                    <FontAwesomeIcon icon={faPlay} /> Jump
+                    ▶️ Playback
                   </Button>
                 </div>
               </ListGroupItem>

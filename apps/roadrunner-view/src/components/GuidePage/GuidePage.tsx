@@ -97,7 +97,21 @@ export function GuidePage() {
       >
         <main className="container-fluid px-4 py-4" style={{ paddingBottom: "100px" }}>
           <Container>
-            <ReactMarkdown>{content}</ReactMarkdown>
+            <ReactMarkdown
+              components={{
+                // This tells react-markdown: "Whenever you see a markdown image,
+                // render it with these styles applied."
+                img: ({node, ...props}) => (
+                  <img
+                    style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }}
+                    {...props}
+                    alt={props.alt || "Guide image"}
+                  />
+                )
+              }}
+            >
+              {content}
+            </ReactMarkdown>
           </Container>
         </main>
       </div>
