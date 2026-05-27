@@ -63,7 +63,6 @@ export const AppNavBar = ({
           return;
         }
 
-
         const info: UserInfo = {
           name: claims?.name ?? claims?.given_name ?? claims?.email,
           email: claims?.email,
@@ -145,6 +144,16 @@ export const AppNavBar = ({
               {isAuthenticated && (
                 <>
                   {additionalMenuItems && additionalMenuItems(closeNavbar)}
+                  <NavItem className="d-flex align-items-left">
+                    <NavLink
+                      tag={RouterNavLink}
+                      to="/guide"
+                      className="router-link-exact-active"
+                    >
+                      User Guide
+                    </NavLink>
+                  </NavItem>
+
                   <NavItem className="d-flex align-items-left">
                     <NavLink
                       tag={RouterNavLink}
