@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { fetchUserAttributes } from "aws-amplify/auth";
+import { fetchAuthSession } from "aws-amplify/auth";
 import { AppNavBar } from "../NavBar/AppNavBar";
 
 type UserInfo = {
@@ -16,14 +16,29 @@ export const ProfilePage: React.FC = () => {
 
     async function loadUser() {
       try {
-        const attrs = await fetchUserAttributes();
-        const info: UserInfo = {
-          name: attrs.name ?? attrs.given_name ?? attrs.family_name ?? attrs.email,
-          email: attrs.email,
-          picture: (attrs as any).picture,
-        };
+        const session = await fetchAuthSession();
 
-        if (!cancelled) setUser(info);
+        const accessToken = session.tokens?.accessToken?.toString();
+        const idToken = session.tokens?.idToken;
+        const claims = (idToken?.payload ?? {}) as any;
+
+        // Only treat as authenticated if we actually have tokens
+        if (!accessToken || !idToken) {
+          if (!cancelled) {
+            setUser(null);
+          }
+          return;
+        }
+
+        const info: UserInfo = {
+          name: claims?.name ?? claims?.given_name ?? claims?.email,
+          email: claims?.email,
+          picture: claims?.picture,
+        };
+        if (!cancelled) {
+          setUser(info);
+        }
+
       } catch (e) {
         // Guard should prevent access; if we get here, just show nothing.
         if (!cancelled) setUser(null);
