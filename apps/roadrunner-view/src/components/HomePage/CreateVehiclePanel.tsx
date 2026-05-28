@@ -110,7 +110,7 @@ export const CreateVehiclePanel = (props: {
   }
 
   return (
-<Card style={{ width: '20rem', alignSelf: 'end', top: 10 }}>
+<Card style={{ width: '20rem', alignSelf: 'end', top: 40, left:20 }}>
 
   <CardHeader className="d-flex justify-content-between align-items-center bg-dark text-white py-2">
     <h6 className="mb-0">Create Vehicle</h6>

@@ -121,11 +121,11 @@ export const SimulationTable = (props: {
       className="simulation-table-container"
       style={{
         position: 'relative',
+        top: 20,
         zIndex: 1000, // Ensure it's above the Map layers
         background: 'white',
         padding: '10px',
         borderRadius: '8px',
-        paddingBottom: '65px',
         width: '94%',
         maxWidth: 'fit-content',
         margin: '10px auto',
@@ -139,7 +139,8 @@ export const SimulationTable = (props: {
         rowCount={rowCount}
         onPaginationChange={setPagination}
         state={{ pagination }}
-        layoutMode="grid" // Important for allowing columns to respect 'size'
+        layoutMode="grid"
+        enableStickyHeader
         displayColumnDefOptions={{
           'mrt-row-actions': {
             size: 100,
@@ -160,19 +161,13 @@ export const SimulationTable = (props: {
         }}
         initialState={{ density: 'compact' }}
       />
+      <div className="d-flex justify-content-end gap-2 mt-3">
       {playbackOffset !== 0 && (
         <Button
           variant="success"
-          className="mb-2"
           onClick={() => {
             props.returnToNow();
             props.toggleSimTable();
-          }}
-          style={{
-            position: 'absolute',
-            bottom: '10px',
-            right: '85px',
-            zIndex: 1001,
           }}
         >
           Return to Now
@@ -180,19 +175,13 @@ export const SimulationTable = (props: {
       )}
       <Button
         variant="warning"
-        className="mb-2"
         onClick={() => {
           props.toggleSimTable();
-        }}
-        style={{
-          position: 'absolute',
-          bottom: '10px',
-          right: '10px',
-          zIndex: 1001,
         }}
       >
         Close
       </Button>
+      </div>
     </div>
   );
 };

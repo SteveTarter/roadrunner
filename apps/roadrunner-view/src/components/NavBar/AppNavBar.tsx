@@ -1,8 +1,8 @@
 import './AppNavBar.css'
-import React, { useEffect, useMemo, useState } from "react";
-import { NavLink as RouterNavLink } from "react-router-dom";
+import React, { useCallback, useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { CONFIG } from "../../config";
+import { useNavigate } from 'react-router-dom';
 
 import {
   Collapse,
@@ -37,6 +37,7 @@ export const AppNavBar = ({
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
+  const navigate = useNavigate();
 
   const toggle = () => setIsOpen(!isOpen);
 
@@ -63,7 +64,6 @@ export const AppNavBar = ({
           return;
         }
 
-
         const info: UserInfo = {
           name: claims?.name ?? claims?.given_name ?? claims?.email,
           email: claims?.email,
@@ -87,8 +87,6 @@ export const AppNavBar = ({
     return () => { cancelled = true; };
   }, []);
 
-  const displayName = useMemo(() => user?.name ?? user?.email ?? "User", [user]);
-
   const logoutAndReturn = async () => {
     try {
       await signOut({ global: true });
@@ -101,114 +99,112 @@ export const AppNavBar = ({
     }
   };
 
-  const closeNavbar = () => {
-    if (isOpen) {
-      setIsOpen(false);
-    }
-  };
+  const gotoAboutPage = useCallback(() => {
+    navigate('/about');
+  }, [navigate]);
 
-  const login = async () => {
-    await signInWithRedirect();
-  };
+  const gotoGuidePage = useCallback(() => {
+    navigate('/guide/overview');
+  }, [navigate]);
 
   return (
     <div className="nav-container">
       <Navbar color="light" light expand="md">
-          <NavBarBrand />
-          <NavbarToggler onClick={toggle} />
-          <Collapse isOpen={isOpen} navbar>
-            <Nav className="me-auto align-items-left" navbar>
+        <NavBarBrand />
+        <NavbarToggler onClick={toggle} />
+        <Collapse isOpen={isOpen} navbar>
+          {/* Left-aligned items */}
+          <Nav className="me-auto" navbar>
+            {additionalMenuItems && additionalMenuItems(() => setIsOpen(false))}
+            <NavItem>
+              <NavLink
+                to="/guide/overview"
+                id="guideOverviewBtn"
+                onClick={() => gotoGuidePage()}
+                style={{ cursor: "pointer" }}
+              >
+                User Guide
+              </NavLink>
+            </NavItem>
+            <NavItem>
+              <NavLink
+                to="/about"
+                id="aboutBtn"
+                onClick={() => gotoAboutPage()}
+                style={{ cursor: "pointer" }}
+              >
+                About
+              </NavLink>
+            </NavItem>
+          </Nav>
+
+          {/* Right-aligned items */}
+          <Nav className="ms-auto" navbar>
+            {!isAuthenticated && (
               <NavItem>
-                <NavLink
-                  tag={RouterNavLink}
-                  to="/"
-                  exact="true"
-                  className="router-link-exact-active"
+                <Button
+                  id="qsLoginBtn"
+                  color="primary"
+                  className="btn-margin"
+                  onClick={() => signInWithRedirect()}
                 >
-                  Home
-                </NavLink>
+                  Log in
+                </Button>
               </NavItem>
+            )}
 
-              {!isAuthenticated && (
-                <NavItem>
-                  <Button
-                    id="qsLoginBtn"
-                    color="primary"
-                    className="btn-margin"
-                    onClick={login}
-                  >
-                    Log in
-                  </Button>
-                </NavItem>
-              )}
-
-              {isAuthenticated && (
-                <>
-                  {additionalMenuItems && additionalMenuItems(closeNavbar)}
-                  <NavItem className="d-flex align-items-left">
-                    <NavLink
-                      tag={RouterNavLink}
-                      to="/about"
-                      className="router-link-exact-active"
+            {isAuthenticated && user && (
+              <UncontrolledDropdown nav inNavbar>
+                <DropdownToggle nav caret id="profileDropDown">
+                  {user.picture ? (
+                    <img
+                      src={user.picture}
+                      alt="Profile"
+                      className="nav-user-profile rounded-circle"
+                      width="50"
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: "35px",
+                        height: "35px",
+                        borderRadius: "50%",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "#ddd",
+                        color: "#333",
+                        fontWeight: 600,
+                      }}
+                      aria-label="Profile"
+                      title={user.name || user.email || "User"}
                     >
-                      About
-                    </NavLink>
-                  </NavItem>
+                      {(user.name || user.email || "U").slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                </DropdownToggle>
 
-                  <UncontrolledDropdown nav inNavbar>
-                    <DropdownToggle nav caret>
-                      {user?.picture ? (
-                        <img
-                          src={user?.picture}
-                          alt="Profile"
-                          className="nav-user-profile rounded-circle"
-                          width="40"
-                        />
-                      ) : (
-                        // fallback: circle with first letter
-                        <div
-                          className="nav-user-profile rounded-circle"
-                          style={{
-                            width: 40,
-                            height: 40,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            background: "#ddd",
-                            color: "#333",
-                            fontWeight: 600,
-                          }}
-                          aria-label="Profile"
-                          title={displayName}
-                        >
-                          {displayName.slice(0, 1).toUpperCase()}
-                        </div>
-                      )}
-                    </DropdownToggle>
-
-                    <DropdownMenu>
-                      <DropdownItem header>{displayName}</DropdownItem>
-                      <DropdownItem
-                        tag={RouterNavLink}
-                        to="/profile"
-                        className="dropdown-profile"
-                      >
-                        <FontAwesomeIcon icon="user" className="mr-3" />
-                        Profile
-                      </DropdownItem>
-                      <DropdownItem
-                        id="qsLogoutBtn"
-                        onClick={logoutAndReturn}
-                      >
-                        <FontAwesomeIcon icon="power-off" className="mr-3" />
-                        Logout
-                      </DropdownItem>
-                    </DropdownMenu>
-                  </UncontrolledDropdown>
-                </>
-              )}
-            </Nav>
-          </Collapse>
+                <DropdownMenu>
+                  <DropdownItem header>{user.name || user.email}</DropdownItem>
+                  <DropdownItem
+                    to="/profile"
+                    className="dropdown-profile"
+                  >
+                    <FontAwesomeIcon icon="user" className="mr-3" />
+                    Profile
+                  </DropdownItem>
+                  <DropdownItem
+                    id="qsLogoutBtn"
+                    onClick={() => logoutAndReturn()}
+                  >
+                    <FontAwesomeIcon icon="power-off" className="mr-3" />
+                    Logout
+                  </DropdownItem>
+                </DropdownMenu>
+              </UncontrolledDropdown>
+            )}
+          </Nav>
+        </Collapse>
       </Navbar>
     </div>
   );
