@@ -35,11 +35,11 @@ export const PlaybackClock = () => {
     <div style={{
       position: 'fixed',
       bottom: '20px',
-      right: '20px',
+      right: '5px',
       zIndex: 1000,
       fontFamily: 'monospace'
     }}>
-      <Badge bg={playbackOffset === 0 ? "success" : "warning"} style={{ fontSize: '1rem', padding: '10px' }}>
+      <Badge bg={playbackOffset === 0 ? "success" : "warning"} style={{ fontSize: '0.85rem', padding: '8px' }}>
         {playbackOffset === 0 ? "LIVE: " : "PLAYBACK: "}
         {displayTime}
       </Badge>
