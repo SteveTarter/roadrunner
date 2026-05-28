@@ -1,5 +1,3 @@
-Active Vehicle Plot
-===============================
 The Active Vehicle Plot displays a chart that shows the number of vehicles that have been run over the span of the retention period.  The X-axis is time, and the Y-axis is the number of concurrent sessions that were occuring at that time.
 
 When invoked from the Home page, the plot opens with the plot zoomed out to show the entire retention period.  If invoked from the Driver's View page, the plot will automatically zoom in to the span of the selected vehicle's lifetime.

@@ -1,128 +1,72 @@
-import { useCallback, useEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import { Button, Container } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { MarkdownPageLayout } from '../Shared/MarkdownPageLayout';
 
 export function GuidePage() {
   // Get the Guide ID from the URL in the window
   const guideId = (window.location.pathname).split('/')[2];
 
-  const [content, setContent] = useState("");
-
-  const [returnPath, setReturnPath] = useState("/home");
+  const [title, setTitle] = useState('');
+  const [markdownUrl, setMarkdownUrl] = useState('');
+  const [returnPath, setReturnPath] = useState('/home');
 
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!guideId) return;
 
-    // Determine the file to display.
-    let docPath = '/guide/NoSuchGuide.md';
-
     switch (guideId) {
       case 'overview':
-        docPath = '/guide/UserGuide.md';
+        setTitle('User Guide: Overview');
+        setMarkdownUrl('/guide/UserGuide.md');
         setReturnPath('/home');
         break;
 
       case 'bookmarks':
-        docPath = '/guide/BookmarksPanel.md';
+        setTitle('User Guide: Bookmarks');
+        setMarkdownUrl('/guide/BookmarksPanel.md');
         setReturnPath('/guide/overview')
         break;
 
       case 'sim-table':
-        docPath = '/guide/SimTable.md';
+        setTitle('User Guide: Simulation Table');
+        setMarkdownUrl('/guide/SimTable.md');
         setReturnPath('/guide/overview')
         break;
 
       case 'active-vehicle-plot':
-        docPath = '/guide/ActiveVehiclePlot.md';
+        setTitle('User Guide: Active Vehicle Plot');
+        setMarkdownUrl('/guide/ActiveVehiclePlot.md');
         setReturnPath('/guide/overview')
         break;
 
       case 'create-criss-cross-panel':
-        docPath = '/guide/CreateCrissCrossPanel.md';
+        setTitle('User Guide: Create Criss-Cross Panel');
+        setMarkdownUrl('/guide/CreateCrissCrossPanel.md');
         setReturnPath('/guide/overview')
         break;
 
       case 'create-vehicle-panel':
-        docPath = '/guide/CreateVehiclePanel.md';
+        setTitle('User Guide: Create Vehicle Panel');
+        setMarkdownUrl('/guide/CreateVehiclePanel.md');
         setReturnPath('/guide/overview')
         break;
-    }
 
-    // Fetch the markdown file from the public directory
-    fetch(docPath)
-      .then((res) => res.text())
-      .then((text) => setContent(text));
+      default:
+        setTitle('UserGuide: No Such Guide');
+        setMarkdownUrl('/guide/NoSuchGuide.md');
+        setReturnPath('/home');
+        break;
+    }
   }, [guideId]);
 
   const closePage = useCallback(() => {
     navigate(returnPath);
   },[navigate, returnPath]);
 
-  return (
-<div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: '#f8f9fa', // Ensures parent backdrop textures do not bleed through
-        zIndex: 2000 // Forces the viewport container over any background map configurations
-      }}
-    >
-      {/* Top Header - Fixed */}
-      <div className="d-flex justify-content-between align-items-center px-4 py-3 border-bottom shadow-sm">
-        <h4 className="mb-0">Roadrunner Guide</h4>
-        <Button
-          id="qsLoginBtn"
-          variant="primary"
-          onClick={closePage}
-        >
-          OK
-        </Button>
-      </div>
-
-      {/* Markdown Content - Scrollable */}
-      <div
-        style={{
-          flex: 1, // Takes up remaining vertical space
-          overflowY: 'auto',
-          WebkitOverflowScrolling: 'touch', // Fluid inertial scrolling acceleration for iOS Safari
-        }}
-      >
-        <main className="container-fluid px-4 py-4" style={{ paddingBottom: "100px" }}>
-          <Container>
-            <ReactMarkdown
-              components={{
-                // This tells react-markdown: "Whenever you see a markdown image,
-                // render it with these styles applied."
-                img: ({node, ...props}) => (
-                  <img
-                    style={{
-                      maxWidth: '100%',
-                      height: 'auto',
-                      borderRadius: '8px',
-                      border: '1px solid #dee2e6', /* Light gray Bootstrap border */
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)', /* Subtle shadow */
-                      marginTop: '10px',
-                      marginBottom: '20px'
-                    }}
-                    {...props}
-                    alt={props.alt || "Guide image"}
-                  />
-                )
-              }}
-            >
-              {content}
-            </ReactMarkdown>
-          </Container>
-        </main>
-      </div>
-    </div>
-  );
+    return <MarkdownPageLayout
+      title={title}
+      markdownUrl={markdownUrl}
+      onClose={closePage}
+    />
 }

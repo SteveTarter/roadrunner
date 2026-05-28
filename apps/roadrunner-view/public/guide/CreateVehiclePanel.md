@@ -1,5 +1,3 @@
-Create Vehicle Panel
-====================
 _Note: The following feature require your user account to be assigned to the 'creator' group in Amazon Cognito.  This access must be requested from the administrator.  Users in this group may create up to 30 sessions a day._
 
 The Create Vehicle Panel allows a 'creator' user to request a simulation session.  The origin and destination may be specified by address or by clicking on a point on the map.

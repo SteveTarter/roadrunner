@@ -99,6 +99,10 @@ export const AppNavBar = ({
     }
   };
 
+  const gotoAboutPage = useCallback(() => {
+    navigate('/about');
+  }, [navigate]);
+
   const gotoGuidePage = useCallback(() => {
     navigate('/guide/overview');
   }, [navigate]);
@@ -120,6 +124,16 @@ export const AppNavBar = ({
                 style={{ cursor: "pointer" }}
               >
                 User Guide
+              </NavLink>
+            </NavItem>
+            <NavItem>
+              <NavLink
+                to="/about"
+                id="aboutBtn"
+                onClick={() => gotoAboutPage()}
+                style={{ cursor: "pointer" }}
+              >
+                About
               </NavLink>
             </NavItem>
           </Nav>
