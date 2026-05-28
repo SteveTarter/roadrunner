@@ -22,6 +22,11 @@ The frontend features a comprehensive map view with a floating toolbar pinned to
 * ![Interpolation](./Resources/img/Interpolation.png) **Movement Interpolation**: Toggle vehicle movement interpolation on for fluid vehicle animations, or off to observe the raw, un-interpolated data points streaming from the backend.
 * ![Active Vehicle Chart](./Resources/img/VehicleChart.png) **Active Vehicle Chart**: Opens a detailed data chart for active vehicles directly over the map view.
 
+### Driver's View
+The frontend allows a user to "jump" into a vehicle on the map, and get a first person view of what the driver would see.  Note that the Active Vehicle Chart is available to warp within the vehicle's lifetime.
+![Roadrunner Driver Page example](./Resources/img/RoadrunnerViewer-2026-05-28-2.png)
+In the driver's view, other vehicles in the simulation are visible.
+![Roadrunner Driver Page with other vehicles](./Resources/img/RoadrunnerViewer-2026-05-28-3.png)
 ### Playback and Monitoring (Standard Features)
 Users can track and review vehicle simulations utilizing several top-navigation panels:
 
