@@ -26,7 +26,7 @@ export function GuidePage() {
         break;
 
       case 'bookmarks':
-        docPath = '/guide/Bookmarks.md';
+        docPath = '/guide/BookmarksPanel.md';
         setReturnPath('/guide/overview')
         break;
 
@@ -40,7 +40,7 @@ export function GuidePage() {
         setReturnPath('/guide/overview')
         break;
 
-      case 'criss-cross-panel':
+      case 'create-criss-cross-panel':
         docPath = '/guide/CreateCrissCrossPanel.md';
         setReturnPath('/guide/overview')
         break;
@@ -71,7 +71,7 @@ export function GuidePage() {
         bottom: 0,
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#ffffff', // Ensures parent backdrop textures do not bleed through
+        backgroundColor: '#f8f9fa', // Ensures parent backdrop textures do not bleed through
         zIndex: 2000 // Forces the viewport container over any background map configurations
       }}
     >
@@ -103,7 +103,15 @@ export function GuidePage() {
                 // render it with these styles applied."
                 img: ({node, ...props}) => (
                   <img
-                    style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }}
+                    style={{
+                      maxWidth: '100%',
+                      height: 'auto',
+                      borderRadius: '8px',
+                      border: '1px solid #dee2e6', /* Light gray Bootstrap border */
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)', /* Subtle shadow */
+                      marginTop: '10px',
+                      marginBottom: '20px'
+                    }}
                     {...props}
                     alt={props.alt || "Guide image"}
                   />

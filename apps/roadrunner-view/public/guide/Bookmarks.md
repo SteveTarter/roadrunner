@@ -1,2 +1,0 @@
-Roadrunner: Bookmarks Panel
-===========================
