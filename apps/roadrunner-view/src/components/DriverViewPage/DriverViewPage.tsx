@@ -436,7 +436,13 @@ export const DriverViewPage = () => {
             </div>
             <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "10rem" }}>
 
-              <Card style={{ width: '11rem', alignSelf: 'end', textAlign: 'center' }}>
+              <Card style={{
+                width: '11rem',
+                alignSelf: 'end',
+                textAlign: 'center',
+                borderTop: `6px solid ${vehicleState.colorCode || '#007bff'}`,
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
+              }}>
                 <Card.Body>
                   <ViewControl degViewOffset={degViewOffset} setDegViewOffset={setDegViewOffset} />
                   <Card.Text style={{ fontSize: '1.1rem' }}>

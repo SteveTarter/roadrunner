@@ -311,6 +311,7 @@ export const ActiveVehiclePlot = (props: {
       setTouchStartDist(dist);
       // Use the midpoint between two fingers as the zoom anchor
       setMouseX((e.touches[0].pageX + e.touches[1].pageX) / 2);
+      setMouseY((e.touches[0].pageY + e.touches[1].pageY) / 2);
     }
     if ((e.touches.length === 1) && !touchStartDist) {
       if (!msXPoint) return;
@@ -366,6 +367,7 @@ export const ActiveVehiclePlot = (props: {
       onTouchMove={handleTouchMove}
       onTouchEnd={() => {
         setMouseX(null);
+        setMouseY(null);
         setMsXPoint(null);
         setTouchStartDist(null);
       }}
