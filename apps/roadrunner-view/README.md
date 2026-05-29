@@ -1,114 +1,350 @@
 # Roadrunner View
 
-# Roadrunner Vehicle Simulation
+> **Part of the [Roadrunner](https://github.com/SteveTarter/roadrunner) vehicle-simulation portfolio project.**
 
-Roadrunner is a portfolio vehicle-simulation application built to demonstrate full-stack, cloud, mapping, and distributed-system development. The project was created in part to gain practical, real-life experience with Kafka and Redis. The application provides a real-time, interactive map to monitor and manage simulated vehicle fleets.
+Roadrunner View is a **React / TypeScript** single-page application that provides a real-time, interactive map for monitoring and managing simulated vehicle fleets. It connects to the [Roadrunner backend](https://github.com/SteveTarter/roadrunner) over REST, renders vehicles on a **Mapbox GL** map with live interpolated movement, and lets users step into a first-person Driver's View for any vehicle — live or historical.
+
+The project was built to gain hands-on, production-quality experience with a modern full-stack, cloud-native toolchain: React, TypeScript, Amazon Cognito / OIDC, Mapbox GL, Recharts, Docker, Nginx, and Kubernetes (via the companion [orchestration repo](https://github.com/SteveTarter/roadrunner-k8s-orchestration)).
+
+---
+
+## Table of Contents
+
+- [Project Repositories](#project-repositories)
+- [Screenshots](#screenshots)
+- [Technology Stack](#technology-stack)
+- [Architecture Overview](#architecture-overview)
+- [Features](#features)
+  - [Map View & Toolbar](#map-view--toolbar)
+  - [Driver's View](#drivers-view)
+  - [Playback & Monitoring](#playback--monitoring)
+  - [Creator Features](#creator-features)
+- [Authentication & Roles](#authentication--roles)
+- [Prerequisites](#prerequisites)
+- [Local Development Setup](#local-development-setup)
+  - [1. Clone and Install](#1-clone-and-install)
+  - [2. Configure Environment Variables](#2-configure-environment-variables)
+  - [3. Run the Development Server](#3-run-the-development-server)
+- [Docker Build & Run](#docker-build--run)
+- [CI / CD](#ci--cd)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [Privacy & Disclaimer](#privacy--disclaimer)
+
+---
 
 ## Project Repositories
-Roadrunner's codebase is distributed across three GitHub repositories:
-* **[Roadrunner Backend](https://github.com/SteveTarter/roadrunner)**: The Spring Boot-based backend.
-* **[Roadrunner Viewer](https://github.com/SteveTarter/roadrunner-view)**: The React-based frontend viewer **(THIS PROJECT)**.
-* **[Roadrunner K8S Orchestration](https://github.com/SteveTarter/roadrunner-k8s-orchestration)**: Kubernetes orchestration for deployment to Minikube or an AWS Kubernetes cluster.
 
-## Features & Usage
-Below is an example of a "criss-cross" pattern of 15 vehicles centered around The Elipse in Washington, DC. The vehicles are spaced apart by 24 degrees of bearing, at a distance of 5 kilometers from The Elipse. Each vehicle's route takes it to the opposite side of the circle. Here's a view with the routes turned on for all vehicles:
-![Roadrunner Home Page example](./Resources/img/RoadrunnerViewer-2026-05-28-1.png)
+The Roadrunner system spans three repositories:
 
-### Interactive Map Controls
-The frontend features a comprehensive map view with a floating toolbar pinned to the right side of the screen to customize your experience:
-* ![Fit All](./Resources/img/FitAll.png) **Fit All**: Automatically adjusts the map's zoom and pan to fit all currently active vehicles within your viewing area.
-* ![Map Layers](./Resources/img/Satellite.png) **Map Layers**: Seamlessly switch the map background between a standard street layout and a satellite imagery view.
-* ![Show/Hide All Routes](./Resources/img/ShowAllRoutes.png) **Route Visibility**: Globally toggle the visibility of route lines drawn behind the vehicles. Alternatively, you can click directly near an individual vehicle to toggle its specific route and popup.
-* ![Interpolation](./Resources/img/Interpolation.png) **Movement Interpolation**: Toggle vehicle movement interpolation on for fluid vehicle animations, or off to observe the raw, un-interpolated data points streaming from the backend.
-* ![Active Vehicle Chart](./Resources/img/VehicleChart.png) **Active Vehicle Chart**: Opens a detailed data chart for active vehicles directly over the map view.
+| Repository | Description |
+|---|---|
+| [roadrunner](https://github.com/SteveTarter/roadrunner) | Spring Boot backend — simulation engine, Kafka producer/consumer, REST API |
+| **[roadrunner-view](https://github.com/SteveTarter/roadrunner-view)** *(this repo)* | React/TypeScript frontend viewer |
+| [roadrunner-k8s-orchestration](https://github.com/SteveTarter/roadrunner-k8s-orchestration) | Terraform + Helm deployment to Minikube or AWS EKS |
+
+---
+
+## Screenshots
+
+**Map view — 15-vehicle criss-cross pattern around The Ellipse, Washington D.C., with all routes visible:**
+
+![Roadrunner Home Page](Resources/img/RoadrunnerViewer-2026-05-28-1.png)
+
+**Driver's View — first-person perspective from inside a vehicle:**
+
+![Roadrunner Driver View](Resources/img/RoadrunnerViewer-2026-05-28-2.png)
+
+**Driver's View — other simulated vehicles visible on the road:**
+
+![Roadrunner Driver View with other vehicles](Resources/img/RoadrunnerViewer-2026-05-28-3.png)
+
+---
+
+## Technology Stack
+
+| Concern | Technology |
+|---|---|
+| Language | TypeScript 4 |
+| UI Framework | React 18, React Router 7 |
+| Map rendering | Mapbox GL JS 3 (`react-map-gl`) |
+| Geocoding / Search | `@mapbox/search-js-react` |
+| Charts | Recharts 3 |
+| Component library | MUI v9, React-Bootstrap 2, Reactstrap 9 |
+| Authentication | Amazon Cognito (OIDC via `react-oidc-context`, `oidc-client-ts`) |
+| AWS integration | AWS Amplify UI React |
+| Build toolchain | Create React App (`react-scripts`) |
+| Container runtime | Docker multi-stage build → Nginx 1.31 Alpine |
+| CI/CD | GitHub Actions |
+
+---
+
+## Architecture Overview
+
+```
+Browser (React SPA)
+    │
+    │  REST / JSON polling
+    ▼
+Roadrunner Backend  ←──── Kafka ────►  Vehicle position stream
+(Spring Boot)       ←──── Redis  ────► Cached route / trip plan data
+    │
+    │  Mapbox Directions API
+    ▼
+Mapbox Platform  (tile rendering, geocoding, routing)
+```
+
+The frontend is a **fully static SPA** once built. It communicates with the backend entirely through REST calls; there is no WebSocket connection. Vehicle positions are polled on a short interval and smoothly interpolated between known points for fluid on-screen movement.
+
+The production container is a two-stage Docker image:
+1. **Stage 1** — `node:22-alpine` builds the optimised `build/` bundle via `npm run build`.
+2. **Stage 2** — `nginx:1.31-alpine` serves the static files, with security headers (CSP, HSTS, X-Frame-Options) baked into `nginx.conf`.
+
+---
+
+## Features
+
+### Map View & Toolbar
+
+The main page renders a full-screen Mapbox map with a floating toolbar pinned to the right edge. Each button toggles a behaviour:
+
+| Button | Icon | Action |
+|---|---|---|
+| **Fit All** | ![Fit All](./Resources/img/FitAll.png) | Zoom/pan the map to frame all active vehicles |
+| **Map Layers** | ![Map Layers](./Resources/img/Satellite.png) | Toggle between street and satellite base maps |
+| **Show / Hide Routes** | ![Show/Hide All Routes](./Resources/img/ShowAllRoutes.png) | Globally show or hide the route line behind every vehicle. Individual vehicle routes can also be toggled by clicking near a vehicle marker. |
+| **Interpolation** | ![Interpolation](./Resources/img/Interpolation.png) | Enable smooth animated movement between polled positions, or disable to observe raw data points |
+| **Active Vehicle Chart** | ![Active Vehicle Chart](./Resources/img/VehicleChart.png) | Overlay a concurrency chart directly on the map |
 
 ### Driver's View
-The frontend allows a user to "jump" into a vehicle on the map, and get a first person view of what the driver would see.  Note that the Active Vehicle Chart is available to warp within the vehicle's lifetime.
-![Roadrunner Driver Page example](./Resources/img/RoadrunnerViewer-2026-05-28-2.png)
-In the driver's view, other vehicles in the simulation are visible.
-![Roadrunner Driver Page with other vehicles](./Resources/img/RoadrunnerViewer-2026-05-28-3.png)
-### Playback and Monitoring (Standard Features)
-Users can track and review vehicle simulations utilizing several top-navigation panels:
 
-#### Bookmarks
-Displays a curated list of past simulation sessions, provided by the administrator, with descriptions of the scenario. Selecting a bookmark adjusts the application clock and transports you to the Driver View for that specific vehicle's historical run.
+Click any vehicle on the Map View to open a panel to jump into a first-person street-level perspective rendered by Mapbox. Other simulated vehicles remain visible on the road ahead. The **Active Vehicle Chart** zooms automatically to the selected vehicle's lifetime so you can scrub backwards and forwards through its journey.
+
+### Playback & Monitoring
+
+Three top-navigation panels provide access to historical simulation data:
+
+---
+**Bookmarks** — a curated list of notable past simulation runs, each described by the administrator. Selecting an entry sets the application clock and launches the Driver's View for that vehicle's historical run.
   
 ![Bookmarks Panel](./Resources/img/BookmarksPanel.png)
-
-#### Sim Table
-Provides a paginated tabular layout of all simulations that have occurred within the retention period. For each session, it lists the vehicle ID, initiating user, and start time. Users can launch playback of a specific session or use the "Now" button to jump to the current time.
+---
+**Sim Table** — a paginated table of every simulation session within the data-retention window. Columns include vehicle ID, initiating user, and start time. A **Now** button snaps the clock back to the current time; a **Play** button starts playback of any historical session.
   
 ![Sim Table Panel](./Resources/img/SimTable.png)
-
-#### Active Vehicle Plot
-An interactive chart showing the number of concurrent sessions over the retention period. Users can zoom in via mouse wheel or pinch gestures, and click/double-tap to set the playback to a specific time.
+---
+**Active Vehicle Plot** — an interactive time-series chart showing the count of concurrent vehicle sessions across the retention window. Supports mouse-wheel or pinch zoom and click/double-tap to set the playback time.
   
 ![Active Vehicle Plot](./Resources/img/VehiclePlot-7Day.png)
   
-When accessed from the Driver View, this plot automatically zooms into the selected vehicle's lifetime to easily jump back or forward in its journey.
-![Zoomed Active Vehicle Plot](./Resources/img/VehiclePlot-DriverView.png)
-
-### Creator Features
-Users whose accounts are assigned to the 'creator' group in Amazon Cognito (requested via the administrator) can generate new simulations up to 30 times a day:
-
-#### Create Vehicle
-Allows users to start a simulation by establishing a starting point, destination, and vehicle parameters. Origins and destinations can be specified via address autocomplete or by clicking directly on the map.
-![Create Vehicle Panel](./Resources/img/CreateVehiclePanel.png)
-
-#### Create Criss-Cross
-A specialized panel to generate intersection routing or demonstration paths. By selecting a center point on the map, a radius, and a number of vehicles, users can spawn multiple vehicles that travel from the edge of the circle, through the center point, to the opposite side.  Once the center point has been chosen, a circle appears showing where vehicles will be created
-![Create Criss-Cross: Selection](./Resources/img/CrissCross-Select.png)
+When opened from the Driver's View the chart zooms automatically to the selected vehicle's lifetime.
   
-After the Generate button has been depressed, vehicles are created as close as possible to the requested position
+![Zoomed Active Vehicle Plot](./Resources/img/VehiclePlot-DriverView.png)
+---
+### Creator Features
+  
+Users assigned to the `creator` group in Amazon Cognito (granted by the administrator) can launch up to 30 new simulation sessions per day via two additional panels:
+
+---
+**Create Vehicle** — specify an origin and destination via address auto-complete or by clicking directly on the map, then configure vehicle parameters and launch.
+  
+![Create Vehicle Panel](./Resources/img/CreateVehiclePanel.png)
+---
+**Create Criss-Cross** — select a centre point on the map, choose a radius and vehicle count, and the system spawns vehicles evenly spaced around the circle, each routed to the diametrically opposite side. A preview circle appears on the map before generation.
+  
+![Create Criss-Cross: Selection](./Resources/img/CrissCross-Select.png)
+    
+After the Generate button has been depressed, vehicles are created as close as possible to the requested position.
+  
 ![Create Criss-Cross: Selection](./Resources/img/CrissCross-Generate.png)
+---
 
-## Authentication and Privacy
-Authentication is managed via Google Sign-in and Amazon Cognito. Roadrunner may receive basic account information (name, email, user ID) but does not receive or store passwords. To maintain login sessions and secure APIs, the application uses cookies, browser storage, and authentication tokens. Third-party providers such as Google, Amazon Cognito, AWS, and Mapbox may process limited technical data needed for hosting, mapping, routing, and logging. 
+## Authentication & Roles
 
-**Disclaimer**: Roadrunner is a demo project, not a production transportation, dispatch, navigation, or safety system. It may change over time, contain bugs, or experience downtime. The application is not intended to collect sensitive personal information, and you should not enter confidential data into it. Roadrunner does not sell user data.
-Provides an interface to visualize Vehicles travelling in a Roadrunner system.
+Authentication is delegated entirely to **Amazon Cognito** via the OpenID Connect (OIDC) protocol (`react-oidc-context`). The application never handles passwords directly.
 
-## Setup environment
+| Role | Access |
+|---|---|
+| Anonymous | Read-only map view (if the backend allows unauthenticated requests) |
+| Authenticated user | Bookmarks, Sim Table, Active Vehicle Plot, Driver's View |
+| `creator` group member | All of the above + Create Vehicle + Create Criss-Cross (up to 30 sessions/day) |
 
-The application has integrations with Amazon Cognito for authentication and MapBox for map displays and georeferencing.  Signup for an Amazon AWS at https://aws.amazon.com/.  Signup for a MapBox account at https://account.mapbox.com/auth/signup/ .
+Membership of the `creator` group is managed in the Cognito User Pool by the administrator.
 
-The following environment variables need to be set for the application to startup:
+---
 
-* REACT_APP_ROADRUNNER_REST_URL_BASE : Base REST URL of the Roadrunner application (ex:"http://localhost:8080")
-* REACT_APP_PUBLIC_URL : (ex:"http://localhost:3000")
-* REACT_APP_MAPBOX_API_URL : URL to MapBox API (should be "https://api.mapbox.com/")
-* REACT_APP_LANDING_PAGE_URL : URL to go to when logging out ("https://tarterware.com/")
-* REACT_APP_COGNITO_REDIRECT_SIGN_IN: (ex:"http://localhost:3000")
-* REACT_APP_COGNITO_REDIRECT_SIGN_OUT: (ex:"http://localhost:3000")
-* REACT_APP_MAPBOX_TOKEN : "secret_mapbox_token"
-* REACT_APP_COGNITO_AUTHORITY : "Amazon Cognito Authority URL"
-* REACT_APP_COGNITO_CLIENT_ID : "Amazon Cognito Client ID"
-* REACT_APP_COGNITO_REDIRECT_URI : "Amazon Cognito Redirect URL"
-* REACT_APP_COGNITO_USER_POOL_ID : "Amazon Cognito User Pool ID"
-* REACT_APP_COGNITO_USER_POOL_CLIENT_ID : "Amazon Cognito User Pool Client ID"
-* REACT_APP_COGNITO_DOMAIN : "Amazon Cognito Domain"
+## Prerequisites
 
-In my development environement, the first six reside in the .env file in the root directory of the project.  The sensitive keys appearing in the last seven lines above are included via a .env.local file during development.  (Note that this file is explicitly excluded from git in the .gitignore file).
+Before running locally you will need:
 
-## Run it
+- **Node.js ≥ 18** (the Docker build uses Node 22)
+- A running instance of the **[Roadrunner backend](https://github.com/SteveTarter/roadrunner)** (defaults to `http://localhost:8080`)
+- A **[Mapbox](https://account.mapbox.com/auth/signup/)** account and public access token
+- An **[Amazon AWS](https://aws.amazon.com/)** account with a **Cognito User Pool** and App Client configured for your redirect URLs
 
-First, make sure that you have an instance of Roadrunner executing [SteveTarter/roadrunner](https://github.com/SteveTarter/roadrunner).
-Next, obtain the repository and descend into the directory:
+---
+
+## Local Development Setup
+
+### 1. Clone and Install
 
 ```bash
-    git clone https://github.com/SteveTarter/roadrunner-view.git
-    cd roadrunner-view
+git clone https://github.com/SteveTarter/roadrunner-view.git
+cd roadrunner-view
+npm install
 ```
 
-Update the .env and .env.local files to point to your Mapbox keys, Auth0 resources, and local resources.  Next, compile and run:
+### 2. Configure Environment Variables
+
+The application uses two `.env` files at the repository root:
+
+#### `.env` (committed — non-sensitive defaults)
+
+This file ships with sensible localhost defaults and is safe to commit:
+
+```dotenv
+REACT_APP_ROADRUNNER_REST_URL_BASE="http://localhost:8080"
+REACT_APP_PUBLIC_URL="http://localhost:3000"
+REACT_APP_MAPBOX_API_URL="https://api.mapbox.com/"
+REACT_APP_LANDING_PAGE_URL="https://tarterware.com/"
+REACT_APP_COGNITO_REDIRECT_SIGN_IN="http://localhost:3000/"
+REACT_APP_COGNITO_REDIRECT_SIGN_OUT="http://localhost:3000/"
+```
+
+#### `.env.local` (git-ignored — sensitive secrets)
+
+Create this file manually and add your real credentials. It is excluded from version control via `.gitignore`:
+
+```dotenv
+REACT_APP_MAPBOX_TOKEN="pk.your_mapbox_public_token"
+REACT_APP_COGNITO_AUTHORITY="https://cognito-idp.<region>.amazonaws.com/<user-pool-id>"
+REACT_APP_COGNITO_CLIENT_ID="your_cognito_app_client_id"
+REACT_APP_COGNITO_REDIRECT_URI="http://localhost:3000/"
+REACT_APP_COGNITO_USER_POOL_ID="<region>_xxxxxxxxx"
+REACT_APP_COGNITO_USER_POOL_CLIENT_ID="your_cognito_app_client_id"
+REACT_APP_COGNITO_DOMAIN="your-cognito-domain.auth.<region>.amazoncognito.com"
+```
+
+**Full variable reference:**
+
+| Variable | Description |
+|---|---|
+| `REACT_APP_ROADRUNNER_REST_URL_BASE` | Base URL of the Roadrunner backend REST API |
+| `REACT_APP_PUBLIC_URL` | Public URL of this frontend (used in auth redirects) |
+| `REACT_APP_MAPBOX_API_URL` | Mapbox API base URL — should be `https://api.mapbox.com/` |
+| `REACT_APP_LANDING_PAGE_URL` | Page to redirect to after sign-out |
+| `REACT_APP_COGNITO_REDIRECT_SIGN_IN` | OAuth2 redirect URI registered in Cognito for sign-in |
+| `REACT_APP_COGNITO_REDIRECT_SIGN_OUT` | OAuth2 redirect URI registered in Cognito for sign-out |
+| `REACT_APP_MAPBOX_TOKEN` | Your Mapbox public access token |
+| `REACT_APP_COGNITO_AUTHORITY` | OIDC issuer URL (Cognito User Pool endpoint) |
+| `REACT_APP_COGNITO_CLIENT_ID` | Cognito App Client ID |
+| `REACT_APP_COGNITO_REDIRECT_URI` | Full OIDC redirect URI (usually same as `COGNITO_REDIRECT_SIGN_IN`) |
+| `REACT_APP_COGNITO_USER_POOL_ID` | Cognito User Pool ID (e.g. `us-east-1_AbCdEfGhI`) |
+| `REACT_APP_COGNITO_USER_POOL_CLIENT_ID` | Cognito App Client ID (same as `CLIENT_ID` above) |
+| `REACT_APP_COGNITO_DOMAIN` | Cognito hosted-UI domain |
+
+> **Tip:** `REACT_APP_*` variables are embedded into the JavaScript bundle at **build time** by Create React App. For Docker deployments they must be passed as `--build-arg` values during `docker build` — they cannot be injected at container runtime.
+
+### 3. Run the Development Server
 
 ```bash
-    npm install
-    npm start
+npm start
 ```
 
-The browser will most likely open on npm start, if not, then execute:
+The browser opens automatically at `http://localhost:3000`. The dev server supports hot reload. If it does not open automatically:
 
 ```bash
-    open http://localhost:3000/
+open http://localhost:3000/
 ```
+
+---
+
+## Docker Build & Run
+
+The `Dockerfile` uses a two-stage build to produce a lean, production-ready image.
+
+**Build** (pass env vars as build-args):
+
+```bash
+docker build \
+  --build-arg REACT_APP_ROADRUNNER_REST_URL_BASE=http://your-backend:8080 \
+  --build-arg REACT_APP_MAPBOX_TOKEN=pk.your_token \
+  -t roadrunner-view:latest .
+```
+
+**Run:**
+
+```bash
+docker run -p 8081:80 roadrunner-view:latest
+# Open http://localhost:8081/
+```
+
+The Nginx configuration in `nginx.conf` handles **SPA routing** (`try_files $uri /index.html`) so that React Router deep links work correctly without a `#` hash. It also sets the following security headers:
+
+| Header | Value |
+|---|---|
+| `Content-Security-Policy` | Restricts scripts, styles, fonts, images, and connections to known-good origins (self, Mapbox, Cognito, AWS) |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
+| `X-Frame-Options` | `DENY` |
+| `X-Content-Type-Options` | `nosniff` |
+
+---
+
+## CI / CD
+
+GitHub Actions workflows live in `.github/workflows/`. On merge to `main` the pipeline:
+
+1. Builds the Docker image using the production env vars stored as GitHub Secrets.
+2. Pushes the image to the container registry, tagged with the release version.
+
+The [roadrunner-k8s-orchestration](https://github.com/SteveTarter/roadrunner-k8s-orchestration) repo references the published image tag when deploying to Minikube or AWS EKS via Terraform.
+
+---
+
+## Project Structure
+
+```
+roadrunner-view/
+├── .env                        # Non-sensitive default env vars (committed)
+├── .env.local                  # Secret env vars — create manually, git-ignored
+├── Dockerfile                  # Two-stage Node → Nginx container build
+├── nginx.conf                  # Nginx SPA routing + security headers
+├── package.json
+├── tsconfig.json
+├── public/                     # Static HTML shell and favicon
+├── src/
+│   ├── App.tsx                 # Root router and OIDC provider setup
+│   ├── components/
+│   │   ├── DriverViewPage/     # First-person street-level vehicle view
+│   │   ├── HomePage/           # Main map view with floating toolbar
+│   │   ├── ProfilePage/        # Authenticated user profile
+│   │   └── Utils/              # Shared helpers and utility components
+│   └── models/                 # TypeScript interfaces and REST API helpers
+├── Resources/
+│   └── img/                    # Documentation screenshots
+└── .github/
+    └── workflows/              # GitHub Actions CI/CD pipelines
+```
+
+---
+
+## Contributing
+
+1. Fork the repository and create a feature branch: `git checkout -b feat/my-change`.
+2. Follow the coding conventions in [AGENTS.md](AGENTS.md): functional React components, TypeScript, 2-space indent, single quotes, `PascalCase` for components, `camelCase` for hooks/utilities, `UPPER_SNAKE_CASE` for constants.
+3. Add tests alongside changed code using the `*.test.tsx` / `*.test.ts` suffix.
+4. Run the linter and test suite before opening a PR:
+   ```bash
+   npx eslint "src/**/*.{ts,tsx}"
+   npx react-scripts test --watch=false
+   npm run build
+   ```
+5. Include screenshots or GIFs for UI changes, and describe the verification steps in the pull-request body.
+
+---
+
+## Privacy & Disclaimer
+
+Authentication is handled by Amazon Cognito via OpenID Connect. Roadrunner may receive basic account information (name, email, user ID) but never receives or stores passwords. The application uses cookies, browser storage, and authentication tokens to maintain sessions. Third-party services — Amazon Cognito, AWS, and Mapbox — may process limited technical data required for hosting, mapping, routing, and logging.
+
+**Roadrunner is a demo portfolio project**, not a production transportation, dispatch, navigation, or safety system. It may change over time, contain bugs, or experience downtime. Do not enter confidential personal data. Roadrunner does not sell user data.
