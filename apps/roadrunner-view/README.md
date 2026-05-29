@@ -7,7 +7,7 @@ Roadrunner is a portfolio vehicle-simulation application built to demonstrate fu
 ## Project Repositories
 Roadrunner's codebase is distributed across three GitHub repositories:
 * **[Roadrunner Backend](https://github.com/SteveTarter/roadrunner)**: The Spring Boot-based backend.
-* **[Roadrunner Viewer](https://github.com/SteveTarter/roadrunner-viewer)**: The React-based frontend viewer **(THIS PROJECT)**.
+* **[Roadrunner Viewer](https://github.com/SteveTarter/roadrunner-view)**: The React-based frontend viewer **(THIS PROJECT)**.
 * **[Roadrunner K8S Orchestration](https://github.com/SteveTarter/roadrunner-k8s-orchestration)**: Kubernetes orchestration for deployment to Minikube or an AWS Kubernetes cluster.
 
 ## Features & Usage
