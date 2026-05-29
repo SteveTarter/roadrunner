@@ -10,5 +10,5 @@ Roadrunner is a portfolio/demo project, not a production transportation, dispatc
 
 Roadrunner's code is hosted on Github in three repos:
 - [Roadrunner](https://github.com/SteveTarter/roadrunner): Spring Boot-based Backend
-- [Roadrunner Viewer](https://github.com/SteveTarter/roadrunner-viewer): React-based viewer
+- [Roadrunner Viewer](https://github.com/SteveTarter/roadrunner-view): React-based viewer
 - [Roadrunner K8S Orchestration](https://github.com/SteveTarter/roadrunner-k8s-orchestration): Install to minikube or AWS kubernetes cluster
