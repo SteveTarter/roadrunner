@@ -87,6 +87,10 @@ module "kafka_cluster" {
   storage_class       = var.kafka_storage_class
 
   operator_dependency = module.strimzi_operator
+
+  depends_on = [
+    module.strimzi_operator
+  ]
 }
 
 module "kafka_topics" {
