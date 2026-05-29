@@ -2,6 +2,45 @@
 
 Roadrunner is a high-performance, distributed vehicle simulation engine designed to model real-time movement across complex topologies. It serves as the backend simulation provider for the [Roadrunner Viewer](https://github.com/SteveTarter/roadrunner-viewer). A related project provides [Terraform automation and Kubernetes manifests](https://github.com/SteveTarter/roadrunner-k8s-orchestration) required to deploy the full Roadrunner simulation suite.
 
+## Table of Contents
+
+- [Related Projects](#related-projects)
+- [Overview](#overview)
+- [Screenshots](#screenshots)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Pluggable Infrastructure](#pluggable-infrastructure)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Application Properties Configuration](#application-properties-configuration)
+- ['Secret' Properties Configuration](#secret-properties-configuration)
+  - [Vehicle API Endpoints](#vehicle-api-endpoints)
+    - [Create new vehicle](#create-new-vehicle)
+    - [Create crisscross pattern of vehicles and routes](#create-crisscross-pattern-of-vehicles-and-routes)
+    - [Get vehicle state for a given vehicle ID](#get-vehicle-state-for-a-given-vehicle-id)
+    - [Get vehicle states for all vehicles](#get-vehicle-states-for-all-vehicles)
+    - [Reset server](#reset-server)
+- [Vehicle Data Models](#vehicle-data-models)
+  - [RouteStop](#routestop)
+  - [RouteRequest](#routerequest)
+  - [CrisscrossRequest](#crisscrossrequest)
+  - [VehicleState](#vehiclestate)
+- [Bookmark API Endpoints](#bookmark-api-endpoints)
+    - [Create a bookmark](#create-a-bookmark)
+    - [Update a bookmark](#update-a-bookmark)
+    - [Delete a bookmark](#delete-a-bookmark)
+    - [Get all bookmarks](#get-all-bookmarks)
+    - [Get a single bookmark](#get-a-single-bookmark)
+- [Bookmark Data Model](#bookmark-data-model)
+  - [Bookmark](#bookmark)
+- [Security Notes](#security-notes)
+- [Playback API Endpoints](#playback-api-endpoints)
+  - [How it works](#how-it-works)
+    - [Get paginated vehicle states at a timestamp](#get-paginated-vehicle-states-at-a-timestamp)
+    - [Get a single vehicle's state at a timestamp](#get-a-single-vehicles-state-at-a-timestamp)
+- [Playback Configuration Properties](#playback-configuration-properties)
+- [Playback Response Model](#playback-response-model)
+
 ## Related Projects
 
 The Roadrunner simulation suite consists of three repositories that work together:
@@ -19,6 +58,20 @@ The typical data flow is: **roadrunner** simulates vehicles → publishes positi
 # Overview
 
 Roadrunner simulates vehicle lifecycles, from creation to arrival, by calculating precise geographic movements based on real-world routing data. The system is built using a **Hexagonal Architecture (Ports and Adapters)**, allowing it to remain infrastructure-agnostic while delivering high-velocity telemetry. The system currently uses Kafka to post position updates to a topic. A previous implementation utilized Redis.
+
+## Screenshots
+
+**Map view — 15-vehicle criss-cross pattern around The Ellipse, Washington D.C., with all routes visible:**
+
+![Roadrunner Home Page](Resources/img/RoadrunnerViewer-2026-05-28-1.png)
+
+**Driver's View — first-person perspective from inside a vehicle:**
+
+![Roadrunner Driver View](Resources/img/RoadrunnerViewer-2026-05-28-2.png)
+
+**Driver's View — other simulated vehicles visible on the road:**
+
+![Roadrunner Driver View with other vehicles](Resources/img/RoadrunnerViewer-2026-05-28-3.png)
 
 ## Key Features
 
@@ -241,9 +294,9 @@ Example: `nunyabiznezazzole`
 
 ---
 
-## API Endpoints
+## Vehicle API Endpoints
 
-All endpoints are prefixed with `/api/vehicle`. The server listens on port `8080` by default.
+All endpoints are prefixed with `/api/vehicle`.
 
 ---
 
@@ -438,7 +491,7 @@ No request body or query parameters are required.
 
 ---
 
-## Data Models
+## Vehicle Data Models
 
 ### `RouteStop`
 
