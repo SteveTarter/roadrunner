@@ -98,9 +98,6 @@ public class PlaybackController
     // The long-lived "hot" resource
     private Consumer<String, VehiclePositionEvent> playbackConsumer;
 
-    @Value("${com.tarterware.roadrunner.vehicle-state-buffer-period:2s}")
-    private String strDefaultBufferPeriod;
-
     private Duration playbackConsumerPollingPeriod;
 
     private static final String UNSET_VALUE = "Unset";
