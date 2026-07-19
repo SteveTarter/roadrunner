@@ -1,0 +1,52 @@
+name: Release Frontend to DockerHub
+
+on:
+  push:
+    tags:
+      - 'roadrunner-view-v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/roadrunner-view
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Extract release version
+        id: release_version
+        shell: bash
+        run: |
+          TAG_NAME=${GITHUB_REF_NAME}
+          VERSION=${TAG_NAME#roadrunner-view-v}
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: apps/roadrunner-view/package-lock.json
+
+      - name: Install and Build
+        run: |
+          npm install
+          npm run build --if-present
+
+      - name: Docker Login
+        uses: docker/login-action@v2.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3.0.0
+        with:
+          context: ./apps/roadrunner-view
+          file: ./apps/roadrunner-view/Dockerfile
+          push: true
+          tags: |
+            tarterware/roadrunner-view:latest
+            tarterware/roadrunner-view:${{ steps.release_version.outputs.version }}
