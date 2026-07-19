@@ -70,3 +70,17 @@ You can run the required databases and messaging brokers locally inside Minikube
 *   The component [`orchestration/roadrunner-k8s-orchestration`](orchestration/roadrunner-k8s-orchestration) contains configuration manifests to install **Apache Kafka** and **Redis** inside a local **Minikube** cluster.
 *   By starting these services in Minikube and forwarding their ports, you can run and debug the backend [`apps/roadrunner`](apps/roadrunner) application in your IDE connected to live Kafka and Redis environments.
 *   See the deployment workflows inside [`orchestration/roadrunner-k8s-orchestration`](orchestration/roadrunner-k8s-orchestration) for detailed setup and port-forwarding instructions.
+
+---
+
+## AI Agent Customizations
+
+This project is optimized for collaboration with the **Antigravity AI coding assistant**. Custom workspace rules and skills are configured in the [`.agents/`](.agents) directory.
+
+If you are developing in a new environment, make sure to recreate the symlinks in `.agents/skills/` to point to your local Antigravity installation's skills directory (typically under `~/.gemini/antigravity/skills/`):
+```bash
+ln -sfn ~/.gemini/antigravity/skills/git-advanced-workflows .agents/skills/git-advanced-workflows
+ln -sfn ~/.gemini/antigravity/skills/monorepo-management .agents/skills/monorepo-management
+```
+For more information, see [`AGENT.md`](AGENT.md).
+
