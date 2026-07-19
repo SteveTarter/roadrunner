@@ -1,0 +1,60 @@
+@media screen {
+
+  /* start of screen rules. */
+
+  /* Generic pane rules */
+  body { margin: 0 }
+  .row, .col { overflow: hidden; position: absolute; }
+  .row { left: 0; right: 0; }
+  .col { top: 0; bottom: 0; }
+  .scroll-x { overflow-x: auto; }
+  .scroll-y { overflow-y: auto; }
+
+  .header.row { height: 0px; top: 0; }
+  .body.row { top: 75px; bottom: 0px; }
+  .footer.row { height: 50px; bottom: 0; }
+
+  /* end of screen rules. */
+
+}
+
+.map-container {
+  position: absolute;
+  top: 55px;       /* must match navbar height */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;      /* under the navbar’s z-index */
+}
+
+.control-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  max-width: 320px;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  padding: 12px 24px;
+  margin: 20px;
+  font-size: 13px;
+  line-height: 2;
+  color: #6b6b76;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.marker-label .mapboxgl-popup-content {
+  padding: 5px 10px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+  border: none;
+  box-shadow: none;
+}
+
+/* Remove the little arrow/tip for a floating label look */
+.marker-label .mapboxgl-popup-tip {
+  display: none;
+}

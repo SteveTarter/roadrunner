@@ -1,0 +1,48 @@
+import React from 'react';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import './App.css';
+import { Route, Routes } from 'react-router-dom';
+import { HomePage } from './components/HomePage/HomePage';
+import { AuthenticationGuard } from './AuthenticationGuard';
+import { ProfilePage } from './components/ProfilePage/ProfilePage';
+import { DriverViewPage } from './components/DriverViewPage/DriverViewPage';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import fontawesome from '@fortawesome/fontawesome'
+import { faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faArrowLeft, faArrowRight, fa0 } from '@fortawesome/free-solid-svg-icons';
+import { faPowerOff, faUser } from '@fortawesome/fontawesome-free-solid'
+import { AboutPage } from './components/AboutPage/AboutPage';
+import { GuidePage } from './components/GuidePage/GuidePage';
+
+library.add(faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faArrowLeft, faArrowRight, fa0 );
+fontawesome.library.add(faPowerOff, faUser);
+
+export const App = () => {
+
+  return (
+    <div className='d-flex flex-column min-vh-100'>
+      <div className='flex-grow-1'>
+      <Routes>
+        <Route path='/'
+        element={<AuthenticationGuard component={HomePage} />} />
+        <Route
+        path='/home'
+        element={<AuthenticationGuard component={HomePage} />} />
+        <Route
+        path='/about'
+        element={<AuthenticationGuard component={AboutPage} />} />
+        <Route
+        path='/guide/:guideId'
+        element={<AuthenticationGuard component={GuidePage} />} />
+        <Route
+        path="/profile"
+        element={<AuthenticationGuard component={ProfilePage} />}
+        />
+        <Route
+        path='/driver-view/:vehicleId'
+        element={<AuthenticationGuard component={DriverViewPage} />}
+        />
+      </Routes>
+      </div>
+    </div>
+  );
+}
