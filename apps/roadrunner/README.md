@@ -910,3 +910,4 @@ The `VehicleState` object returned by both playback endpoints carries the follow
 > | `nsLastExec` | long | Nanosecond execution duration of the simulation step that produced this event |
 > | `positionValid` | boolean | Whether the position coordinates are considered valid |
 > | `positionLimited` | boolean | Whether the vehicle's position has been clamped to route bounds |
+

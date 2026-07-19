@@ -347,3 +347,4 @@ roadrunner-view/
 Authentication is handled by Amazon Cognito via OpenID Connect. Roadrunner may receive basic account information (name, email, user ID) but never receives or stores passwords. The application uses cookies, browser storage, and authentication tokens to maintain sessions. Third-party services — Amazon Cognito, AWS, and Mapbox — may process limited technical data required for hosting, mapping, routing, and logging.
 
 **Roadrunner is a demo portfolio project**, not a production transportation, dispatch, navigation, or safety system. It may change over time, contain bugs, or experience downtime. Do not enter confidential personal data. Roadrunner does not sell user data.
+
