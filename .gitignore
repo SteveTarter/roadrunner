@@ -6,7 +6,6 @@
 *.ipr
 *.sw?
 .DS_Store
-.agents/
 
 # Temporary / Scratch Files
 scratch/
