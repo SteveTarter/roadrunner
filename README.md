@@ -24,6 +24,16 @@ The codebase is organized into the following directories:
 
 ---
 
+## Screenshots
+
+**Interactive Map View (showing simulated vehicle positions and route tracks):**
+![Roadrunner Map View](apps/roadrunner-view/Resources/img/RoadrunnerViewer-2026-05-28-1.png)
+
+**First-Person Driver's View (first-person perspective with other vehicles visible):**
+![Roadrunner Driver View](apps/roadrunner-view/Resources/img/RoadrunnerViewer-2026-05-28-2.png)
+
+---
+
 ## Quick Start
 
 Detailed instructions for running and deploying each component can be found in their respective directories. Here is a high-level guide:
@@ -55,5 +65,8 @@ npm start
 ```
 Open [http://localhost:3000](http://localhost:3000) to view the map interface.
 
-### 3. Deploy to Kubernetes
-For full-scale deployment with Kafka, Redis, and Prometheus, consult the guides in [`orchestration/roadrunner-k8s-orchestration`](file:///home/tarter/git/roadrunner/orchestration/roadrunner-k8s-orchestration).
+### 3. Local Development & Debugging with Minikube Infrastructure
+You can run the required databases and messaging brokers locally inside Minikube to support development and debugging of code directly within your IDE:
+*   The component [`orchestration/roadrunner-k8s-orchestration`](file:///home/tarter/git/roadrunner/orchestration/roadrunner-k8s-orchestration) contains configuration manifests to install **Apache Kafka** and **Redis** inside a local **Minikube** cluster.
+*   By starting these services in Minikube and forwarding their ports, you can run and debug the backend [`apps/roadrunner`](file:///home/tarter/git/roadrunner/apps/roadrunner) application in your IDE connected to live Kafka and Redis environments.
+*   See the deployment workflows inside [`orchestration/roadrunner-k8s-orchestration`](file:///home/tarter/git/roadrunner/orchestration/roadrunner-k8s-orchestration) for detailed setup and port-forwarding instructions.
