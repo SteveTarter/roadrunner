@@ -1,0 +1,112 @@
+{"properties": [
+  {
+    "name": "mapbox.api.key",
+    "type": "java.lang.String",
+    "description": "A description for 'mapbox.api.key'"
+  },
+  {
+    "name": "com.tarterware.data-dir",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.data-dir'"
+  },
+  {
+    "name": "mapbox.api.url",
+    "type": "java.lang.String",
+    "description": "A description for 'mapbox.api.url'"
+  },
+  {
+    "name": "com.tarterware.redis.host",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.redis.host'"
+  },
+  {
+    "name": "com.tarterware.redis.port",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.redis.port'"
+  },
+  {
+    "name": "prometheus.secret.namespace",
+    "type": "java.lang.String",
+    "description": "A description for 'prometheus.secret.namespace'"
+  },
+  {
+    "name": "prometheus.secret.name",
+    "type": "java.lang.String",
+    "description": "A description for 'prometheus.secret.name'"
+  },
+  {
+    "name": "prometheus.secret.namespace",
+    "type": "java.lang.String",
+    "description": "A description for 'prometheus.secret.namespace'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.jitter-stat-capacity",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.jitter-stat-capacity'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.vehicle-update-period",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.vehicle-update-period'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.vehicle-polling-period",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.vehicle-polling-period'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.messaging.kafka.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.messaging.kafka.enabled'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.messaging.redis.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.messaging.redis.enabled'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.kafka.topic.vehicle-position",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.kafka.topic.vehicle-position'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.messaging.kafka.debug.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.messaging.kafka.debug.enabled'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.vehicle-state-buffer-period",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.vehicle-state-buffer-period'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.playback-cache-timeout",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.playback-cache-timeout'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.playback-cache-size",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.playback-cache-size'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.usage-limits.counter-ttl-hours",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.usage-limits.counter-ttl-hours'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.usage-limits.redis-key-prefix",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.usage-limits.redis-key-prefix'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.usage-limits.default-daily-vehicle-starts",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.usage-limits.default-daily-vehicle-starts'"
+  },
+  {
+    "name": "com.tarterware.roadrunner.cors.allowed-origins",
+    "type": "java.lang.String",
+    "description": "A description for 'com.tarterware.roadrunner.cors.allowed-origins'"
+  }
+]}

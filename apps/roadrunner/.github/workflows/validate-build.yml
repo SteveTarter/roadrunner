@@ -1,0 +1,63 @@
+name: Build and Validate Branch
+
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches-ignore:
+      - main
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v3
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+
+    # Build and run tests with Maven
+    - name: Build and Test with Maven
+      run: mvn -B package --file pom.xml
+
+    # Run OWASP Dependency Check (Fails build on High/Critical CVEs)
+    - name: Run OWASP Dependency Check
+      env:
+        NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+      run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7 -DnvdApiKey=$NVD_API_KEY -DsuppressionFile=dependency-check-suppression.xml
+
+    # Archive the Dependency Check HTML Report
+    - name: Archive Dependency Check Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-check-report
+        path: target/dependency-check-report.html
+
+    # Publish test results
+    - name: Archive Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: target/surefire-reports/
+
+    # Display test results in GitHub interface
+    - name: Publish Test Report
+      if: always()
+      uses: dorny/test-reporter@v1
+      with:
+        name: Unit Test Results
+        path: target/surefire-reports/*.xml
+        reporter: java-junit

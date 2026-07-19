@@ -1,0 +1,225 @@
+package com.tarterware.roadrunner.adapters.kafka;
+
+import java.util.Collections;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.kafka.clients.admin.AdminClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.event.EventListener;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.event.ListenerContainerIdleEvent;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Component;
+
+import com.tarterware.roadrunner.messaging.VehiclePositionEvent;
+import com.tarterware.roadrunner.models.VehicleState;
+import com.tarterware.roadrunner.ports.ControllerVehicleStateStore;
+
+import jakarta.annotation.PreDestroy;
+
+/**
+ * Kafka consumer responsible for processing vehicle telemetry events and
+ * maintaining the current state of the simulation for the view layer. *
+ * <p>
+ * This component acts as the bridge between the asynchronous event stream and
+ * the synchronous state store used by REST controllers.
+ * </p>
+ * *
+ * <p>
+ * The consumer is only active when
+ * {@code com.tarterware.roadrunner.messaging.kafka.enabled} is set to
+ * {@code true} in the application properties.
+ * </p>
+ * * @see VehiclePositionEvent
+ * 
+ * @see ControllerVehicleStateStore
+ */
+@Component
+@ConditionalOnProperty(prefix = "com.tarterware.roadrunner.messaging.kafka", name = "enabled", havingValue = "true")
+public class KafkaVehicleEventConsumer
+{
+    private final AdminClient adminClient;
+    private final ControllerVehicleStateStore vehicleStateStore;
+
+    private static final Logger log = LoggerFactory.getLogger(KafkaVehicleEventConsumer.class);
+
+    /**
+     * Constructs a new consumer with the required state store. * @param
+     * vehicleStateStore the store used to persist the latest vehicle telemetry
+     */
+    public KafkaVehicleEventConsumer(
+            AdminClient adminClient,
+            ControllerVehicleStateStore vehicleStateStore)
+    {
+        this.adminClient = adminClient;
+        this.vehicleStateStore = vehicleStateStore;
+
+        log.info("KafkaVehicleEventConsumer is ACTIVE");
+        log.info("vehicleStateStore is {}", vehicleStateStore);
+    }
+
+    /**
+     * Listens to the vehicle position topic and updates the
+     * {@link ControllerVehicleStateStore} based on the event status. *
+     * <p>
+     * The method handles three primary event types:
+     * </p>
+     * <ul>
+     * <li><b>CREATED:</b> Initializes a new {@link VehicleState} and registers the
+     * vehicle as active.</li>
+     * <li><b>MOVING:</b> Updates existing state, provided the incoming
+     * {@code sequenceNumber} is greater than the currently stored version to
+     * prevent out-of-order data processing.</li>
+     * <li><b>DELETED:</b> Removes the vehicle from the store and the active vehicle
+     * list.</li>
+     * </ul>
+     * * @param event the telemetry event containing position, heading, and status
+     * metadata
+     * 
+     * @throws RuntimeException if a {@code MOVING} event is received for an unknown
+     *                          ID, or if an invalid status is encountered.
+     */
+    @KafkaListener(
+            topics = "${com.tarterware.roadrunner.kafka.topic.vehicle-position}",
+            groupId = "KafkaVehicleEventConsumer-${K8S_POD_NAME:default}")
+    public void receive(@Payload
+    VehiclePositionEvent event)
+    {
+        VehicleState vehicleState;
+
+        log.debug("Kafka Event [{}]: Vehicle {} is at ({}, {}) heading {} degrees at {} m/s. Sequence: {}",
+                event.status(),
+                event.vehicleId(),
+                event.latitude(),
+                event.longitude(),
+                event.heading(),
+                event.speed(),
+                event.sequenceNumber());
+
+        switch (event.status())
+        {
+
+            case "CREATED":
+                log.debug("CREATED: {}", event.vehicleId());
+
+                // Create a new vehicleState and populate with the event
+                vehicleState = new VehicleState();
+                vehicleState.setId(event.vehicleId());
+                vehicleState.setDegLatitude(event.latitude());
+                vehicleState.setDegLongitude(event.longitude());
+                vehicleState.setDegBearing(event.heading());
+                vehicleState.setMetersPerSecond(event.speed());
+                vehicleState.setMsEpochLastRun(event.sequenceNumber());
+                vehicleState.setNsLastExec(event.nsLastExec());
+                vehicleState.setPositionValid(event.positionValid());
+                vehicleState.setPositionLimited(event.positionLimited());
+                vehicleState.setColorCode(event.colorCode());
+                vehicleState.setManagerHost(event.managerHost());
+
+                // Add it to the vehicleStateStore
+                vehicleStateStore.saveVehicle(vehicleState);
+                vehicleStateStore.addActiveVehicle(event.vehicleId());
+                break;
+
+            case "MOVING":
+                log.debug("MOVING: {}", event.vehicleId());
+                vehicleState = vehicleStateStore.getVehicle(event.vehicleId());
+                if (vehicleState == null)
+                {
+                    // throw new RuntimeException("No vehicle with ID " + vehicleId);
+                    vehicleState = new VehicleState();
+                }
+
+                // Ensure this isn't a stale event. The new sequence number should be greater.
+                long sequenceNumber = event.sequenceNumber();
+                if (sequenceNumber > vehicleState.getMsEpochLastRun())
+                {
+                    vehicleState.setId(event.vehicleId());
+                    vehicleState.setDegLatitude(event.latitude());
+                    vehicleState.setDegLongitude(event.longitude());
+                    vehicleState.setDegBearing(event.heading());
+                    vehicleState.setMetersPerSecond(event.speed());
+                    vehicleState.setMsEpochLastRun(event.sequenceNumber());
+                    vehicleState.setNsLastExec(event.nsLastExec());
+                    vehicleState.setPositionValid(event.positionValid());
+                    vehicleState.setPositionLimited(event.positionLimited());
+                    vehicleState.setColorCode(event.colorCode());
+                    vehicleState.setManagerHost(event.managerHost());
+
+                    vehicleStateStore.saveVehicle(vehicleState);
+                }
+
+                break;
+
+            case "DELETED":
+                log.debug("DELETED: {}", event.vehicleId());
+
+                vehicleStateStore.deleteVehicle(event.vehicleId());
+                vehicleStateStore.removeActiveVehicle(event.vehicleId());
+                break;
+
+            default:
+                throw new RuntimeException("Invalid event status: " + event.status());
+        }
+    }
+
+    /**
+     * Performs a graceful cleanup of the Kafka consumer group before the
+     * application context is destroyed.
+     * <p>
+     * In a Kubernetes environment, this method ensures that the unique consumer
+     * group associated with this specific pod is explicitly deleted from the Kafka
+     * cluster. This prevents the accumulation of "dead" consumer groups that would
+     * otherwise persist until the broker's offset retention period expires.
+     * </p>
+     * * @see
+     * org.apache.kafka.clients.admin.AdminClient#deleteConsumerGroups(java.util.Collection)
+     */
+    @PreDestroy
+    public void cleanup()
+    {
+        String podName = System.getenv("K8S_POD_NAME");
+        String strictAlphanumericRegex = "^[a-zA-Z0-9]+$";
+
+        if (podName == null || !podName.matches(strictAlphanumericRegex))
+        {
+            log.error("Warning: K8S_POD_NAME is missing or invalid. Falling back to 'default'.");
+            podName = "default";
+        }
+
+        String groupId = "KafkaVehicleEventConsumer-" + podName;
+
+        try
+        {
+            // Explicitly delete the unique consumer group on pod exit
+            adminClient.deleteConsumerGroups(Collections.singletonList(groupId))
+                    .all()
+                    .get(5, TimeUnit.SECONDS);
+            log.info("Successfully deleted Kafka consumer group: {}", groupId);
+        }
+        catch (Exception e)
+        {
+            log.error("Failed to delete Kafka consumer group: {}", groupId, e);
+        }
+    }
+
+    /**
+     * Handles {@link ListenerContainerIdleEvent}s emitted by the Kafka message
+     * listener container.
+     * <p>
+     * This method logs information when the consumer becomes idle, indicating that
+     * all currently available messages in the assigned partitions have been
+     * processed and the consumer is ready for new events.
+     * </p>
+     *
+     * @param event the idle event containing details about the idle consumer and
+     *              its assigned {@code TopicPartition}s.
+     */
+    @EventListener
+    public void handleListenerContainerIdle(ListenerContainerIdleEvent event)
+    {
+        log.info("Consumer is idle and ready on partitions: {}", event.getTopicPartitions());
+    }
+}
