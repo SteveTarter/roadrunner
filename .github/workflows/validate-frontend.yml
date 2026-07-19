@@ -2,7 +2,6 @@ name: Validate Frontend Build
 
 on:
   push:
-    branches: [ main ]
     paths:
       - 'apps/roadrunner-view/**'
   pull_request:

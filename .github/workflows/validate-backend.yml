@@ -2,7 +2,6 @@ name: Validate Backend Build
 
 on:
   push:
-    branches: [ main ]
     paths:
       - 'apps/roadrunner/**'
   pull_request:
