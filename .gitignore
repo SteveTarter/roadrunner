@@ -1,0 +1,57 @@
+# IDE and System Files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+*.sw?
+.DS_Store
+
+# Temporary / Scratch Files
+scratch/
+
+# Maven / Java (Backend)
+**/target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+!**/src/main/**/build/
+!**/src/test/**/build/
+.apt_generated/
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+secrets.properties
+
+# Node / React (Frontend View)
+**/node_modules/
+**/.pnp
+**/.pnp.js
+**/coverage/
+**/build/
+.npmrc
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env.local
+.env
+
+# Terraform (K8s Orchestration)
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.tfstate.lock.info
+.terraformrc
+terraform.rc
+**/certs/

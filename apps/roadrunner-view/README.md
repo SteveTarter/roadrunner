@@ -1,10 +1,10 @@
 # Roadrunner View
 
-> **Part of the [Roadrunner](https://github.com/SteveTarter/roadrunner) vehicle-simulation portfolio project.**
+> **Part of the [Roadrunner](../roadrunner) vehicle-simulation portfolio project.**
 
-Roadrunner View is a **React / TypeScript** single-page application that provides a real-time, interactive map for monitoring and managing simulated vehicle fleets. It connects to the [Roadrunner backend](https://github.com/SteveTarter/roadrunner) over REST, renders vehicles on a **Mapbox GL** map with live interpolated movement, and lets users step into a first-person Driver's View for any vehicle — live or historical.
+Roadrunner View is a **React / TypeScript** single-page application that provides a real-time, interactive map for monitoring and managing simulated vehicle fleets. It connects to the [Roadrunner backend](../roadrunner) over REST, renders vehicles on a **Mapbox GL** map with live interpolated movement, and lets users step into a first-person Driver's View for any vehicle — live or historical.
 
-The project was built to gain hands-on, production-quality experience with a modern full-stack, cloud-native toolchain: React, TypeScript, Amazon Cognito / OIDC, Mapbox GL, Recharts, Docker, Nginx, and Kubernetes (via the companion [orchestration repo](https://github.com/SteveTarter/roadrunner-k8s-orchestration)).
+The project was built to gain hands-on, production-quality experience with a modern full-stack, cloud-native toolchain: React, TypeScript, Amazon Cognito / OIDC, Mapbox GL, Recharts, Docker, Nginx, and Kubernetes (via the companion [orchestration repo](../../orchestration/roadrunner-k8s-orchestration)).
 
 ---
 
@@ -35,13 +35,13 @@ The project was built to gain hands-on, production-quality experience with a mod
 
 ## Project Repositories
 
-The Roadrunner system spans three repositories:
+The Roadrunner system spans three components:
 
-| Repository | Description |
+| Component | Description |
 |---|---|
-| [roadrunner](https://github.com/SteveTarter/roadrunner) | Spring Boot backend — simulation engine, Kafka producer/consumer, REST API |
-| **[roadrunner-view](https://github.com/SteveTarter/roadrunner-view)** *(this repo)* | React/TypeScript frontend viewer |
-| [roadrunner-k8s-orchestration](https://github.com/SteveTarter/roadrunner-k8s-orchestration) | Terraform + Helm deployment to Minikube or AWS EKS |
+| [roadrunner](../roadrunner) | Spring Boot backend — simulation engine, Kafka producer/consumer, REST API |
+| **[roadrunner-view](.)** *(this directory)* | React/TypeScript frontend viewer |
+| [roadrunner-k8s-orchestration](../../orchestration/roadrunner-k8s-orchestration) | Terraform + Helm deployment to Minikube or AWS EKS |
 
 ---
 
@@ -178,7 +178,7 @@ Membership of the `creator` group is managed in the Cognito User Pool by the adm
 Before running locally you will need:
 
 - **Node.js ≥ 18** (the Docker build uses Node 22)
-- A running instance of the **[Roadrunner backend](https://github.com/SteveTarter/roadrunner)** (defaults to `http://localhost:8080`)
+- A running instance of the **[Roadrunner backend](../roadrunner)** (defaults to `http://localhost:8080`)
 - A **[Mapbox](https://account.mapbox.com/auth/signup/)** account and public access token
 - An **[Amazon AWS](https://aws.amazon.com/)** account with a **Cognito User Pool** and App Client configured for your redirect URLs
 
@@ -186,11 +186,10 @@ Before running locally you will need:
 
 ## Local Development Setup
 
-### 1. Clone and Install
+### 1. Navigate and Install
 
 ```bash
-git clone https://github.com/SteveTarter/roadrunner-view.git
-cd roadrunner-view
+cd apps/roadrunner-view
 npm install
 ```
 
@@ -297,7 +296,7 @@ GitHub Actions workflows live in `.github/workflows/`. On merge to `main` the pi
 1. Builds the Docker image using the production env vars stored as GitHub Secrets.
 2. Pushes the image to the container registry, tagged with the release version.
 
-The [roadrunner-k8s-orchestration](https://github.com/SteveTarter/roadrunner-k8s-orchestration) repo references the published image tag when deploying to Minikube or AWS EKS via Terraform.
+The [roadrunner-k8s-orchestration](../../orchestration/roadrunner-k8s-orchestration) component references the published image tag when deploying to Minikube or AWS EKS via Terraform.
 
 ---
 

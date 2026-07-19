@@ -1,6 +1,6 @@
 # Roadrunner
 
-Roadrunner is a high-performance, distributed vehicle simulation engine designed to model real-time movement across complex topologies. It serves as the backend simulation provider for the [Roadrunner Viewer](https://github.com/SteveTarter/roadrunner-viewer). A related project provides [Terraform automation and Kubernetes manifests](https://github.com/SteveTarter/roadrunner-k8s-orchestration) required to deploy the full Roadrunner simulation suite.
+Roadrunner is a high-performance, distributed vehicle simulation engine designed to model real-time movement across complex topologies. It serves as the backend simulation provider for the [Roadrunner Viewer](../roadrunner-view). A related component provides [Terraform automation and Kubernetes manifests](../../orchestration/roadrunner-k8s-orchestration) required to deploy the full Roadrunner simulation suite.
 
 ## Table of Contents
 
@@ -43,15 +43,15 @@ Roadrunner is a high-performance, distributed vehicle simulation engine designed
 
 ## Related Projects
 
-The Roadrunner simulation suite consists of three repositories that work together:
+The Roadrunner simulation suite consists of three main components that work together:
 
-| Repository | Description |
+| Component | Description |
 | --- | --- |
-| **roadrunner** (this repo) | Backend simulation engine — REST API, vehicle physics, Kafka telemetry |
-| [roadrunner-viewer](https://github.com/SteveTarter/roadrunner-viewer) | Frontend map-based viewer — displays live and historical vehicle positions |
-| [roadrunner-k8s-orchestration](https://github.com/SteveTarter/roadrunner-k8s-orchestration) | Terraform and Kubernetes manifests for deploying the full suite to AWS EKS |
+| **roadrunner** (this directory) | Backend simulation engine — REST API, vehicle physics, Kafka telemetry |
+| [roadrunner-view](../roadrunner-view) | Frontend map-based viewer — displays live and historical vehicle positions |
+| [roadrunner-k8s-orchestration](../../orchestration/roadrunner-k8s-orchestration) | Terraform and Kubernetes manifests for deploying the full suite to AWS EKS |
 
-The typical data flow is: **roadrunner** simulates vehicles → publishes position events to **Kafka** → **roadrunner-viewer** reads from the Playback API and renders vehicles on a Mapbox map.
+The typical data flow is: **roadrunner** simulates vehicles → publishes position events to **Kafka** → **roadrunner-view** reads from the Playback API and renders vehicles on a Mapbox map.
 
 ---
 
@@ -126,15 +126,14 @@ Before running Roadrunner, ensure the following are in place:
 | **Mapbox account** | A [Mapbox API key](https://account.mapbox.com/) is required for real-world routing data. |
 | **Auth0 account** | An [Auth0 tenant](https://auth0.com/) is required to issue JWT tokens for secured endpoints. The issuer URI goes in `secrets.properties`. |
 | **`secrets.properties`** | A local file (not committed to the repo) holding sensitive credentials — see the [Secret Properties Configuration](#secret-properties-configuration) section below. |
-Note that compatible Kafka and Redis installations can be created within minikube using [roadrunner-k8s-orchestration](https://github.com/SteveTarter/roadrunner-k8s-orchestration).
+Note that compatible Kafka and Redis installations can be created within minikube using [roadrunner-k8s-orchestration](../../orchestration/roadrunner-k8s-orchestration).
 
 ## Quick Start
 
-**1. Clone the repository:**
+**1. Navigate to the backend directory:**
 
 ```bash
-git clone https://github.com/SteveTarter/roadrunner.git
-cd roadrunner
+cd apps/roadrunner
 ```
 
 **2. Create `secrets.properties`** in the same directory as `application.properties` (`src/main/resources/`). This file is excluded from version control. Populate it with your credentials — see the [Secret Properties Configuration](#secret-properties-configuration) section for all required keys. At minimum you will need:

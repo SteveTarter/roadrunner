@@ -39,13 +39,13 @@ This repository contains the Terraform automation and Kubernetes manifests requi
 
 **Roadrunner** is a portfolio-grade, distributed vehicle simulation system built to demonstrate full-stack, cloud, mapping, and distributed-systems development. It simulates fleets of vehicles traveling between real-world addresses at posted road speeds, driven by live Mapbox routing data.
 
-The system is split across three repositories:
+The Roadrunner system spans three components:
 
-| Repository | Description |
+| Component | Description |
 |---|---|
-| [roadrunner](https://github.com/SteveTarter/roadrunner) | Spring Boot backend — simulation engine, Kafka producer/consumer, REST API |
-| [roadrunner-view](https://github.com/SteveTarter/roadrunner-view) | React + TypeScript frontend — interactive Mapbox map, driver view, playback |
-| **roadrunner-k8s-orchestration** *(this repo)* | Terraform + Helm — deploys both services and all supporting infrastructure |
+| [roadrunner](../../apps/roadrunner) | Spring Boot backend — simulation engine, Kafka producer/consumer, REST API |
+| [roadrunner-view](../../apps/roadrunner-view) | React + TypeScript frontend — interactive Mapbox map, driver view, playback |
+| **roadrunner-k8s-orchestration** *(this directory)* | Terraform + Helm — deploys both services and all supporting infrastructure |
 
 The backend uses a **Hexagonal (Ports and Adapters) Architecture**, making the messaging and persistence layers pluggable. Vehicle positions are streamed to an Apache Kafka topic (`vehicle.position.v1`) at sub-second intervals, and route geometry is cached in Redis to minimize Mapbox API calls.
 
@@ -525,10 +525,10 @@ kubectl get pods             -n roadrunner
 
 ---
 
-## Related Repositories
+## Related Components
 
-| Repository | Description |
+| Component | Description |
 |---|---|
-| [roadrunner](https://github.com/SteveTarter/roadrunner) | Spring Boot simulation backend — Hexagonal Architecture, Kafka producer, Redis cache client, REST API |
-| [roadrunner-view](https://github.com/SteveTarter/roadrunner-view) | React + TypeScript frontend — Mapbox map, real-time vehicle tracking, driver view, simulation playback |
+| [roadrunner](../../apps/roadrunner) | Spring Boot simulation backend — Hexagonal Architecture, Kafka producer, Redis cache client, REST API |
+| [roadrunner-view](../../apps/roadrunner-view) | React + TypeScript frontend — Mapbox map, real-time vehicle tracking, driver view, simulation playback |
 | [eks-with-efs-and-alb](https://github.com/SteveTarter/eks-with-efs-and-alb) | Terraform project that provisions the underlying EKS cluster, EFS storage class, and ALB Ingress Controller |
