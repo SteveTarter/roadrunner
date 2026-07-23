@@ -12,6 +12,7 @@ import { faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEy
 import { faPowerOff, faUser } from '@fortawesome/fontawesome-free-solid'
 import { AboutPage } from './components/AboutPage/AboutPage';
 import { GuidePage } from './components/GuidePage/GuidePage';
+import { Vehicle3DMapPage } from './components/Vehicle3DMapPage/Vehicle3DMapPage';
 
 library.add(faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faArrowLeft, faArrowRight, fa0 );
 fontawesome.library.add(faPowerOff, faUser);
@@ -40,6 +41,10 @@ export const App = () => {
         <Route
         path='/driver-view/:vehicleId'
         element={<AuthenticationGuard component={DriverViewPage} />}
+        />
+        <Route
+        path='/3d-view'
+        element={<AuthenticationGuard component={Vehicle3DMapPage} />}
         />
       </Routes>
       </div>
