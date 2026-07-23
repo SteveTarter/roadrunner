@@ -107,6 +107,10 @@ export const AppNavBar = ({
     navigate('/guide/overview');
   }, [navigate]);
 
+  const gotoThreeDMapPage = useCallback(() => {
+    navigate('/3d-view');
+  }, [navigate]);
+
   return (
     <div className="nav-container">
       <Navbar color="light" light expand="md">
@@ -116,6 +120,16 @@ export const AppNavBar = ({
           {/* Left-aligned items */}
           <Nav className="me-auto" navbar>
             {additionalMenuItems && additionalMenuItems(() => setIsOpen(false))}
+            <NavItem>
+              <NavLink
+                to="/3d-view"
+                id="threeDMapBtn"
+                onClick={() => gotoThreeDMapPage()}
+                style={{ cursor: "pointer" }}
+              >
+                3D Map
+              </NavLink>
+            </NavItem>
             <NavItem>
               <NavLink
                 to="/guide/overview"
