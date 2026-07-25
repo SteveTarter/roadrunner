@@ -40,7 +40,7 @@ export const useVehicleData = ({
     }
     if (playbackOffset === 0) return null;
 
-    const bufferBackfillTime = 5000; // 5 seconds ahead
+    const bufferBackfillTime = 12000; // 12 seconds ahead
     return new Date(Date.now() - playbackOffset + bufferBackfillTime).toISOString();
   // eslint-disable-next-line
   }, [playbackOffset, bufferNum]); // Only changes if the user scrubs playback
@@ -170,7 +170,8 @@ export const useVehicleData = ({
           const s0 = states[nextIndex - 1];
           const s1 = states[nextIndex];
 
-          const ratio = (currentTime - s0.msEpochLastRun) / (s1.msEpochLastRun - s0.msEpochLastRun);
+          const timeDiff = s1.msEpochLastRun - s0.msEpochLastRun;
+          const ratio = timeDiff === 0 ? 0 : (currentTime - s0.msEpochLastRun) / timeDiff;
 
           displayState = {
             ...s0,
@@ -217,16 +218,24 @@ export const useVehicleData = ({
     setVersion(v => v + 1);
   }, [playbackOffset, masterBuffer, vehicleSize, isInterpolationEnabled]);
 
+  // Stable ref to hold the latest fetch function reference
+  const fetchBatchRef = useRef(fetchBatch);
+  useEffect(() => {
+    fetchBatchRef.current = fetchBatch;
+  }, [fetchBatch]);
+
   // Run the Fetcher (Background)
   useEffect(() => {
      // If in playback mode, fetch pages every 2.5s. Live is fetched every 250 ms.
     var fetchInterval = playbackOffset === 0 ? 250 : 2500;
 
-    fetchBatch();
+    fetchBatchRef.current();
 
-    const fetchTimer = window.setInterval(fetchBatch, fetchInterval);
+    const fetchTimer = window.setInterval(() => {
+      fetchBatchRef.current();
+    }, fetchInterval);
     return () => window.clearInterval(fetchTimer);
-  }, [fetchBatch, playbackOffset]);
+  }, [playbackOffset]);
 
   // Run the Playback Engine (High Frequency)
   useEffect(() => {
