@@ -20,6 +20,11 @@ import { CONFIG } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
 import { usePlayback } from "../../context/PlaybackContext";
 import { ActiveVehiclePlot } from '../Shared/ActiveVehiclePlot';
+import mapboxgl from 'mapbox-gl';
+
+// Configure Mapbox performance settings globally
+mapboxgl.workerCount = 4;
+mapboxgl.maxParallelImageRequests = 32;
 
 export const Vehicle3DMapPage = () => {
   const { threeDMap } = useMap();
@@ -27,7 +32,7 @@ export const Vehicle3DMapPage = () => {
   usePlayback();
 
   // Constants
-  const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
+  const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md?optimize=true";
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
 
   // States
@@ -210,6 +215,19 @@ export const Vehicle3DMapPage = () => {
               'sky-type': 'atmosphere',
               'sky-atmosphere-sun': [0.0, 90.0],
               'sky-atmosphere-sun-intensity': 15
+            }
+          });
+        }
+
+        // 6. Set Fog for performance on pitched views
+        map.setFog({});
+
+        // 7. Disable raster fade-in transition animation to save GPU/CPU cycles
+        const style = map.getStyle();
+        if (style && style.layers) {
+          style.layers.forEach((layer) => {
+            if (layer.type === 'raster') {
+              map.setPaintProperty(layer.id, 'raster-fade-duration', 0);
             }
           });
         }

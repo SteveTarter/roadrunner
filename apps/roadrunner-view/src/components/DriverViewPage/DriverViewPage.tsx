@@ -15,6 +15,11 @@ import { useVehicleData } from '../../hooks/useVehicleData';
 import { usePlayback } from "../../context/PlaybackContext";
 import { useMapViewState } from '../../context/MapViewStateContext';
 import { fetchAuthSession } from 'aws-amplify/auth';
+import mapboxgl from 'mapbox-gl';
+
+// Configure Mapbox performance settings globally
+mapboxgl.workerCount = 4;
+mapboxgl.maxParallelImageRequests = 32;
 
 export const DriverViewPage = () => {
   // Get the Vehicle ID from the URL in the window
@@ -25,7 +30,7 @@ export const DriverViewPage = () => {
   const mapboxToken = CONFIG.MAPBOX_TOKEN;
 
   // Constants
-  const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md";
+  const MAP_STYLE_SATELLITE = "mapbox://styles/tarterwaresteve/cm518rzmq00fr01qpfkvcd4md?optimize=true";
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
   const MPS_TO_MPH = 2.236936;
 
@@ -65,7 +70,8 @@ export const DriverViewPage = () => {
   // Logic to find current vehicle
   const vehicleState = useMemo(() => {
     return vehicleStateMap.get(vehicleId) || lastState;
-  }, [vehicleId, vehicleStateMap, lastState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicleId, vehicleStateMap, lastState, version]);
 
   const gotoHomePage = useCallback(() => {
     if(goingHome || !vehicleState) return;
@@ -290,6 +296,19 @@ export const DriverViewPage = () => {
               maxzoom: 14
             });
             map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.0 });
+        }
+
+        // Set Fog to cull distant tiles and boost performance
+        map.setFog({});
+
+        // Disable raster fade-in transition animation to save GPU/CPU cycles
+        const style = map.getStyle();
+        if (style && style.layers) {
+          style.layers.forEach((layer) => {
+            if (layer.type === 'raster') {
+              map.setPaintProperty(layer.id, 'raster-fade-duration', 0);
+            }
+          });
         }
 
         setIsMapReady(true);
