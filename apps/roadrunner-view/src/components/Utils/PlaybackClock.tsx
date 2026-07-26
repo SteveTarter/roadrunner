@@ -35,7 +35,7 @@ export const PlaybackClock = () => {
     <div style={{
       position: 'fixed',
       bottom: '20px',
-      right: '5px',
+      right: '15px',
       zIndex: 1000,
       fontFamily: 'monospace'
     }}>

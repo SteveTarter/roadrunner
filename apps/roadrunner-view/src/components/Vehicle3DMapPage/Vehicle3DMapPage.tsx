@@ -14,7 +14,9 @@ import {
   faUpRightAndDownLeftFromCenter, 
   faCompass,
   faInfoCircle,
-  faChartLine
+  faChartLine,
+  faChevronDown,
+  faChevronUp
 } from '@fortawesome/free-solid-svg-icons';
 import { CONFIG } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
@@ -43,6 +45,8 @@ export const Vehicle3DMapPage = () => {
   const userBearingOffsetRef = useRef<number>(0);
   const [cameraMode, setCameraMode] = useState<'chase' | 'fixed'>('chase');
   const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
+  const [isGuideMinimized, setIsGuideMinimized] = useState(true);
+  const [isFocusMinimized, setIsFocusMinimized] = useState(false);
 
   const toggleShowActiveVehiclePlot = useCallback(() => {
     setShowActiveVehiclePlot(prev => !prev);
@@ -357,6 +361,9 @@ export const Vehicle3DMapPage = () => {
     }));
   }, []);
 
+  const focusedVehicle = vehicleStateMap.get(focusedVehicleId);
+  const focusedVehicleColor = focusedVehicle?.colorCode;
+
   const shouldShowMap = isDataLoaded || vehicleList.length > 0;
 
   return (
@@ -381,71 +388,111 @@ export const Vehicle3DMapPage = () => {
 
             {/* Google Earth Navigation Guide */}
             <div className="controls-guide-card">
-              <div className="controls-guide-title">
-                <FontAwesomeIcon icon={faInfoCircle} />
-                <span>3D Camera Controls</span>
+              <div 
+                className="controls-guide-title" 
+                onClick={() => setIsGuideMinimized(!isGuideMinimized)}
+                style={{ 
+                  cursor: 'pointer', 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  width: '100%', 
+                  marginBottom: isGuideMinimized ? '0' : '6px', 
+                  borderBottom: isGuideMinimized ? 'none' : '1px solid rgba(0, 0, 0, 0.1)', 
+                  paddingBottom: isGuideMinimized ? '0' : '4px' 
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FontAwesomeIcon icon={faInfoCircle} />
+                  <span>3D Camera Controls</span>
+                </div>
+                <FontAwesomeIcon icon={isGuideMinimized ? faChevronUp : faChevronDown} style={{ fontSize: '0.75rem', color: '#666', marginLeft: '8px' }} />
               </div>
-              <ul className="controls-guide-list">
-                <li><strong>Left-Click + Drag</strong>: Pan map</li>
-                <li><strong>Right-Click + Drag</strong>: Orbit / Tilt perspective</li>
-                <li><strong>Ctrl + Drag</strong>: Tilt perspective</li>
-                <li><strong>Scroll / Pinch</strong>: Zoom in/out</li>
-              </ul>
+              {!isGuideMinimized && (
+                <ul className="controls-guide-list">
+                  <li><strong>Left-Click + Drag</strong>: Pan map</li>
+                  <li><strong>Right-Click + Drag</strong>: Orbit / Tilt perspective</li>
+                  <li><strong>Ctrl + Drag</strong>: Tilt perspective</li>
+                  <li><strong>Scroll / Pinch</strong>: Zoom in/out</li>
+                </ul>
+              )}
             </div>
 
             {/* Focus Panel */}
             <div className="focus-panel-container">
               <Card className="focus-card">
                 <Card.Body className="focus-card-body">
-                  <div className="focus-title">Focus Target</div>
-                  <Form.Select
-                    size="sm"
-                    className="focus-select"
-                    value={focusedVehicleId}
-                    onChange={(e) => setFocusedVehicleId(e.target.value)}
+                  <div 
+                    className="focus-title" 
+                    onClick={() => setIsFocusMinimized(!isFocusMinimized)}
+                    style={{ 
+                      cursor: 'pointer', 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      marginBottom: isFocusMinimized ? '0' : '8px' 
+                    }}
                   >
-                    <option value="">-- Free Camera --</option>
-                    {vehicleList.map((vehicle) => (
-                      <option key={vehicle.id} value={vehicle.id}>
-                        {`Vehicle ${vehicle.id.substring(0, 8)} (${vehicle.colorCode || 'Gray'})`}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  {focusedVehicleId && (
+                    <span>Focus Target</span>
+                    <FontAwesomeIcon icon={isFocusMinimized ? faChevronUp : faChevronDown} style={{ fontSize: '0.75rem', color: '#666' }} />
+                  </div>
+                  {!isFocusMinimized && (
                     <>
-                      <div 
-                        className="mt-2 text-start" 
-                        style={{ fontSize: '0.8rem', borderTop: '1px solid #eee', paddingTop: '8px' }}
+                      <Form.Select
+                        size="sm"
+                        className="focus-select"
+                        value={focusedVehicleId}
+                        onChange={(e) => setFocusedVehicleId(e.target.value)}
+                        style={focusedVehicleColor ? { color: focusedVehicleColor, fontWeight: 'bold' } : undefined}
                       >
-                        <div className="fw-bold mb-1" style={{ fontSize: '0.75rem', color: '#666' }}>Camera Mode</div>
-                        <Form.Check 
-                          type="radio"
-                          label="Chase View (Relative)"
-                          name="cameraMode"
-                          id="modeChase"
-                          checked={cameraMode === 'chase'}
-                          onChange={() => handleCameraModeChange('chase')}
-                          style={{ cursor: 'pointer' }}
-                        />
-                        <Form.Check 
-                          type="radio"
-                          label="Fixed Compass"
-                          name="cameraMode"
-                          id="modeFixed"
-                          checked={cameraMode === 'fixed'}
-                          onChange={() => handleCameraModeChange('fixed')}
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </div>
-                      <Button 
-                        variant="outline-danger" 
-                        size="sm" 
-                        className="mt-2"
-                        onClick={() => setFocusedVehicleId("")}
-                        style={{ fontSize: '0.75rem', padding: '2px 8px', width: '100%' }}
-                      >
-                        Release Lock
-                      </Button>
+                        <option value="">-- Free Camera --</option>
+                        {vehicleList.map((vehicle) => (
+                          <option
+                            key={vehicle.id}
+                            value={vehicle.id}
+                            style={vehicle.colorCode ? { color: vehicle.colorCode } : undefined}
+                          >
+                            {`Vehicle ${vehicle.id.substring(0, 8)}`}
+                          </option>
+                        ))}
+                      </Form.Select>
+                      {focusedVehicleId && (
+                        <>
+                          <div 
+                            className="mt-2 text-start" 
+                            style={{ fontSize: '0.8rem', borderTop: '1px solid #eee', paddingTop: '8px' }}
+                          >
+                            <div className="fw-bold mb-1" style={{ fontSize: '0.75rem', color: '#666' }}>Camera Mode</div>
+                            <Form.Check 
+                              type="radio"
+                              label="Chase View (Relative)"
+                              name="cameraMode"
+                              id="modeChase"
+                              checked={cameraMode === 'chase'}
+                              onChange={() => handleCameraModeChange('chase')}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <Form.Check 
+                              type="radio"
+                              label="Fixed Compass"
+                              name="cameraMode"
+                              id="modeFixed"
+                              checked={cameraMode === 'fixed'}
+                              onChange={() => handleCameraModeChange('fixed')}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </div>
+                          <Button 
+                            variant="outline-danger" 
+                            size="sm" 
+                            className="mt-2"
+                            onClick={() => setFocusedVehicleId("")}
+                            style={{ fontSize: '0.75rem', padding: '2px 8px', width: '100%' }}
+                          >
+                            Release Lock
+                          </Button>
+                        </>
+                      )}
                     </>
                   )}
                 </Card.Body>

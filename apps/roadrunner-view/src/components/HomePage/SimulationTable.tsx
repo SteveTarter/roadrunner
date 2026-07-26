@@ -26,7 +26,7 @@ export const SimulationTable = (props: {
   const [data, setData] = useState([]);
   const [rowCount, setRowCount] = useState(0);
 
-  const { playbackOffset } = usePlayback();
+  const { playbackOffset, setPlaybackSession } = usePlayback();
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -101,20 +101,20 @@ export const SimulationTable = (props: {
       header: 'Actions',
       size: 120,
       Cell: ({ row }: any) => {
-        const { setPlaybackSession } = usePlayback();
         return (
           <Button
            size="sm"
            onClick={() => {
             setPlaybackSession(row.original.start);
-            navigate(`/driver-view/${row.original.id}`);
+             const provider = localStorage.getItem('roadrunner_map_provider') || 'mapbox';
+             navigate(provider === 'google' ? `/google/driver-view/${row.original.id}` : `/driver-view/${row.original.id}`);
           }}>
             ▶️ Playback
           </Button>
         );
       }
     }
-  ], [navigate]);
+  ], [navigate, setPlaybackSession]);
 
   return (
     <div

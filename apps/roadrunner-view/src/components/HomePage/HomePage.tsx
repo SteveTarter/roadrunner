@@ -47,6 +47,12 @@ export const HomePage = () => {
     setHomeMapViewState
   } = useMapViewState();
 
+  const [mapViewState, setMapViewState] = useState(homeMapViewState);
+
+  useEffect(() => {
+    setMapViewState(homeMapViewState);
+  }, [homeMapViewState]);
+
   const {
     vehicleStateMap,
     vehicleDisplayMap,
@@ -250,8 +256,13 @@ export const HomePage = () => {
     }
     setVehicleSize(Math.max(size, MIN_SIZE));
 
-    // Mapbox occasionally fires onMove with 0,0 on mount.
-    // Ensure we actually have coordinates before saving to Context.
+    if (viewState.latitude !== 0 && viewState.longitude !== 0) {
+      setMapViewState(viewState);
+    }
+  }, []);
+
+  const onMoveEnd = useCallback((evt: any) => {
+    const { viewState } = evt;
     if (viewState.latitude !== 0 && viewState.longitude !== 0) {
       setHomeMapViewState(viewState);
     }
@@ -266,11 +277,12 @@ export const HomePage = () => {
         <Map
           id="homePageMap"
           ref={mapRef}
-          {...homeMapViewState}
+          {...mapViewState}
           mapStyle={mapStyle}
           mapboxAccessToken={mapboxToken}
           fog={{}}
           onMove={onMove}
+          onMoveEnd={onMoveEnd}
           onClick={(event) => onClick(event)}
         >
           <AppNavBar additionalMenuItems={(closeNavbar) => (
