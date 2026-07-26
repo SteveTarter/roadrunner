@@ -17,12 +17,27 @@ export const GoogleVehicleIcon: React.FC<{
   const [directionsGeometry, setDirectionsGeometry] = useState<any[]>([]);
   const [popupVisible, setPopupVisible] = useState(props.vehicleDisplay.popupVisible);
   const [routeVisible, setRouteVisible] = useState(props.vehicleDisplay.routeVisible);
+  const [popupPosition, setPopupPosition] = useState<{ lat: number, lng: number } | null>(null);
 
   // Sync state if props change (e.g. from parent/telemetry)
   useEffect(() => {
     setPopupVisible(props.vehicleDisplay.popupVisible);
     setRouteVisible(props.vehicleDisplay.routeVisible);
   }, [props.vehicleDisplay.popupVisible, props.vehicleDisplay.routeVisible]);
+
+  // Freeze popup position when visible to prevent flickering and allow clicking the button while vehicle is moving
+  useEffect(() => {
+    if (popupVisible) {
+      if (!popupPosition) {
+        setPopupPosition({
+          lat: props.vehicleState.degLatitude,
+          lng: props.vehicleState.degLongitude
+        });
+      }
+    } else {
+      setPopupPosition(null);
+    }
+  }, [popupVisible, props.vehicleState.degLatitude, props.vehicleState.degLongitude, popupPosition]);
 
   const MPS_TO_MPH = 2.236936;
 
@@ -131,9 +146,9 @@ export const GoogleVehicleIcon: React.FC<{
         />
       )}
 
-      {popupVisible && (
+      {popupVisible && popupPosition && (
         <InfoWindow
-          position={{ lat: props.vehicleState.degLatitude, lng: props.vehicleState.degLongitude }}
+          position={popupPosition}
           onCloseClick={() => {
             props.vehicleDisplay.popupVisible = false;
             setPopupVisible(false);
@@ -142,7 +157,9 @@ export const GoogleVehicleIcon: React.FC<{
           <div 
             style={{ color: '#000' }}
             onMouseDown={(e) => e.stopPropagation()}
+            onMouseUp={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
           >
