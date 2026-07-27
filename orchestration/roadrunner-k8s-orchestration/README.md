@@ -220,6 +220,7 @@ All variables are declared in `variables.tf`. Sensitive variables are marked `se
 | `roadrunner_rest_url_base` | Yes | — | Public base URL of the backend REST API (e.g. `https://roadrunner.example.com`) |
 | `roadrunner_view_url_base` | Yes | — | Public base URL of the frontend viewer (e.g. `https://roadrunner-view.example.com`) |
 | `mapbox_api_key` | Yes | — | Mapbox API key for routing and tile services |
+| `google_maps_api_key` | Yes | — | Google Maps API key for 3D map viewer services |
 | `spring_mail_username` | Yes | — | SMTP username for Spring Mail |
 | `spring_mail_password` | Yes | — | SMTP password for Spring Mail |
 | `roadrunner_user_pool_arn` | Yes | — | ARN of the Cognito User Pool (backend JWT validation) |
@@ -247,6 +248,7 @@ Create this file in the repository root. It is already listed in `.gitignore`.
 ```hcl
 # terraform.tfvars  — DO NOT COMMIT
 mapbox_api_key                = "pk.ey..."
+google_maps_api_key           = "AIzaSy..."
 spring_mail_username          = "smtp-user@example.com"
 spring_mail_password          = "smtp-password"
 cognito_authority             = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_XXXXXXXXX"

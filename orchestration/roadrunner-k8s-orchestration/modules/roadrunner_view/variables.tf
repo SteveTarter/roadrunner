@@ -28,6 +28,12 @@ variable "mapbox_api_key" {
   type        = string
 }
 
+variable "google_maps_api_key" {
+  description = "The API key used to access Google Maps services."
+  sensitive   = true
+  type        = string
+}
+
 variable "cognito_redirect_sign_in" {
   description = "The redirect sign in URL for the Cognito application."
   sensitive   = true
