@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { AdvancedMarker, InfoWindow } from "@vis.gl/react-google-maps";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { getCachedAuthToken } from "../Utils/AuthUtils";
 import { VehicleDisplay } from "../../models/VehicleDisplay";
 import { VehicleState } from "../../models/VehicleState";
 import { Button, Card } from "react-bootstrap";
@@ -49,8 +49,7 @@ export const GoogleVehicleIcon: React.FC<{
       if (token) return;
 
       try {
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
+        const accessToken = await getCachedAuthToken();
 
         if (!accessToken) {
           console.error("No access token available. Route guard should have redirected to login.");

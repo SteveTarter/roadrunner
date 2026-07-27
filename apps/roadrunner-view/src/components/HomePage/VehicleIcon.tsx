@@ -1,5 +1,5 @@
 import { Layer, Marker, Popup, Source } from "react-map-gl";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { getCachedAuthToken } from "../Utils/AuthUtils";
 import type { LayerProps } from "react-map-gl";
 import type { Feature } from "geojson";
 import { useEffect, useState } from "react";
@@ -26,8 +26,7 @@ export const VehicleIcon: React.FC<{
       if (token) return;
 
       try {
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
+        const accessToken = await getCachedAuthToken();
 
         if (!accessToken) {
           console.error("No access token available. Route guard should have redirected to login.");

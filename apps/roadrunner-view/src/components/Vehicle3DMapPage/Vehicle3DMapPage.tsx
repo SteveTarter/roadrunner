@@ -1,5 +1,6 @@
 import './Vehicle3DMapPage.css';
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useNavigate } from 'react-router-dom';
 import Map, { useMap, ViewState } from "react-map-gl";
 import { AppNavBar } from '../NavBar/AppNavBar';
 import { PlaybackClock } from '../Utils/PlaybackClock';
@@ -29,6 +30,7 @@ mapboxgl.workerCount = 4;
 mapboxgl.maxParallelImageRequests = 32;
 
 export const Vehicle3DMapPage = () => {
+  const navigate = useNavigate();
   const { threeDMap } = useMap();
   const mapboxToken = CONFIG.MAPBOX_TOKEN;
   usePlayback();
@@ -87,7 +89,7 @@ export const Vehicle3DMapPage = () => {
     if (mode === 'chase' && focusedVehicleId) {
       const vehicle = vehicleStateMap.get(focusedVehicleId);
       if (vehicle) {
-        userBearingOffsetRef.current = mapViewState.bearing - vehicle.degBearing;
+        userBearingOffsetRef.current = mapViewState.bearing - (vehicle.degBearing + 45);
       }
     }
   }, [focusedVehicleId, vehicleStateMap, mapViewState.bearing]);
@@ -98,6 +100,20 @@ export const Vehicle3DMapPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version, vehicleStateMap]);
 
+  // Redirect to Home Page if the focused target vehicle goes invalid or its coordinates go to 0,0
+  useEffect(() => {
+    if (!focusedVehicleId || !isDataLoaded) return;
+
+    const vehicle = vehicleStateMap.get(focusedVehicleId);
+    if (!vehicle) {
+      console.log(`Focused vehicle ${focusedVehicleId} went invalid. Returning home.`);
+      navigate('/home');
+    } else if (vehicle.degLatitude === 0 && vehicle.degLongitude === 0) {
+      console.log(`Focused vehicle ${focusedVehicleId} coordinates went to 0,0. Returning home.`);
+      navigate('/home');
+    }
+  }, [focusedVehicleId, vehicleStateMap, isDataLoaded, navigate]);
+
   // Handle camera positioning when a vehicle is focused, maintaining bearing relative to vehicle's heading (if in chase mode)
   useEffect(() => {
     if (!focusedVehicleId) return;
@@ -107,7 +123,8 @@ export const Vehicle3DMapPage = () => {
         ...prev,
         longitude: vehicle.degLongitude,
         latitude: vehicle.degLatitude,
-        ...(cameraMode === 'chase' ? { bearing: vehicle.degBearing + userBearingOffsetRef.current } : {})
+        pitch: 45, // Lock pitch to 45 degrees looking down
+        ...(cameraMode === 'chase' ? { bearing: vehicle.degBearing + 45 + userBearingOffsetRef.current } : {})
       }));
     }
   }, [focusedVehicleId, vehicleStateMap, version, cameraMode]);
@@ -131,7 +148,8 @@ export const Vehicle3DMapPage = () => {
           longitude: vehicle.degLongitude,
           latitude: vehicle.degLatitude,
           zoom: 21.5, // Zoom in close to see the vehicle model
-          ...(cameraMode === 'chase' ? { bearing: vehicle.degBearing } : {})
+          pitch: 45, // Set pitch to 45 degrees looking down
+          ...(cameraMode === 'chase' ? { bearing: vehicle.degBearing + 45 } : {})
         }));
       }
     }
@@ -281,7 +299,7 @@ export const Vehicle3DMapPage = () => {
     if (focusedVehicleId && evt.originalEvent) {
       const vehicle = vehicleStateMap.get(focusedVehicleId);
       if (vehicle && cameraMode === 'chase') {
-        userBearingOffsetRef.current = evt.viewState.bearing - vehicle.degBearing;
+        userBearingOffsetRef.current = evt.viewState.bearing - (vehicle.degBearing + 45);
       }
     }
     setMapViewState(evt.viewState);

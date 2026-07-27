@@ -41,7 +41,9 @@ export const DriverViewPage = () => {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
   const [goingHome, setGoingHome] = useState(false);
+  const [hasSeenValidPosition, setHasSeenValidPosition] = useState(false);
   const [isSearchingSession, setIsSearchingSession] = useState(false);
+  const [hasCheckedHistory, setHasCheckedHistory] = useState(false);
 
   // Driver view offset from straight ahead
   const [degViewOffset, setDegViewOffset] = useState(0);
@@ -74,14 +76,16 @@ export const DriverViewPage = () => {
   }, [vehicleId, vehicleStateMap, lastState, version]);
 
   const gotoHomePage = useCallback(() => {
-    if(goingHome || !vehicleState) return;
+    if (goingHome) return;
     setGoingHome(true);
 
-    setHomeMapViewState({
-      ...homeMapViewState,
-      longitude: vehicleState.degLongitude,
-      latitude: vehicleState.degLatitude
-    });
+    if (vehicleState && !(vehicleState.degLatitude === 0 && vehicleState.degLongitude === 0)) {
+      setHomeMapViewState({
+        ...homeMapViewState,
+        longitude: vehicleState.degLongitude,
+        latitude: vehicleState.degLatitude
+      });
+    }
 
     navigate('/home');
   }, [navigate, vehicleState, homeMapViewState, setHomeMapViewState, goingHome]);
@@ -89,7 +93,12 @@ export const DriverViewPage = () => {
   // Check if vehicle is absent in active tracking and query historical session if needed
   useEffect(() => {
     // Only query if basic data loaded, target vehicle is missing, and a search isn't already running
-    if (!isDataLoaded || !vehicleId || vehicleStateMap.has(vehicleId) || isSearchingSession || goingHome) return;
+    if (!isDataLoaded || version === 0 || !vehicleId || vehicleStateMap.has(vehicleId) || isSearchingSession || goingHome) {
+      if (isDataLoaded && version > 0 && vehicleStateMap.has(vehicleId)) {
+        setHasCheckedHistory(true);
+      }
+      return;
+    }
 
     async function fetchHistoricalSession() {
       setIsSearchingSession(true);
@@ -144,11 +153,12 @@ export const DriverViewPage = () => {
         gotoHomePage(); // Fallback to home if simulation context cannot be resolved
       } finally {
         setIsSearchingSession(false);
+        setHasCheckedHistory(true);
       }
     }
 
     fetchHistoricalSession();
-  }, [isDataLoaded, vehicleStateMap, vehicleId, gotoHomePage, isSearchingSession, navigate, playbackOffset, setPlaybackSession, lastState, goingHome]);
+  }, [isDataLoaded, vehicleStateMap, vehicleId, gotoHomePage, isSearchingSession, navigate, playbackOffset, setPlaybackSession, lastState, goingHome, version]);
 
 
   // Handle Auto-Redirects as a Side Effect
@@ -194,7 +204,9 @@ export const DriverViewPage = () => {
 
     // Warping to (0, 0) signals loss of data feed
     if(data.degLatitude === 0 && data.degLongitude === 0) {
-      gotoHomePage();
+      if (hasSeenValidPosition) {
+        gotoHomePage();
+      }
     }
 
     const degViewBearing = data.degBearing + degViewOffset;
@@ -222,17 +234,37 @@ export const DriverViewPage = () => {
     getCoordinateAtBearingAndRange,
     isMapReady,
     assetsLoaded,
-    gotoHomePage
+    gotoHomePage,
+    hasSeenValidPosition
   ]);
 
   // React to vehicle updates from the hook
   useEffect(() => {
+    if (goingHome) return;
+
     if (vehicleState) {
-      updateMapView(vehicleState);
+      if (vehicleState.degLatitude === 0 && vehicleState.degLongitude === 0) {
+        if (hasSeenValidPosition) {
+          gotoHomePage();
+        }
+      } else {
+        setHasSeenValidPosition(true);
+        updateMapView(vehicleState);
+      }
+    } else if (isDataLoaded && version > 0 && !isSearchingSession && hasCheckedHistory) {
+      // The target vehicle went invalid / was not found
+      gotoHomePage();
     }
   }, [
     vehicleState,
-    updateMapView
+    isDataLoaded,
+    isSearchingSession,
+    hasCheckedHistory,
+    updateMapView,
+    gotoHomePage,
+    goingHome,
+    version,
+    hasSeenValidPosition
   ]);
 
   // Handle Model Injection & Style Switches

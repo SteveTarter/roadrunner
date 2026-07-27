@@ -102,7 +102,9 @@ export const GoogleDriverViewPage = () => {
   const [isMapReady, setIsMapReady] = useState(false);
   const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
   const [goingHome, setGoingHome] = useState(false);
+  const [hasSeenValidPosition, setHasSeenValidPosition] = useState(false);
   const [isSearchingSession, setIsSearchingSession] = useState(false);
+  const [hasCheckedHistory, setHasCheckedHistory] = useState(false);
 
   const [degViewOffset, setDegViewOffset] = useState(0);
   const MPS_TO_MPH = 2.236936;
@@ -191,14 +193,16 @@ export const GoogleDriverViewPage = () => {
   }, [vehicleState]);
 
   const gotoHomePage = useCallback(() => {
-    if (goingHome || !vehicleState) return;
+    if (goingHome) return;
     setGoingHome(true);
 
-    setHomeMapViewState({
-      ...homeMapViewState,
-      longitude: vehicleState.degLongitude,
-      latitude: vehicleState.degLatitude
-    });
+    if (vehicleState && !(vehicleState.degLatitude === 0 && vehicleState.degLongitude === 0)) {
+      setHomeMapViewState({
+        ...homeMapViewState,
+        longitude: vehicleState.degLongitude,
+        latitude: vehicleState.degLatitude
+      });
+    }
 
     navigate('/google/home');
   }, [navigate, vehicleState, homeMapViewState, setHomeMapViewState, goingHome]);
@@ -223,7 +227,12 @@ export const GoogleDriverViewPage = () => {
 
   // Check if vehicle is absent in active tracking and query historical session if needed
   useEffect(() => {
-    if (!isDataLoaded || !vehicleId || vehicleStateMap.has(vehicleId) || isSearchingSession || goingHome) return;
+    if (!isDataLoaded || version === 0 || !vehicleId || vehicleStateMap.has(vehicleId) || isSearchingSession || goingHome) {
+      if (isDataLoaded && version > 0 && vehicleStateMap.has(vehicleId)) {
+        setHasCheckedHistory(true);
+      }
+      return;
+    }
 
     async function fetchHistoricalSession() {
       setIsSearchingSession(true);
@@ -272,11 +281,12 @@ export const GoogleDriverViewPage = () => {
         gotoHomePage();
       } finally {
         setIsSearchingSession(false);
+        setHasCheckedHistory(true);
       }
     }
 
     fetchHistoricalSession();
-  }, [isDataLoaded, vehicleStateMap, vehicleId, gotoHomePage, isSearchingSession, navigate, playbackOffset, setPlaybackSession, lastState, goingHome]);
+  }, [isDataLoaded, vehicleStateMap, vehicleId, gotoHomePage, isSearchingSession, navigate, playbackOffset, setPlaybackSession, lastState, goingHome, version]);
 
   // Handle Auto-Redirects
   useEffect(() => {
@@ -318,7 +328,9 @@ export const GoogleDriverViewPage = () => {
     if (!data || !mapEl || !isMapReady) return;
 
     if (data.degLatitude === 0 && data.degLongitude === 0) {
-      gotoHomePage();
+      if (hasSeenValidPosition) {
+        gotoHomePage();
+      }
       return;
     }
 
@@ -341,17 +353,37 @@ export const GoogleDriverViewPage = () => {
     degViewOffset,
     getCoordinateAtBearingAndRange,
     isMapReady,
-    gotoHomePage
+    gotoHomePage,
+    hasSeenValidPosition
   ]);
 
   // React to vehicle updates from the hook
   useEffect(() => {
+    if (goingHome) return;
+
     if (vehicleState) {
-      updateMapView(vehicleState);
+      if (vehicleState.degLatitude === 0 && vehicleState.degLongitude === 0) {
+        if (hasSeenValidPosition) {
+          gotoHomePage();
+        }
+      } else {
+        setHasSeenValidPosition(true);
+        updateMapView(vehicleState);
+      }
+    } else if (isDataLoaded && version > 0 && !isSearchingSession && hasCheckedHistory) {
+      // The target vehicle went invalid / was not found
+      gotoHomePage();
     }
   }, [
     vehicleState,
-    updateMapView
+    isDataLoaded,
+    isSearchingSession,
+    hasCheckedHistory,
+    updateMapView,
+    gotoHomePage,
+    goingHome,
+    version,
+    hasSeenValidPosition
   ]);
 
   const shouldShowMap = isDataLoaded && vehicleState;

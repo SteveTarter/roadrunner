@@ -22,6 +22,13 @@ import { BookmarksPanel } from '../HomePage/BookmarksPanel';
 
 export const GoogleHomePage = () => {
   const map = useMap('homePageMap');
+  const stableMapRef = useMemo(() => {
+    return {
+      current: {
+        getMap: () => map
+      }
+    };
+  }, [map]);
 
   const [vehicleSize, setVehicleSize] = useState(5);
   const [isCreateVehicleActive, setIsCreateVehicleActive] = useState(false);
@@ -258,20 +265,20 @@ export const GoogleHomePage = () => {
         {(isDataLoaded) ?
           <>
             <PlaybackClock />
-            {isCreateVehicleActive && (
-              <CreateVehiclePanel
-                returnToNow={returnToNow}
-                setIsCreateVehicleActive={setIsCreateVehicleActive}
-                mapRef={{ current: { getMap: () => map } } as any}
-              />
-            )}
-            {isCrissCrossActive && (
-              <CrissCrossPanel
-                returnToNow={returnToNow}
-                setIsCrissCrossActive={setIsCrissCrossActive}
-                mapRef={{ current: { getMap: () => map } } as any}
-              />
-            )}
+             {isCreateVehicleActive && (
+               <CreateVehiclePanel
+                 returnToNow={returnToNow}
+                 setIsCreateVehicleActive={setIsCreateVehicleActive}
+                 mapRef={stableMapRef as any}
+               />
+             )}
+             {isCrissCrossActive && (
+               <CrissCrossPanel
+                 returnToNow={returnToNow}
+                 setIsCrissCrossActive={setIsCrissCrossActive}
+                 mapRef={stableMapRef as any}
+               />
+             )}
             {showBookmarksPanel && (
               <BookmarksPanel
                 onClose={() => setShowBookmarksPanel(false)}
