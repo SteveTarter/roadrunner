@@ -99,22 +99,7 @@ export const GoogleVehicleModel = ({ vState }: { vState: any }) => {
   );
 };
 
-const getLatLng = (center: any) => {
-  if (!center) return null;
-  let lat = 0;
-  let lng = 0;
-  if (typeof center.lat === 'function') {
-    lat = center.lat();
-  } else if (typeof center.lat === 'number') {
-    lat = center.lat;
-  }
-  if (typeof center.lng === 'function') {
-    lng = center.lng();
-  } else if (typeof center.lng === 'number') {
-    lng = center.lng;
-  }
-  return { lat, lng };
-};
+
 
 export const GoogleVehicle3DMapPage = () => {
   const navigate = useNavigate();
@@ -135,15 +120,10 @@ export const GoogleVehicle3DMapPage = () => {
   const [cameraYaw, setCameraYaw] = useState<number>(0); // Yaw (horizontal offset from car's heading)
   const [cameraElevation, setCameraElevation] = useState<number>(45); // Azimuth elevation angle (0 = ground, 90 = zenith)
 
-  const [terrainElevation, setTerrainElevation] = useState<number>(30); // Default to 30 meters (Alexandria elevation)
-  const lastElevationCheckedCoordRef = useRef<{ lat: number, lng: number } | null>(null);
-  const elevationServiceRef = useRef<any>(null);
+
 
   const mapRef = useRef<any>(null);
   const isProgrammaticUpdateRef = useRef<boolean>(false);
-  const lastProgrammaticHeadingRef = useRef<number | null>(null);
-  const lastProgrammaticRangeRef = useRef<number | null>(null);
-  const lastProgrammaticTiltRef = useRef<number | null>(null);
   const isUserInteractingRef = useRef<boolean>(false);
   const wheelTimeoutRef = useRef<any>(null);
   const missingTimestampRef = useRef<number | null>(null);
@@ -190,52 +170,7 @@ export const GoogleVehicle3DMapPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version, vehicleStateMap]);
 
-  // Fetch terrain elevation for the focused vehicle dynamically
-  useEffect(() => {
-    if (!apiIsLoaded || !focusedVehicleId) return;
-    const vehicle = vehicleStateMap.get(focusedVehicleId);
-    if (!vehicle) return;
 
-    const lat = vehicle.degLatitude;
-    const lng = vehicle.degLongitude;
-    if (lat === 0 && lng === 0) return;
-
-    const lastCoord = lastElevationCheckedCoordRef.current;
-    let shouldQuery = false;
-    if (!lastCoord) {
-      shouldQuery = true;
-    } else {
-      // 0.0005 degrees of lat/lng difference is roughly 50 meters
-      const dist = Math.sqrt(Math.pow(lat - lastCoord.lat, 2) + Math.pow(lng - lastCoord.lng, 2));
-      if (dist > 0.0005) {
-        shouldQuery = true;
-      }
-    }
-
-    if (shouldQuery) {
-      lastElevationCheckedCoordRef.current = { lat, lng };
-      try {
-        if (!elevationServiceRef.current && window.google?.maps) {
-          elevationServiceRef.current = new window.google.maps.ElevationService();
-        }
-        if (elevationServiceRef.current) {
-          elevationServiceRef.current.getElevationForLocations({
-            locations: [{ lat, lng }]
-          }, (results: any, status: any) => {
-            if (status === 'OK' && results && results[0]) {
-              const elevation = results[0].elevation;
-              console.log(`[3D Elevation] Fetched terrain elevation for (${lat.toFixed(5)}, ${lng.toFixed(5)}): ${elevation.toFixed(1)}m`);
-              setTerrainElevation(elevation);
-            } else {
-              console.warn('[3D Elevation] Elevation API response:', status);
-            }
-          });
-        }
-      } catch (err) {
-        console.error('[3D Elevation] Error invoking ElevationService:', err);
-      }
-    }
-  }, [apiIsLoaded, focusedVehicleId, vehicleStateMap, version]);
 
   // Redirect to Google Home Page if the focused target vehicle goes invalid or its coordinates go to 0,0 (with 10-second leniency)
   useEffect(() => {
@@ -342,11 +277,6 @@ export const GoogleVehicle3DMapPage = () => {
       if (isProgrammaticUpdateRef.current || !isUserInteractingRef.current) return;
       const newHeading = mapEl.heading || 0;
 
-      if (lastProgrammaticHeadingRef.current !== null && Math.abs(newHeading - lastProgrammaticHeadingRef.current) < 0.1) {
-        lastProgrammaticHeadingRef.current = null;
-        return;
-      }
-
       if (focusedVehicleId) {
         const vehicle = vehicleStateMap.get(focusedVehicleId);
         if (vehicle) {
@@ -366,11 +296,6 @@ export const GoogleVehicle3DMapPage = () => {
       const newRange = mapEl.range;
       if (newRange === undefined || newRange <= 0) return;
 
-      if (lastProgrammaticRangeRef.current !== null && Math.abs(newRange - lastProgrammaticRangeRef.current) < 0.1) {
-        lastProgrammaticRangeRef.current = null;
-        return;
-      }
-
       setCameraDistance(newRange);
     };
 
@@ -378,11 +303,6 @@ export const GoogleVehicle3DMapPage = () => {
       if (isProgrammaticUpdateRef.current || !isUserInteractingRef.current) return;
       const newTilt = mapEl.tilt;
       if (newTilt === undefined) return;
-
-      if (lastProgrammaticTiltRef.current !== null && Math.abs(newTilt - lastProgrammaticTiltRef.current) < 0.1) {
-        lastProgrammaticTiltRef.current = null;
-        return;
-      }
 
       setCameraElevation(90 - newTilt);
     };
@@ -399,7 +319,7 @@ export const GoogleVehicle3DMapPage = () => {
 
   // Handle camera positioning when a vehicle is focused
   useEffect(() => {
-    if (!focusedVehicleId) return;
+    if (!focusedVehicleId || isUserInteractingRef.current) return;
     const vehicle = vehicleStateMap.get(focusedVehicleId);
     const mapEl = mapRef.current;
     if (vehicle && mapEl) {
@@ -407,55 +327,41 @@ export const GoogleVehicle3DMapPage = () => {
       const targetHeading = cameraMode === 'chase'
         ? (vehicle.degBearing + cameraYaw + 360) % 360
         : cameraYaw;
-
-      const currentCenter = mapEl.center;
-      const parsedCenter = currentCenter ? getLatLng(currentCenter) : null;
-
-      if (!parsedCenter || Math.abs(parsedCenter.lat - vehicle.degLatitude) > 0.000001 || Math.abs(parsedCenter.lng - vehicle.degLongitude) > 0.000001) {
-        mapEl.center = { lat: vehicle.degLatitude, lng: vehicle.degLongitude, altitude: terrainElevation };
-      }
-
-      if (lastProgrammaticRangeRef.current !== cameraDistance) {
-        mapEl.range = cameraDistance;
-        lastProgrammaticRangeRef.current = cameraDistance;
-      }
-
       const targetTilt = 90 - cameraElevation;
-      if (lastProgrammaticTiltRef.current !== targetTilt) {
-        mapEl.tilt = targetTilt;
-        lastProgrammaticTiltRef.current = targetTilt;
-      }
 
-      if (Math.abs((mapEl.heading || 0) - targetHeading) > 0.01) {
-        mapEl.heading = targetHeading;
-        lastProgrammaticHeadingRef.current = targetHeading;
-      }
+      mapEl.flyCameraTo({
+        endCamera: {
+          center: { lat: vehicle.degLatitude, lng: vehicle.degLongitude, altitude: 0 },
+          range: cameraDistance,
+          tilt: targetTilt,
+          heading: targetHeading,
+          altitudeMode: 'RELATIVE_TO_GROUND'
+        },
+        durationMillis: 0
+      });
 
       isProgrammaticUpdateRef.current = false;
     }
-  }, [focusedVehicleId, vehicleStateMap, version, cameraMode, cameraDistance, cameraYaw, cameraElevation, terrainElevation]);
+  }, [focusedVehicleId, vehicleStateMap, version, cameraMode, cameraDistance, cameraYaw, cameraElevation]);
 
   // Handle camera positioning when untethered (free camera)
   useEffect(() => {
-    if (focusedVehicleId) return;
+    if (focusedVehicleId || isUserInteractingRef.current) return;
     const mapEl = mapRef.current;
     if (mapEl) {
       isProgrammaticUpdateRef.current = true;
 
-      if (lastProgrammaticRangeRef.current !== cameraDistance) {
+      if (Math.abs((mapEl.range || 0) - cameraDistance) > 1.0) {
         mapEl.range = cameraDistance;
-        lastProgrammaticRangeRef.current = cameraDistance;
       }
 
       const targetTilt = 90 - cameraElevation;
-      if (lastProgrammaticTiltRef.current !== targetTilt) {
+      if (Math.abs((mapEl.tilt || 0) - targetTilt) > 1.0) {
         mapEl.tilt = targetTilt;
-        lastProgrammaticTiltRef.current = targetTilt;
       }
 
-      if (Math.abs((mapEl.heading || 0) - cameraYaw) > 0.01) {
+      if (Math.abs((mapEl.heading || 0) - cameraYaw) > 1.0) {
         mapEl.heading = cameraYaw;
-        lastProgrammaticHeadingRef.current = cameraYaw;
       }
       isProgrammaticUpdateRef.current = false;
     }
@@ -480,18 +386,23 @@ export const GoogleVehicle3DMapPage = () => {
         setCameraYaw(0); // Reset to 0 degrees (directly behind)
         setCameraElevation(45); // Reset to 45 degrees elevation
 
-        mapEl.center = { lat: vehicle.degLatitude, lng: vehicle.degLongitude, altitude: terrainElevation };
-        mapEl.range = 60.96;
-        mapEl.tilt = 45;
-        if (cameraMode === 'chase') {
-          mapEl.heading = vehicle.degBearing;
-        } else {
-          mapEl.heading = 0;
-        }
+        const targetHeading = cameraMode === 'chase' ? vehicle.degBearing : 0;
+
+        mapEl.flyCameraTo({
+          endCamera: {
+            center: { lat: vehicle.degLatitude, lng: vehicle.degLongitude, altitude: 0 },
+            range: 60.96,
+            tilt: 45,
+            heading: targetHeading,
+            altitudeMode: 'RELATIVE_TO_GROUND'
+          },
+          durationMillis: 0
+        });
+
         isProgrammaticUpdateRef.current = false;
       }
     }
-  }, [focusedVehicleId, vehicleStateMap, cameraMode, terrainElevation]);
+  }, [focusedVehicleId, vehicleStateMap, cameraMode]);
 
   // Handle keypress controls for camera range, tilt, and yaw
   useEffect(() => {
@@ -552,20 +463,22 @@ export const GoogleVehicle3DMapPage = () => {
           const avgLng = validVehicles.reduce((sum, v) => sum + v.degLongitude, 0) / validVehicles.length;
 
           isProgrammaticUpdateRef.current = true;
-          mapEl.center = {
-            lat: avgLat,
-            lng: avgLng,
-            altitude: terrainElevation
-          };
-          mapEl.range = 1000;
-          mapEl.tilt = 65;
-          mapEl.heading = -20;
+          mapEl.flyCameraTo({
+            endCamera: {
+              center: { lat: avgLat, lng: avgLng, altitude: 0 },
+              range: 1000,
+              tilt: 65,
+              heading: -20,
+              altitudeMode: 'RELATIVE_TO_GROUND'
+            },
+            durationMillis: 0
+          });
           isProgrammaticUpdateRef.current = false;
           setHasCenteredInitially(true);
         }
       }
     }
-  }, [isDataLoaded, isMapReady, vehicleList, hasCenteredInitially, terrainElevation]);
+  }, [isDataLoaded, isMapReady, vehicleList, hasCenteredInitially]);
 
   // Fit view bounds to contain all active vehicles
   const fitAllOnScreen = useCallback(() => {
@@ -591,13 +504,19 @@ export const GoogleVehicle3DMapPage = () => {
     const mapEl = mapRef.current;
     if (mapEl) {
       isProgrammaticUpdateRef.current = true;
-      mapEl.center = { lat: centerLat, lng: centerLng, altitude: terrainElevation };
-      mapEl.range = maxDist * 1.5;
-      mapEl.heading = -20;
-      mapEl.tilt = 65;
+      mapEl.flyCameraTo({
+        endCamera: {
+          center: { lat: centerLat, lng: centerLng, altitude: 0 },
+          range: maxDist * 1.5,
+          heading: -20,
+          tilt: 65,
+          altitudeMode: 'RELATIVE_TO_GROUND'
+        },
+        durationMillis: 0
+      });
       isProgrammaticUpdateRef.current = false;
     }
-  }, [isDataLoaded, vehicleList, terrainElevation]);
+  }, [isDataLoaded, vehicleList]);
 
   // Toggle Street (hybrid) vs Satellite maps
   const toggleMapStyle = useCallback(() => {
@@ -617,6 +536,7 @@ export const GoogleVehicle3DMapPage = () => {
               ref={mapRef}
               mode={mapStyle}
               default-ui-hidden="true"
+              altitude-mode="RELATIVE_TO_GROUND"
               style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
             >
               {vehicleList.map((vState) => (

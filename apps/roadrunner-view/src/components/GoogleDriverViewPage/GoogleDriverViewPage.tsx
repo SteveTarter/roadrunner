@@ -297,10 +297,21 @@ export const GoogleDriverViewPage = () => {
     );
 
     if (shiftedPoint && !isNaN(shiftedPoint.lng) && !isNaN(shiftedPoint.lat)) {
-      mapEl.center = { lat: shiftedPoint.lat, lng: shiftedPoint.lng, altitude: 3.66 };
-      mapEl.heading = degViewBearing;
-      mapEl.tilt = 83;
-      mapEl.range = 35;
+      const targetCameraAltitude = 2.2; // 2.2 meters (approx 7.2 feet) above ground (driver eye level)
+      const targetTilt = 86; // 86 degrees tilt (looks slightly down at the road)
+      const tiltRad = (targetTilt * Math.PI) / 180;
+      const centerAltitude = targetCameraAltitude - mRange * Math.cos(tiltRad);
+
+      mapEl.flyCameraTo({
+        endCamera: {
+          center: { lat: shiftedPoint.lat, lng: shiftedPoint.lng, altitude: centerAltitude },
+          heading: degViewBearing,
+          tilt: targetTilt,
+          range: mRange,
+          altitudeMode: 'RELATIVE_TO_GROUND'
+        },
+        durationMillis: 0
+      });
     }
   }, [
     degViewOffset,
@@ -358,6 +369,7 @@ export const GoogleDriverViewPage = () => {
             ref={mapRef}
             mode="satellite"
             default-ui-hidden="true"
+            altitude-mode="RELATIVE_TO_GROUND"
             style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
           >
             {Array.from(vehicleStateMap.values())
