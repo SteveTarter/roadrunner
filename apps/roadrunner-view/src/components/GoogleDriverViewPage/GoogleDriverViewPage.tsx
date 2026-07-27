@@ -113,60 +113,13 @@ export const GoogleDriverViewPage = () => {
   const { homeMapViewState, setHomeMapViewState } = useMapViewState();
 
   const mapRef = useRef<any>(null);
+  const missingTimestampRef = useRef<number | null>(null);
 
   const toggleShowActiveVehiclePlot = useCallback(() => {
     setShowActiveVehiclePlot(prev => !prev);
   }, []);
 
-  // Hide native move controls in shadow DOM while keeping and shifting the compass/zoom controls
-  useEffect(() => {
-    const mapEl = mapRef.current;
-    if (!mapEl) return;
 
-    let intervalId: any = null;
-
-    const findAndHideControls = () => {
-      const shadowRoot = mapEl.shadowRoot;
-      if (!shadowRoot) return;
-
-      const elements = shadowRoot.querySelectorAll('*');
-      elements.forEach((el: any) => {
-        const label = (el.getAttribute('aria-label') || el.getAttribute('title') || '').toLowerCase();
-        const className = (el.className || '').toString().toLowerCase();
-        const tagName = el.tagName.toLowerCase();
-
-        // 1. Hide move/pan controls
-        if (
-          (label.includes('move') || label.includes('pan') || className.includes('move') || className.includes('pan')) &&
-          !label.includes('zoom') &&
-          !label.includes('compass') &&
-          !label.includes('tilt') &&
-          tagName !== 'canvas' &&
-          tagName !== 'gmp-map-3d'
-        ) {
-          el.style.display = 'none';
-        }
-
-        // 2. Shift absolute containers containing zoom, compass, or tilt controls
-        const style = el.style;
-        const computedStyle = window.getComputedStyle(el);
-        const isAbsolute = style.position === 'absolute' || computedStyle.position === 'absolute' || style.position === 'fixed' || computedStyle.position === 'fixed';
-
-        if (isAbsolute && tagName !== 'gmp-map-3d' && tagName !== 'canvas') {
-          const hasControls = el.querySelector('[aria-label*="zoom"], [aria-label*="compass"], [aria-label*="tilt"], [title*="zoom"], [title*="compass"], [title*="tilt"]');
-          if (hasControls) {
-            el.style.setProperty('bottom', '95px', 'important');
-          }
-        }
-      });
-    };
-
-    intervalId = setInterval(findAndHideControls, 500);
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [isMapReady]);
 
   // Integrated Hook
   const {
@@ -364,15 +317,24 @@ export const GoogleDriverViewPage = () => {
     if (vehicleState) {
       if (vehicleState.degLatitude === 0 && vehicleState.degLongitude === 0) {
         if (hasSeenValidPosition) {
-          gotoHomePage();
+          if (missingTimestampRef.current === null) {
+            missingTimestampRef.current = Date.now();
+          } else if (Date.now() - missingTimestampRef.current > 10000) {
+            gotoHomePage();
+          }
         }
       } else {
         setHasSeenValidPosition(true);
+        missingTimestampRef.current = null; // Reset missing timer when valid
         updateMapView(vehicleState);
       }
     } else if (isDataLoaded && version > 0 && !isSearchingSession && hasCheckedHistory) {
       // The target vehicle went invalid / was not found
-      gotoHomePage();
+      if (missingTimestampRef.current === null) {
+        missingTimestampRef.current = Date.now();
+      } else if (Date.now() - missingTimestampRef.current > 10000) {
+        gotoHomePage();
+      }
     }
   }, [
     vehicleState,
@@ -395,6 +357,7 @@ export const GoogleDriverViewPage = () => {
           <gmp-map-3d
             ref={mapRef}
             mode="satellite"
+            default-ui-hidden="true"
             style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
           >
             {Array.from(vehicleStateMap.values())

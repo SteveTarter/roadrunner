@@ -1,5 +1,5 @@
 import './DriverViewPage.css';
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import Map, { FullscreenControl, useMap } from "react-map-gl";
 import { VehicleState } from "../../models/VehicleState";
 import { ActiveVehiclePlot } from "../Shared/ActiveVehiclePlot";
@@ -74,6 +74,8 @@ export const DriverViewPage = () => {
     return vehicleStateMap.get(vehicleId) || lastState;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicleId, vehicleStateMap, lastState, version]);
+
+  const missingTimestampRef = useRef<number | null>(null);
 
   const gotoHomePage = useCallback(() => {
     if (goingHome) return;
@@ -245,15 +247,24 @@ export const DriverViewPage = () => {
     if (vehicleState) {
       if (vehicleState.degLatitude === 0 && vehicleState.degLongitude === 0) {
         if (hasSeenValidPosition) {
-          gotoHomePage();
+          if (missingTimestampRef.current === null) {
+            missingTimestampRef.current = Date.now();
+          } else if (Date.now() - missingTimestampRef.current > 10000) {
+            gotoHomePage();
+          }
         }
       } else {
         setHasSeenValidPosition(true);
+        missingTimestampRef.current = null; // Reset missing timer when valid
         updateMapView(vehicleState);
       }
     } else if (isDataLoaded && version > 0 && !isSearchingSession && hasCheckedHistory) {
       // The target vehicle went invalid / was not found
-      gotoHomePage();
+      if (missingTimestampRef.current === null) {
+        missingTimestampRef.current = Date.now();
+      } else if (Date.now() - missingTimestampRef.current > 10000) {
+        gotoHomePage();
+      }
     }
   }, [
     vehicleState,

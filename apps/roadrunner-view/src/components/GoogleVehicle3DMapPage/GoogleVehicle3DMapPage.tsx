@@ -13,7 +13,6 @@ import {
   faMagic,
   faBars,
   faUpRightAndDownLeftFromCenter,
-  faInfoCircle,
   faChartLine,
   faChevronDown,
   faChevronUp
@@ -24,22 +23,22 @@ import { ActiveVehiclePlot } from '../Shared/ActiveVehiclePlot';
 
 const getStaticGlbUrl = (hexColor: string | undefined): string => {
   if (!hexColor) return '/models/mitsubishi/source/Untitled_green.glb';
-  
+
   let hex = hexColor.replace('#', '').toUpperCase();
   if (hex.length === 3) {
     hex = hex.split('').map(c => c + c).join('');
   }
   if (hex.length !== 6) return '/models/mitsubishi/source/Untitled_green.glb';
-  
+
   const r = parseInt(hex.substring(0, 2), 16);
   const g = parseInt(hex.substring(2, 4), 16);
   const b = parseInt(hex.substring(4, 6), 16);
-  
+
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const d = max - min;
   let h = 0;
-  
+
   if (d !== 0) {
     switch (max) {
       case r: h = (g - b) / d + (g < b ? 6 : 0); break;
@@ -48,15 +47,15 @@ const getStaticGlbUrl = (hexColor: string | undefined): string => {
     }
     h = Math.round(h * 60);
   }
-  
+
   const s = max === 0 ? 0 : d / max;
   const v = max / 255;
-  
+
   if (s < 0.15) {
     if (v > 0.8) return '/models/mitsubishi/source/Untitled_white.glb';
     return '/models/mitsubishi/source/Untitled_gray.glb';
   }
-  
+
   if (h >= 345 || h < 15) return '/models/mitsubishi/source/Untitled_red.glb';
   if (h >= 15 && h < 45) return '/models/mitsubishi/source/Untitled_orange.glb';
   if (h >= 45 && h < 75) return '/models/mitsubishi/source/Untitled_yellow.glb';
@@ -100,6 +99,23 @@ export const GoogleVehicleModel = ({ vState }: { vState: any }) => {
   );
 };
 
+const getLatLng = (center: any) => {
+  if (!center) return null;
+  let lat = 0;
+  let lng = 0;
+  if (typeof center.lat === 'function') {
+    lat = center.lat();
+  } else if (typeof center.lat === 'number') {
+    lat = center.lat;
+  }
+  if (typeof center.lng === 'function') {
+    lng = center.lng();
+  } else if (typeof center.lng === 'number') {
+    lng = center.lng;
+  }
+  return { lat, lng };
+};
+
 export const GoogleVehicle3DMapPage = () => {
   const navigate = useNavigate();
   const { playbackOffset } = usePlayback();
@@ -111,12 +127,15 @@ export const GoogleVehicle3DMapPage = () => {
   const [hasCenteredInitially, setHasCenteredInitially] = useState(false);
   const [cameraMode, setCameraMode] = useState<'chase' | 'fixed'>('chase');
   const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
-  const [isGuideMinimized, setIsGuideMinimized] = useState(true);
   const [isFocusMinimized, setIsFocusMinimized] = useState(false);
 
   const [cameraDistance, setCameraDistance] = useState<number>(60.96); // 200 feet in meters
-  const [cameraAzimuth, setCameraAzimuth] = useState<number>(45); // Degrees offset behind vehicle
-  const [cameraTilt, setCameraTilt] = useState<number>(45); // Tilt angle (defaults to 45)
+  const [cameraYaw, setCameraYaw] = useState<number>(0); // Yaw (horizontal offset from car's heading)
+  const [cameraElevation, setCameraElevation] = useState<number>(45); // Azimuth elevation angle (0 = ground, 90 = zenith)
+
+  const [terrainElevation, setTerrainElevation] = useState<number>(30); // Default to 30 meters (Alexandria elevation)
+  const lastElevationCheckedCoordRef = useRef<{ lat: number, lng: number } | null>(null);
+  const elevationServiceRef = useRef<any>(null);
 
   const mapRef = useRef<any>(null);
   const isProgrammaticUpdateRef = useRef<boolean>(false);
@@ -131,55 +150,6 @@ export const GoogleVehicle3DMapPage = () => {
   }, []);
 
 
-  // Hide native move controls in shadow DOM while keeping and shifting the compass/zoom controls
-  useEffect(() => {
-    const mapEl = mapRef.current;
-    if (!mapEl) return;
-
-    let intervalId: any = null;
-
-    const findAndHideControls = () => {
-      const shadowRoot = mapEl.shadowRoot;
-      if (!shadowRoot) return;
-
-      const elements = shadowRoot.querySelectorAll('*');
-      elements.forEach((el: any) => {
-        const label = (el.getAttribute('aria-label') || el.getAttribute('title') || '').toLowerCase();
-        const className = (el.className || '').toString().toLowerCase();
-        const tagName = el.tagName.toLowerCase();
-
-        // 1. Hide move/pan controls
-        if (
-          (label.includes('move') || label.includes('pan') || className.includes('move') || className.includes('pan')) &&
-          !label.includes('zoom') &&
-          !label.includes('compass') &&
-          !label.includes('tilt') &&
-          tagName !== 'canvas' &&
-          tagName !== 'gmp-map-3d'
-        ) {
-          el.style.display = 'none';
-        }
-
-        // 2. Shift absolute containers containing zoom, compass, or tilt controls
-        const style = el.style;
-        const computedStyle = window.getComputedStyle(el);
-        const isAbsolute = style.position === 'absolute' || computedStyle.position === 'absolute' || style.position === 'fixed' || computedStyle.position === 'fixed';
-
-        if (isAbsolute && tagName !== 'gmp-map-3d' && tagName !== 'canvas') {
-          const hasControls = el.querySelector('[aria-label*="zoom"], [aria-label*="compass"], [aria-label*="tilt"], [title*="zoom"], [title*="compass"], [title*="tilt"]');
-          if (hasControls) {
-            el.style.setProperty('bottom', '95px', 'important');
-          }
-        }
-      });
-    };
-
-    intervalId = setInterval(findAndHideControls, 500);
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [isMapReady]);
 
   // Integrated Hook for polling and interpolation
   const {
@@ -201,10 +171,12 @@ export const GoogleVehicle3DMapPage = () => {
       if (mode === 'chase' && focusedVehicleId) {
         const vehicle = vehicleStateMap.get(focusedVehicleId);
         if (vehicle) {
-          setCameraAzimuth((currentHeading - vehicle.degBearing + 720) % 360);
+          const rawYaw = (currentHeading - vehicle.degBearing + 720) % 360;
+          const roundedYaw = Math.round(rawYaw / 5) * 5 % 360;
+          setCameraYaw(roundedYaw);
         }
       } else {
-        setCameraAzimuth(currentHeading);
+        setCameraYaw(currentHeading);
       }
     }
   }, [focusedVehicleId, vehicleStateMap]);
@@ -214,6 +186,53 @@ export const GoogleVehicle3DMapPage = () => {
     return Array.from(vehicleStateMap.values());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version, vehicleStateMap]);
+
+  // Fetch terrain elevation for the focused vehicle dynamically
+  useEffect(() => {
+    if (!apiIsLoaded || !focusedVehicleId) return;
+    const vehicle = vehicleStateMap.get(focusedVehicleId);
+    if (!vehicle) return;
+
+    const lat = vehicle.degLatitude;
+    const lng = vehicle.degLongitude;
+    if (lat === 0 && lng === 0) return;
+
+    const lastCoord = lastElevationCheckedCoordRef.current;
+    let shouldQuery = false;
+    if (!lastCoord) {
+      shouldQuery = true;
+    } else {
+      // 0.0005 degrees of lat/lng difference is roughly 50 meters
+      const dist = Math.sqrt(Math.pow(lat - lastCoord.lat, 2) + Math.pow(lng - lastCoord.lng, 2));
+      if (dist > 0.0005) {
+        shouldQuery = true;
+      }
+    }
+
+    if (shouldQuery) {
+      lastElevationCheckedCoordRef.current = { lat, lng };
+      try {
+        if (!elevationServiceRef.current && window.google?.maps) {
+          elevationServiceRef.current = new window.google.maps.ElevationService();
+        }
+        if (elevationServiceRef.current) {
+          elevationServiceRef.current.getElevationForLocations({
+            locations: [{ lat, lng }]
+          }, (results: any, status: any) => {
+            if (status === 'OK' && results && results[0]) {
+              const elevation = results[0].elevation;
+              console.log(`[3D Elevation] Fetched terrain elevation for (${lat.toFixed(5)}, ${lng.toFixed(5)}): ${elevation.toFixed(1)}m`);
+              setTerrainElevation(elevation);
+            } else {
+              console.warn('[3D Elevation] Elevation API response:', status);
+            }
+          });
+        }
+      } catch (err) {
+        console.error('[3D Elevation] Error invoking ElevationService:', err);
+      }
+    }
+  }, [apiIsLoaded, focusedVehicleId, vehicleStateMap, version]);
 
   // Redirect to Google Home Page if the focused target vehicle goes invalid or its coordinates go to 0,0
   useEffect(() => {
@@ -236,7 +255,7 @@ export const GoogleVehicle3DMapPage = () => {
     const checkStreamActive = () => {
       const msCurrentTime = Date.now() - playbackOffset;
       const states = Array.from(vehicleStateMap.values());
-      
+
       if (states.length > 0) {
         const maxEpoch = Math.max(...states.map(v => v.msEpochLastRun));
         if (maxEpoch < msCurrentTime - (30 * 1000)) {
@@ -313,7 +332,7 @@ export const GoogleVehicle3DMapPage = () => {
     const handleHeadingChange = () => {
       if (isProgrammaticUpdateRef.current || !isUserInteractingRef.current) return;
       const newHeading = mapEl.heading || 0;
-      
+
       if (lastProgrammaticHeadingRef.current !== null && Math.abs(newHeading - lastProgrammaticHeadingRef.current) < 0.1) {
         lastProgrammaticHeadingRef.current = null;
         return;
@@ -323,13 +342,13 @@ export const GoogleVehicle3DMapPage = () => {
         const vehicle = vehicleStateMap.get(focusedVehicleId);
         if (vehicle) {
           if (cameraMode === 'chase') {
-            setCameraAzimuth((newHeading - vehicle.degBearing + 720) % 360);
+            setCameraYaw((newHeading - vehicle.degBearing + 720) % 360);
           } else {
-            setCameraAzimuth(newHeading);
+            setCameraYaw(newHeading);
           }
         }
       } else {
-        setCameraAzimuth(newHeading);
+        setCameraYaw(newHeading);
       }
     };
 
@@ -356,7 +375,7 @@ export const GoogleVehicle3DMapPage = () => {
         return;
       }
 
-      setCameraTilt(newTilt);
+      setCameraElevation(90 - newTilt);
     };
 
     mapEl.addEventListener('gmp-headingchange', handleHeadingChange);
@@ -377,33 +396,35 @@ export const GoogleVehicle3DMapPage = () => {
     if (vehicle && mapEl) {
       isProgrammaticUpdateRef.current = true;
       const targetHeading = cameraMode === 'chase'
-        ? (vehicle.degBearing + cameraAzimuth + 360) % 360
-        : cameraAzimuth;
-      
-      lastProgrammaticHeadingRef.current = targetHeading;
-      lastProgrammaticRangeRef.current = cameraDistance;
-      lastProgrammaticTiltRef.current = cameraTilt;
+        ? (vehicle.degBearing + cameraYaw + 360) % 360
+        : cameraYaw;
 
       const currentCenter = mapEl.center;
-      if (!currentCenter || Math.abs(currentCenter.lat - vehicle.degLatitude) > 0.000001 || Math.abs(currentCenter.lng - vehicle.degLongitude) > 0.000001) {
-        mapEl.center = { lat: vehicle.degLatitude, lng: vehicle.degLongitude, altitude: 0 };
+      const parsedCenter = currentCenter ? getLatLng(currentCenter) : null;
+
+      if (!parsedCenter || Math.abs(parsedCenter.lat - vehicle.degLatitude) > 0.000001 || Math.abs(parsedCenter.lng - vehicle.degLongitude) > 0.000001) {
+        mapEl.center = { lat: vehicle.degLatitude, lng: vehicle.degLongitude, altitude: terrainElevation };
       }
-      
-      if (mapEl.range !== cameraDistance) {
+
+      if (lastProgrammaticRangeRef.current !== cameraDistance) {
         mapEl.range = cameraDistance;
+        lastProgrammaticRangeRef.current = cameraDistance;
       }
-      
-      if (mapEl.tilt !== cameraTilt) {
-        mapEl.tilt = cameraTilt;
+
+      const targetTilt = 90 - cameraElevation;
+      if (lastProgrammaticTiltRef.current !== targetTilt) {
+        mapEl.tilt = targetTilt;
+        lastProgrammaticTiltRef.current = targetTilt;
       }
-      
+
       if (Math.abs((mapEl.heading || 0) - targetHeading) > 0.01) {
         mapEl.heading = targetHeading;
+        lastProgrammaticHeadingRef.current = targetHeading;
       }
-      
+
       isProgrammaticUpdateRef.current = false;
     }
-  }, [focusedVehicleId, vehicleStateMap, version, cameraMode, cameraDistance, cameraAzimuth, cameraTilt]);
+  }, [focusedVehicleId, vehicleStateMap, version, cameraMode, cameraDistance, cameraYaw, cameraElevation, terrainElevation]);
 
   // Handle camera positioning when untethered (free camera)
   useEffect(() => {
@@ -411,22 +432,25 @@ export const GoogleVehicle3DMapPage = () => {
     const mapEl = mapRef.current;
     if (mapEl) {
       isProgrammaticUpdateRef.current = true;
-      lastProgrammaticRangeRef.current = cameraDistance;
-      lastProgrammaticTiltRef.current = cameraTilt;
-      lastProgrammaticHeadingRef.current = cameraAzimuth;
 
-      if (mapEl.range !== cameraDistance) {
+      if (lastProgrammaticRangeRef.current !== cameraDistance) {
         mapEl.range = cameraDistance;
+        lastProgrammaticRangeRef.current = cameraDistance;
       }
-      if (mapEl.tilt !== cameraTilt) {
-        mapEl.tilt = cameraTilt;
+
+      const targetTilt = 90 - cameraElevation;
+      if (lastProgrammaticTiltRef.current !== targetTilt) {
+        mapEl.tilt = targetTilt;
+        lastProgrammaticTiltRef.current = targetTilt;
       }
-      if (Math.abs((mapEl.heading || 0) - cameraAzimuth) > 0.01) {
-        mapEl.heading = cameraAzimuth;
+
+      if (Math.abs((mapEl.heading || 0) - cameraYaw) > 0.01) {
+        mapEl.heading = cameraYaw;
+        lastProgrammaticHeadingRef.current = cameraYaw;
       }
       isProgrammaticUpdateRef.current = false;
     }
-  }, [focusedVehicleId, cameraDistance, cameraAzimuth, cameraTilt]);
+  }, [focusedVehicleId, cameraDistance, cameraYaw, cameraElevation]);
 
   const lastFocusedIdRef = useRef<string>("");
 
@@ -444,21 +468,21 @@ export const GoogleVehicle3DMapPage = () => {
       if (vehicle && mapEl) {
         isProgrammaticUpdateRef.current = true;
         setCameraDistance(60.96); // Reset to 200 feet
-        setCameraAzimuth(45); // Reset to 45 degrees
-        setCameraTilt(45); // Reset to 45 degrees
-        
-        mapEl.center = { lat: vehicle.degLatitude, lng: vehicle.degLongitude, altitude: 0 };
+        setCameraYaw(0); // Reset to 0 degrees (directly behind)
+        setCameraElevation(45); // Reset to 45 degrees elevation
+
+        mapEl.center = { lat: vehicle.degLatitude, lng: vehicle.degLongitude, altitude: terrainElevation };
         mapEl.range = 60.96;
         mapEl.tilt = 45;
         if (cameraMode === 'chase') {
-          mapEl.heading = (vehicle.degBearing + 45) % 360;
+          mapEl.heading = vehicle.degBearing;
         } else {
-          mapEl.heading = 45;
+          mapEl.heading = 0;
         }
         isProgrammaticUpdateRef.current = false;
       }
     }
-  }, [focusedVehicleId, vehicleStateMap, cameraMode]);
+  }, [focusedVehicleId, vehicleStateMap, cameraMode, terrainElevation]);
 
   // Handle keypress controls for camera range, tilt, and yaw
   useEffect(() => {
@@ -479,20 +503,20 @@ export const GoogleVehicle3DMapPage = () => {
         setCameraDistance(prev => Math.min(3000, prev + 10));
         handled = true;
       }
-      // K / L: pitch angle (tilt)
+      // K / L: elevation angle (azimuth)
       else if (key === 'k') {
-        setCameraTilt(prev => Math.max(0, Math.min(85, prev - 3)));
+        setCameraElevation(prev => Math.max(0, prev - 3));
         handled = true;
       } else if (key === 'l') {
-        setCameraTilt(prev => Math.max(0, Math.min(85, prev + 3)));
+        setCameraElevation(prev => Math.min(85, prev + 3));
         handled = true;
       }
       // A / D: yaw offset (heading)
       else if (key === 'a') {
-        setCameraAzimuth(prev => (prev - 5 + 360) % 360);
+        setCameraYaw(prev => (prev - 5 + 360) % 360);
         handled = true;
       } else if (key === 'd') {
-        setCameraAzimuth(prev => (prev + 5) % 360);
+        setCameraYaw(prev => (prev + 5) % 360);
         handled = true;
       }
 
@@ -522,7 +546,7 @@ export const GoogleVehicle3DMapPage = () => {
           mapEl.center = {
             lat: avgLat,
             lng: avgLng,
-            altitude: 0
+            altitude: terrainElevation
           };
           mapEl.range = 1000;
           mapEl.tilt = 65;
@@ -532,7 +556,7 @@ export const GoogleVehicle3DMapPage = () => {
         }
       }
     }
-  }, [isDataLoaded, isMapReady, vehicleList, hasCenteredInitially]);
+  }, [isDataLoaded, isMapReady, vehicleList, hasCenteredInitially, terrainElevation]);
 
   // Fit view bounds to contain all active vehicles
   const fitAllOnScreen = useCallback(() => {
@@ -558,13 +582,13 @@ export const GoogleVehicle3DMapPage = () => {
     const mapEl = mapRef.current;
     if (mapEl) {
       isProgrammaticUpdateRef.current = true;
-      mapEl.center = { lat: centerLat, lng: centerLng, altitude: 0 };
+      mapEl.center = { lat: centerLat, lng: centerLng, altitude: terrainElevation };
       mapEl.range = maxDist * 1.5;
       mapEl.heading = -20;
       mapEl.tilt = 65;
       isProgrammaticUpdateRef.current = false;
     }
-  }, [isDataLoaded, vehicleList]);
+  }, [isDataLoaded, vehicleList, terrainElevation]);
 
   // Toggle Street (hybrid) vs Satellite maps
   const toggleMapStyle = useCallback(() => {
@@ -583,6 +607,7 @@ export const GoogleVehicle3DMapPage = () => {
             <gmp-map-3d
               ref={mapRef}
               mode={mapStyle}
+              default-ui-hidden="true"
               style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
             >
               {vehicleList.map((vState) => (
@@ -598,37 +623,6 @@ export const GoogleVehicle3DMapPage = () => {
 
             {/* Timeline playback control */}
             <PlaybackClock />
-
-            {/* Google Earth Navigation Guide */}
-            <div className="controls-guide-card">
-              <div
-                className="controls-guide-title"
-                onClick={() => setIsGuideMinimized(!isGuideMinimized)}
-                style={{
-                  cursor: 'pointer',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  width: '100%',
-                  marginBottom: isGuideMinimized ? '0' : '6px',
-                  borderBottom: isGuideMinimized ? 'none' : '1px solid rgba(0, 0, 0, 0.1)',
-                  paddingBottom: isGuideMinimized ? '0' : '4px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <FontAwesomeIcon icon={faInfoCircle} />
-                  <span>3D Camera Controls</span>
-                </div>
-                <FontAwesomeIcon icon={isGuideMinimized ? faChevronUp : faChevronDown} style={{ fontSize: '0.75rem', color: '#666', marginLeft: '8px' }} />
-              </div>
-              {!isGuideMinimized && (
-                <ul className="controls-guide-list" style={{ paddingLeft: '16px', margin: 0, fontSize: '0.85rem' }}>
-                  <li><strong>I / O</strong>: Follow closer / further (distance)</li>
-                  <li><strong>K / L</strong>: Tilt down / up (pitch)</li>
-                  <li><strong>A / D</strong>: Orbit left / right (yaw)</li>
-                </ul>
-              )}
-            </div>
 
             {/* Focus Panel */}
             <div className="focus-panel-container">
@@ -720,15 +714,15 @@ export const GoogleVehicle3DMapPage = () => {
                             </div>
 
                             <div className="d-flex justify-content-between align-items-center mb-1">
-                              <span className="fw-bold" style={{ fontSize: '0.75rem', color: '#666' }}>Azimuth</span>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{Math.round(cameraAzimuth)}°</span>
+                              <span className="fw-bold" style={{ fontSize: '0.75rem', color: '#666' }}>{cameraMode === 'chase' ? 'Yaw (Relative)' : 'Yaw (Compass)'}</span>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{Math.round(cameraYaw)}°</span>
                             </div>
                             <div className="d-flex gap-1 mb-2">
                               <Button
                                 variant="outline-secondary"
                                 size="sm"
                                 style={{ flex: 1, padding: '2px 0', fontSize: '0.75rem' }}
-                                onClick={() => setCameraAzimuth(prev => (prev - 5 + 360) % 360)}
+                                onClick={() => setCameraYaw(prev => (prev - 5 + 360) % 360)}
                               >
                                 -5°
                               </Button>
@@ -736,7 +730,30 @@ export const GoogleVehicle3DMapPage = () => {
                                 variant="outline-secondary"
                                 size="sm"
                                 style={{ flex: 1, padding: '2px 0', fontSize: '0.75rem' }}
-                                onClick={() => setCameraAzimuth(prev => (prev + 5) % 360)}
+                                onClick={() => setCameraYaw(prev => (prev + 5) % 360)}
+                              >
+                                +5°
+                              </Button>
+                            </div>
+
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <span className="fw-bold" style={{ fontSize: '0.75rem', color: '#666' }}>Azimuth (Elevation)</span>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{Math.round(cameraElevation)}°</span>
+                            </div>
+                            <div className="d-flex gap-1 mb-2">
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                style={{ flex: 1, padding: '2px 0', fontSize: '0.75rem' }}
+                                onClick={() => setCameraElevation(prev => Math.max(0, prev - 5))}
+                              >
+                                -5°
+                              </Button>
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                style={{ flex: 1, padding: '2px 0', fontSize: '0.75rem' }}
+                                onClick={() => setCameraElevation(prev => Math.min(85, prev + 5))}
                               >
                                 +5°
                               </Button>
