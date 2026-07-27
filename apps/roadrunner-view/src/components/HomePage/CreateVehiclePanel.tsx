@@ -98,7 +98,8 @@ export const CreateVehiclePanel = (props: {
       const data = await response.json();
 
       // Hop into the vehicle.
-      navigate(`/driver-view/${data.id}`);
+      const provider = localStorage.getItem('roadrunner_map_provider') || 'mapbox';
+      navigate(provider === 'google' ? `/google/driver-view/${data.id}` : `/driver-view/${data.id}`);
     } catch (error) {
       console.error(error);
       alert(error);

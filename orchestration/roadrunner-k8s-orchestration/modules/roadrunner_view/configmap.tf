@@ -8,6 +8,7 @@ resource "kubernetes_config_map" "roadrunner_view_config" {
     REACT_APP_ROADRUNNER_REST_URL_BASE    = "${var.roadrunner_rest_url_base}"
     REACT_APP_PUBLIC_URL                  = "${var.roadrunner_view_url_base}"
     REACT_APP_MAPBOX_TOKEN                = "${var.mapbox_api_key}"
+    REACT_APP_GOOGLE_MAPS_API_KEY         = "${var.google_maps_api_key}"
     REACT_APP_MAPBOX_MAP_STYLE            = "mapbox://styles/mapbox/streets-v12"
     REACT_APP_MAPBOX_API_URL              = "https://api.mapbox.com/"
     REACT_APP_LANDING_PAGE_URL            = "https://tarterware.com/"

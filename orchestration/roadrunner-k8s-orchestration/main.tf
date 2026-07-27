@@ -155,6 +155,7 @@ module "roadrunner_view" {
   roadrunner_rest_url_base     = var.roadrunner_rest_url_base
   roadrunner_view_url_base     = var.roadrunner_view_url_base
   mapbox_api_key               = var.mapbox_api_key
+  google_maps_api_key          = var.google_maps_api_key
   cognito_authority            = var.cognito_authority
   cognito_client_id            = var.cognito_client_id
   cognito_redirect_uri         = var.cognito_redirect_uri

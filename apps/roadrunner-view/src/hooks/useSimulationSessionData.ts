@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchAuthSession } from "aws-amplify/auth";
+import { getCachedAuthToken } from '../components/Utils/AuthUtils';
 import { CONFIG } from "../config";
 import { SimulationSession } from '../models/SimulationSession';
 import { MapWrapper } from '../components/Utils/MapWrapper';
@@ -22,8 +22,7 @@ export const useSimulationSessionData = () => {
     isFetchingRef.current = true;
 
     try {
-      const session = await fetchAuthSession();
-      const accessToken = session.tokens?.accessToken?.toString();
+      const accessToken = await getCachedAuthToken();
       if (!accessToken) return;
 
       // We start at page 0 for every batch

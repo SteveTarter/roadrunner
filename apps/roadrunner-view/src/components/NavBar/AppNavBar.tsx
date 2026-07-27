@@ -2,7 +2,7 @@ import './AppNavBar.css'
 import React, { useCallback, useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { CONFIG } from "../../config";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 import {
   Collapse,
@@ -38,6 +38,37 @@ export const AppNavBar = ({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const [mapProvider, setMapProvider] = useState<'mapbox' | 'google'>(() => {
+    return (localStorage.getItem('roadrunner_map_provider') as 'mapbox' | 'google') || 'mapbox';
+  });
+
+  const handleProviderChange = (newProvider: 'mapbox' | 'google') => {
+    localStorage.setItem('roadrunner_map_provider', newProvider);
+    setMapProvider(newProvider);
+
+    const path = location.pathname;
+    if (newProvider === 'google') {
+      if (path === '/' || path === '/home') {
+        navigate('/google/home');
+      } else if (path === '/3d-view') {
+        navigate('/google/3d-view');
+      } else if (path.startsWith('/driver-view/')) {
+        const vehicleId = path.split('/')[2];
+        navigate(`/google/driver-view/${vehicleId}`);
+      }
+    } else {
+      if (path === '/google/home') {
+        navigate('/home');
+      } else if (path === '/google/3d-view') {
+        navigate('/3d-view');
+      } else if (path.startsWith('/google/driver-view/')) {
+        const vehicleId = path.split('/')[3];
+        navigate(`/driver-view/${vehicleId}`);
+      }
+    }
+  };
 
   const toggle = () => setIsOpen(!isOpen);
 
@@ -108,8 +139,20 @@ export const AppNavBar = ({
   }, [navigate]);
 
   const gotoThreeDMapPage = useCallback(() => {
-    navigate('/3d-view');
-  }, [navigate]);
+    if (mapProvider === 'google') {
+      navigate('/google/3d-view');
+    } else {
+      navigate('/3d-view');
+    }
+  }, [navigate, mapProvider]);
+
+  const gotoHomePage = useCallback(() => {
+    if (mapProvider === 'google') {
+      navigate('/google/home');
+    } else {
+      navigate('/home');
+    }
+  }, [navigate, mapProvider]);
 
   return (
     <div className="nav-container">
@@ -122,7 +165,17 @@ export const AppNavBar = ({
             {additionalMenuItems && additionalMenuItems(() => setIsOpen(false))}
             <NavItem>
               <NavLink
-                to="/3d-view"
+                to={mapProvider === 'google' ? "/google/home" : "/home"}
+                id="homeBtn"
+                onClick={() => gotoHomePage()}
+                style={{ cursor: "pointer" }}
+              >
+                Home
+              </NavLink>
+            </NavItem>
+            <NavItem>
+              <NavLink
+                to={mapProvider === 'google' ? "/google/3d-view" : "/3d-view"}
                 id="threeDMapBtn"
                 onClick={() => gotoThreeDMapPage()}
                 style={{ cursor: "pointer" }}
@@ -150,6 +203,19 @@ export const AppNavBar = ({
                 About
               </NavLink>
             </NavItem>
+            <UncontrolledDropdown nav inNavbar>
+              <DropdownToggle nav caret id="mapProviderDropDown">
+                Provider: {mapProvider === 'google' ? 'Google' : 'Mapbox'}
+              </DropdownToggle>
+              <DropdownMenu>
+                <DropdownItem onClick={() => handleProviderChange('mapbox')}>
+                  Mapbox
+                </DropdownItem>
+                <DropdownItem onClick={() => handleProviderChange('google')}>
+                  Google Maps
+                </DropdownItem>
+              </DropdownMenu>
+            </UncontrolledDropdown>
           </Nav>
 
           {/* Right-aligned items */}

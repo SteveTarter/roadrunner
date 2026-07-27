@@ -57,9 +57,16 @@ export const CrissCrossPanel = (props: {
   };
 
   // Manage Map Circle Visualization
+  const centerLat = selectedCenter?.lat;
+  const centerLng = selectedCenter?.lng;
+
+  // Manage Map Circle Visualization
   useEffect(() => {
-    if (!props.mapRef?.current || !selectedCenter) return;
+    if (!props.mapRef?.current || centerLat === undefined || centerLng === undefined) return;
     const map = props.mapRef.current.getMap();
+    if (!map) return;
+
+    const centerPoint = { lat: centerLat, lng: centerLng };
 
     const sourceId = 'criss-cross-radius-source';
     const layerId = 'criss-cross-radius-layer';
@@ -67,7 +74,7 @@ export const CrissCrossPanel = (props: {
     const pointsSourceId = 'criss-cross-points-source';
     const pointsLayerId = 'criss-cross-points-layer';
 
-    const circleData = createGeoJSONCircle(selectedCenter, kmRadius);
+    const circleData = createGeoJSONCircle(centerPoint, kmRadius);
 
     // Vehicle Start Points Logic (Mirroring Server Calculation)
     const degIncrement = 360.0 / vehicleCount;
@@ -76,7 +83,7 @@ export const CrissCrossPanel = (props: {
     const pointsFeatures = [];
     for (let i = 0; i < vehicleCount; i++) {
       const bearing = degStartBearing + (i * degIncrement);
-      const coords = getPointAtBearing(selectedCenter, kmRadius, bearing);
+      const coords = getPointAtBearing(centerPoint, kmRadius, bearing);
       pointsFeatures.push({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: coords }
@@ -85,55 +92,93 @@ export const CrissCrossPanel = (props: {
 
     const pointsData = { type: 'FeatureCollection', features: pointsFeatures };
 
-    if (map.getSource(sourceId)) {
-      (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(circleData as any);
+    const isMapbox = typeof map.on === 'function';
+
+    if (isMapbox) {
+      if (map.getSource(sourceId)) {
+        (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(circleData as any);
+      } else {
+        map.addSource(sourceId, { type: 'geojson', data: circleData as any });
+
+        // Add Fill Layer
+        map.addLayer({
+          id: layerId,
+          type: 'fill',
+          source: sourceId,
+          paint: { 'fill-color': '#007bff', 'fill-opacity': 0.2 }
+        });
+
+        // Add Outline Layer
+        map.addLayer({
+          id: outlineId,
+          type: 'line',
+          source: sourceId,
+          paint: { 'line-color': '#007bff', 'line-width': 2, 'line-dasharray': [2, 1] }
+        });
+      }
+
+      if (map.getSource(pointsSourceId)) {
+        (map.getSource(pointsSourceId) as mapboxgl.GeoJSONSource).setData(pointsData as any);
+      } else {
+        map.addSource(pointsSourceId, { type: 'geojson', data: pointsData as any });
+
+        // Add Layer for the vehicle markers (small filled circles)
+        map.addLayer({
+          id: pointsLayerId,
+          type: 'circle',
+          source: pointsSourceId,
+          paint: {
+            'circle-radius': 4,
+            'circle-color': '#007bff',
+            'circle-stroke-width': 1,
+            'circle-stroke-color': '#ffffff'
+          }
+        });
+      }
+
+      // Cleanup: Remove layers and source when data or component is cleared
+      return () => {
+        if (map.getLayer(layerId)) map.removeLayer(layerId);
+        if (map.getLayer(outlineId)) map.removeLayer(outlineId);
+        if (map.getSource(sourceId)) map.removeSource(sourceId);
+        if (map.getLayer(pointsLayerId)) map.removeLayer(pointsLayerId);
+        if (map.getSource(pointsSourceId)) map.removeSource(pointsSourceId);
+      };
     } else {
-      map.addSource(sourceId, { type: 'geojson', data: circleData as any });
+      // Google Maps
+      if (typeof google !== 'undefined' && google.maps) {
+        const circle = new google.maps.Circle({
+          strokeColor: '#007bff',
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: '#007bff',
+          fillOpacity: 0.2,
+          map: map,
+          center: centerPoint,
+          radius: kmRadius * 1000 // meters
+        });
 
-      // Add Fill Layer
-      map.addLayer({
-        id: layerId,
-        type: 'fill',
-        source: sourceId,
-        paint: { 'fill-color': '#007bff', 'fill-opacity': 0.2 }
-      });
+        const startPoints = pointsFeatures.map((pt) => {
+          const coord = pt.geometry.coordinates; // [lng, lat]
+          return new google.maps.Circle({
+            strokeColor: '#ffffff',
+            strokeOpacity: 1.0,
+            strokeWeight: 1,
+            fillColor: '#007bff',
+            fillOpacity: 0.8,
+            map: map,
+            center: { lat: coord[1], lng: coord[0] },
+            radius: 80 // radius in meters
+          });
+        });
 
-      // Add Outline Layer
-      map.addLayer({
-        id: outlineId,
-        type: 'line',
-        source: sourceId,
-        paint: { 'line-color': '#007bff', 'line-width': 2, 'line-dasharray': [2, 1] }
-      });
+        return () => {
+          circle.setMap(null);
+          startPoints.forEach(m => m.setMap(null));
+        };
+      }
     }
-
-    if (map.getSource(pointsSourceId)) {
-      (map.getSource(pointsSourceId) as mapboxgl.GeoJSONSource).setData(pointsData as any);
-    } else {
-      map.addSource(pointsSourceId, { type: 'geojson', data: pointsData as any });
-
-      // Add Layer for the vehicle markers (small filled circles)
-      map.addLayer({
-        id: pointsLayerId,
-        type: 'circle',
-        source: pointsSourceId,
-        paint: {
-          'circle-radius': 4,
-          'circle-color': '#007bff',
-          'circle-stroke-width': 1,
-          'circle-stroke-color': '#ffffff'
-        }
-      });
-    }
-
-    // Cleanup: Remove layers and source when data or component is cleared
-    return () => {
-      if (map.getLayer(layerId)) map.removeLayer(layerId);
-      if (map.getLayer(outlineId)) map.removeLayer(outlineId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
-      if (map.getLayer(pointsLayerId)) map.removeLayer(pointsLayerId);
-      if (map.getSource(pointsSourceId)) map.removeSource(pointsSourceId);    };
-  }, [selectedCenter, kmRadius, vehicleCount, props.mapRef]);
+  }, [centerLat, centerLng, kmRadius, vehicleCount, props.mapRef]);
 
   const createCrissCross = async (): Promise<void> => {
     setInProgress(true);

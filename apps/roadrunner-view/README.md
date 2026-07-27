@@ -2,9 +2,9 @@
 
 > **Part of the [Roadrunner](../roadrunner) vehicle-simulation portfolio project.**
 
-Roadrunner View is a **React / TypeScript** single-page application that provides a real-time, interactive map for monitoring and managing simulated vehicle fleets. It connects to the [Roadrunner backend](../roadrunner) over REST, renders vehicles on a **Mapbox GL** map with live interpolated movement, and lets users step into a first-person Driver's View for any vehicle — live or historical.
+Roadrunner View is a **React / TypeScript** single-page application that provides a real-time, interactive map for monitoring and managing simulated vehicle fleets. It connects to the [Roadrunner backend](../roadrunner) over REST, rendering vehicles on either a **Mapbox GL** or **Google Maps 3D (Photorealistic)** map with live interpolated movement, and lets users step into a first-person Driver's View for any vehicle — live or historical — in both 2D and immersive 3D perspectives.
 
-The project was built to gain hands-on, production-quality experience with a modern full-stack, cloud-native toolchain: React, TypeScript, Amazon Cognito / OIDC, Mapbox GL, Recharts, Docker, Nginx, and Kubernetes (via the companion [orchestration repo](../../orchestration/roadrunner-k8s-orchestration)).
+The project was built to gain hands-on, production-quality experience with a modern full-stack, cloud-native toolchain: React, TypeScript, Amazon Cognito / OIDC, Mapbox GL, Google Maps 3D, Recharts, Docker, Nginx, and Kubernetes (via the companion [orchestration repo](../../orchestration/roadrunner-k8s-orchestration)).
 
 ---
 
@@ -59,6 +59,14 @@ The Roadrunner system spans three components:
 
 ![Roadrunner Driver View with other vehicles](Resources/img/RoadrunnerViewer-2026-05-28-3.png)
 
+**Google 3D Map View — photorealistic 3D view chasing a vehicle with terrain elevation and camera controls:**
+
+![Google 3D Map View](Resources/img/Google3DMapView.png)
+
+**Google 3D Driver's View — first-person 3D perspective with the vehicle route line clamped to the road:**
+
+![Google 3D Driver View](Resources/img/Google3DDriverView.png)
+
 ---
 
 ## Technology Stack
@@ -67,8 +75,8 @@ The Roadrunner system spans three components:
 |---|---|
 | Language | TypeScript 4 |
 | UI Framework | React 18, React Router 7 |
-| Map rendering | Mapbox GL JS 3 (`react-map-gl`) |
-| Geocoding / Search | `@mapbox/search-js-react` |
+| Map rendering | Mapbox GL JS 3 (`react-map-gl`) & Google Maps 3D Web Components |
+| Geocoding / Search | `@mapbox/search-js-react` & Google Maps Address Validation |
 | Charts | Recharts 3 |
 | Component library | MUI v9, React-Bootstrap 2, Reactstrap 9 |
 | Authentication | Amazon Cognito (OIDC via `react-oidc-context`, `oidc-client-ts`) |
@@ -88,10 +96,8 @@ Browser (React SPA)
     ▼
 Roadrunner Backend  ←──── Kafka ────►  Vehicle position stream
 (Spring Boot)       ←──── Redis  ────► Cached route / trip plan data
-    │
-    │  Mapbox Directions API
-    ▼
-Mapbox Platform  (tile rendering, geocoding, routing)
+    ├── Mapbox Directions API  ──► Mapbox Platform
+    └── Google Maps 3D APIs    ──► Google Maps Platform (3D Tiles, Elevation)
 ```
 
 The frontend is a **fully static SPA** once built. It communicates with the backend entirely through REST calls; there is no WebSocket connection. Vehicle positions are polled on a short interval and smoothly interpolated between known points for fluid on-screen movement.
@@ -104,7 +110,12 @@ The production container is a two-stage Docker image:
 
 ## Features
 
-### Map View & Toolbar
+### Map View & Toolbar (Mapbox & Google 3D)
+
+The application supports both **Mapbox 2D/3D** and **Google Photorealistic 3D** modes:
+
+* **Mapbox Mode**: Features standard vector/satellite tiles, route line rendering, geocoding, and custom markers.
+* **Google 3D Mode**: Features immersive, photorealistic 3D buildings and trees. It includes a dedicated **Chase View** camera which follows the vehicle at a configured distance, vertical azimuth (elevation), and relative yaw angle, with automated terrain-height centering queried dynamically via the Google Maps Elevation Service.
 
 The main page renders a full-screen Mapbox map with a floating toolbar pinned to the right edge. Each button toggles a behaviour:
 
@@ -118,7 +129,11 @@ The main page renders a full-screen Mapbox map with a floating toolbar pinned to
 
 ### Driver's View
 
-Click any vehicle on the Map View to open a panel to jump into a first-person street-level perspective rendered by Mapbox. Other simulated vehicles remain visible on the road ahead. The **Active Vehicle Chart** zooms automatically to the selected vehicle's lifetime so you can scrub backwards and forwards through its journey.
+Click any vehicle on the Map View to open a panel to jump into a first-person street-level perspective:
+* **Mapbox Driver View**: A customizable vector/satellite view tracking the vehicle's position and bearing.
+* **Google 3D Driver View**: An immersive street-level satellite 3D view following the vehicle with a custom route line (`gmp-polyline-3d`) clamped dynamically to the road terrain.
+
+Other simulated vehicles remain visible on the road ahead in both views. The **Active Vehicle Chart** zooms automatically to the selected vehicle's lifetime so you can scrub backwards and forwards through its journey.
 
 ### Playback & Monitoring
 

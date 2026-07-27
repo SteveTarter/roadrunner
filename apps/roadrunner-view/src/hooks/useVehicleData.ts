@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { fetchAuthSession } from "aws-amplify/auth";
+import { getCachedAuthToken } from "../components/Utils/AuthUtils";
 import { CONFIG } from "../config";
 import { usePlayback } from "../context/PlaybackContext";
 import { VehicleState } from '../models/VehicleState';
@@ -53,8 +53,7 @@ export const useVehicleData = ({
     isFetchingRef.current = true;
 
     try {
-      const session = await fetchAuthSession();
-      const accessToken = session.tokens?.accessToken?.toString();
+      const accessToken = await getCachedAuthToken();
       if (!accessToken) return;
 
       // We start at page 0 for every batch
@@ -213,6 +212,11 @@ export const useVehicleData = ({
       state =>
         state.msEpochLastRun > timeoutPastThreshold &&
         state.msEpochLastRun < timeoutFutureThreshold
+    );
+
+    // Keep vehicleDisplayMapRef from growing infinitely
+    vehicleDisplayMapRef.current = vehicleDisplayMapRef.current.filter(
+      (display, id) => vehicleStateMapRef.current.has(id)
     );
 
     setVersion(v => v + 1);

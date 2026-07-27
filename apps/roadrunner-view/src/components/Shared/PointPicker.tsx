@@ -30,64 +30,171 @@ export const PointPicker = ({
 }: PointPickerProps) => {
   const [autofillFired, setAutofillFired] = useState(false);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
+  const googleMarkerRef = useRef<any>(null);
+  const googleInfoWindowRef = useRef<any>(null);
 
   // Handle Map Clicks
   useEffect(() => {
     if (!mapRef?.current || !isSelecting) return;
     const map = mapRef.current.getMap();
+    if (!map) return;
 
-    const handleMapClick = (e: any) => {
-      const { lng, lat } = e.lngLat;
-      onPointChange({ lat, lng });
-      setIsSelecting(false);
-    };
+    const isMapbox = typeof map.on === 'function';
 
-    map.on('click', handleMapClick);
-    map.getCanvas().style.cursor = 'crosshair';
+    if (isMapbox) {
+      const handleMapClick = (e: any) => {
+        const { lng, lat } = e.lngLat;
+        onPointChange({ lat, lng });
+        setIsSelecting(false);
+      };
 
-    return () => {
-      map.off('click', handleMapClick);
-      map.getCanvas().style.cursor = '';
-    };
+      map.on('click', handleMapClick);
+      map.getCanvas().style.cursor = 'crosshair';
+
+      return () => {
+        map.off('click', handleMapClick);
+        map.getCanvas().style.cursor = '';
+      };
+    } else {
+      // Google Maps
+      const listener = map.addListener('click', (e: any) => {
+        if (e.latLng) {
+          const lat = e.latLng.lat();
+          const lng = e.latLng.lng();
+          onPointChange({ lat, lng });
+          setIsSelecting(false);
+        }
+      });
+
+      const div = map.getDiv ? map.getDiv() : null;
+      if (div) {
+        div.style.cursor = 'crosshair';
+      }
+
+      return () => {
+        if (typeof google !== 'undefined' && google.maps?.event) {
+          google.maps.event.removeListener(listener);
+        }
+        if (div) {
+          div.style.cursor = '';
+        }
+      };
+    }
   }, [isSelecting, setIsSelecting, mapRef, onPointChange]);
+
+  const selectedLat = selectedPoint?.lat;
+  const selectedLng = selectedPoint?.lng;
 
   // Handle Marker and Label rendering
   useEffect(() => {
-    if (!mapRef?.current || !selectedPoint) {
-      // Remove existing marker if it exists
-      if (markerRef.current) markerRef.current.remove();
+    // 1. If map or selectedPoint is missing, remove everything
+    if (!mapRef?.current || selectedLat === undefined || selectedLng === undefined) {
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+      if (googleMarkerRef.current) {
+        googleMarkerRef.current.map = null;
+        googleMarkerRef.current = null;
+      }
+      if (googleInfoWindowRef.current) {
+        googleInfoWindowRef.current.close();
+        googleInfoWindowRef.current = null;
+      }
       return;
     }
 
     const map = mapRef.current.getMap();
+    if (!map) return;
 
-    // Remove existing marker if it exists
-    if (markerRef.current) markerRef.current.remove();
+    const isMapbox = typeof map.on === 'function';
 
-    // Create a popup to serve as a label
-    const popup = new mapboxgl.Popup({
-      offset: 25,
-      closeButton: false,
-      closeOnClick: false,
-      className: 'marker-label'
-    })
-    .setText(label)
-    .addTo(map);
+    if (isMapbox) {
+      // Cleanup Google elements if we are switching engines
+      if (googleMarkerRef.current) {
+        googleMarkerRef.current.map = null;
+        googleMarkerRef.current = null;
+      }
+      if (googleInfoWindowRef.current) {
+        googleInfoWindowRef.current.close();
+        googleInfoWindowRef.current = null;
+      }
 
-    // Create new marker for point.
-    const marker = new mapboxgl.Marker({ color })
-      .setLngLat([selectedPoint.lng, selectedPoint.lat])
-      .setPopup(popup)
-      .addTo(map);
+      // Reuse/update Mapbox marker
+      if (markerRef.current) {
+        markerRef.current.setLngLat([selectedLng, selectedLat]);
+      } else {
+        const popup = new mapboxgl.Popup({
+          offset: 25,
+          closeButton: false,
+          closeOnClick: false,
+          className: 'marker-label'
+        })
+        .setText(label)
+        .addTo(map);
 
-    // Manually trigger the popup to stay open
-    marker.togglePopup();
+        const marker = new mapboxgl.Marker({ color })
+          .setLngLat([selectedLng, selectedLat])
+          .setPopup(popup)
+          .addTo(map);
 
-    markerRef.current = marker;
+        marker.togglePopup();
+        markerRef.current = marker;
+      }
+    } else {
+      // Cleanup Mapbox elements if we are switching engines
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
 
-    // Cleanup on unmount or change
-    return () => { if (markerRef.current) markerRef.current.remove(); };
-  }, [selectedPoint, mapRef, color, label]);
+      // Reuse/update Google AdvancedMarkerElement
+      if (typeof google !== 'undefined' && google.maps && google.maps.marker?.AdvancedMarkerElement) {
+        const position = { lat: selectedLat, lng: selectedLng };
+
+        if (googleMarkerRef.current) {
+          googleMarkerRef.current.position = position;
+          if (googleInfoWindowRef.current) {
+            googleInfoWindowRef.current.setPosition(position);
+          }
+        } else {
+          const marker = new google.maps.marker.AdvancedMarkerElement({
+            position: position,
+            map: map,
+            title: label
+          });
+
+          const infoWindow = new google.maps.InfoWindow({
+            content: `<div style="color: #000; font-weight: bold; padding: 2px 5px;">${label}</div>`,
+            disableAutoPan: true
+          });
+
+          infoWindow.open(map, marker);
+
+          googleMarkerRef.current = marker;
+          googleInfoWindowRef.current = infoWindow;
+        }
+      }
+    }
+  }, [selectedLat, selectedLng, mapRef, color, label]);
+
+  // Clean up all markers on absolute component unmount
+  useEffect(() => {
+    return () => {
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+      if (googleMarkerRef.current) {
+        googleMarkerRef.current.map = null;
+        googleMarkerRef.current = null;
+      }
+      if (googleInfoWindowRef.current) {
+        googleInfoWindowRef.current.close();
+        googleInfoWindowRef.current = null;
+      }
+    };
+  }, []);
 
   // Handler to snap marker to address location
   const handleRetrieve = (res: any) => {
