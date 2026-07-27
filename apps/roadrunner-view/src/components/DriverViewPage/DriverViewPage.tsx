@@ -455,11 +455,18 @@ export const DriverViewPage = () => {
                 variant="light"
                 className="shadow-sm"
                 onClick={gotoHomePage}
+                title="Home"
               >
-                <FontAwesomeIcon
-                  icon={faHome}
-                  title="Home"
-                  className="mr-3" />
+                <FontAwesomeIcon icon={faHome} />
+              </Button>
+
+              <Button
+                variant="light"
+                className="shadow-sm"
+                onClick={() => navigate(`/3d-view?vehicleId=${vehicleId}`)}
+                title="Go to 3D View"
+              >
+                <FontAwesomeIcon icon={faSatellite} />
               </Button>
 
               <Button

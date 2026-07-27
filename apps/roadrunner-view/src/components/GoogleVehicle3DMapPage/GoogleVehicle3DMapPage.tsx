@@ -1,6 +1,6 @@
 import './GoogleVehicle3DMapPage.css';
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppNavBar } from '../NavBar/AppNavBar';
 import { PlaybackClock } from '../Utils/PlaybackClock';
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
@@ -123,7 +123,9 @@ export const GoogleVehicle3DMapPage = () => {
 
   const [mapStyle, setMapStyle] = useState<'satellite' | 'hybrid'>('satellite');
   const [isMapReady, setIsMapReady] = useState(false);
-  const [focusedVehicleId, setFocusedVehicleId] = useState<string>("");
+  const [searchParams] = useSearchParams();
+  const initialVehicleId = searchParams.get('vehicleId') || "";
+  const [focusedVehicleId, setFocusedVehicleId] = useState<string>(initialVehicleId);
   const [hasCenteredInitially, setHasCenteredInitially] = useState(false);
   const [cameraMode, setCameraMode] = useState<'chase' | 'fixed'>('chase');
   const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
@@ -144,6 +146,7 @@ export const GoogleVehicle3DMapPage = () => {
   const lastProgrammaticTiltRef = useRef<number | null>(null);
   const isUserInteractingRef = useRef<boolean>(false);
   const wheelTimeoutRef = useRef<any>(null);
+  const missingTimestampRef = useRef<number | null>(null);
 
   const toggleShowActiveVehiclePlot = useCallback(() => {
     setShowActiveVehiclePlot(prev => !prev);
@@ -234,19 +237,25 @@ export const GoogleVehicle3DMapPage = () => {
     }
   }, [apiIsLoaded, focusedVehicleId, vehicleStateMap, version]);
 
-  // Redirect to Google Home Page if the focused target vehicle goes invalid or its coordinates go to 0,0
+  // Redirect to Google Home Page if the focused target vehicle goes invalid or its coordinates go to 0,0 (with 10-second leniency)
   useEffect(() => {
-    if (!focusedVehicleId || !isDataLoaded) return;
+    if (!focusedVehicleId || !isDataLoaded) {
+      missingTimestampRef.current = null;
+      return;
+    }
 
     const vehicle = vehicleStateMap.get(focusedVehicleId);
-    if (!vehicle) {
-      console.log(`Focused vehicle ${focusedVehicleId} went invalid. Returning home.`);
-      navigate('/google/home');
-    } else if (vehicle.degLatitude === 0 && vehicle.degLongitude === 0) {
-      console.log(`Focused vehicle ${focusedVehicleId} coordinates went to 0,0. Returning home.`);
-      navigate('/google/home');
+    if (!vehicle || (vehicle.degLatitude === 0 && vehicle.degLongitude === 0)) {
+      if (missingTimestampRef.current === null) {
+        missingTimestampRef.current = Date.now();
+      } else if (Date.now() - missingTimestampRef.current > 10000) {
+        console.log(`Focused vehicle ${focusedVehicleId} coordinates invalid/missing for 10s. Returning home.`);
+        navigate('/google/home');
+      }
+    } else {
+      missingTimestampRef.current = null; // Reset when vehicle is valid
     }
-  }, [focusedVehicleId, vehicleStateMap, isDataLoaded, navigate]);
+  }, [focusedVehicleId, vehicleStateMap, isDataLoaded, version, navigate]);
 
   // Redirect to Google Home Page if vehicle data stream ends (no active updates for 30s)
   useEffect(() => {
@@ -761,9 +770,19 @@ export const GoogleVehicle3DMapPage = () => {
                           </div>
 
                           <Button
-                            variant="outline-danger"
+                            variant="primary"
                             size="sm"
                             className="mt-2"
+                            onClick={() => navigate(`/google/driver-view/${focusedVehicleId}`)}
+                            style={{ fontSize: '0.75rem', padding: '2px 8px', width: '100%' }}
+                          >
+                            Jump to Driver View
+                          </Button>
+
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            className="mt-1"
                             onClick={() => setFocusedVehicleId("")}
                             style={{ fontSize: '0.75rem', padding: '2px 8px', width: '100%' }}
                           >
