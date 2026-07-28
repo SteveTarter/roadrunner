@@ -1,8 +1,9 @@
 resource "kubernetes_role" "secret_updater" {
   metadata {
     name      = "secret-updater"
-    namespace = "monitoring"
+    namespace = var.monitoring_namespace
   }
+
 
   rule {
     api_groups = [""]
