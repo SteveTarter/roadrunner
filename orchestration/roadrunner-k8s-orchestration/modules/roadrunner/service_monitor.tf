@@ -5,8 +5,9 @@ resource "kubernetes_manifest" "roadrunner_service_monitor" {
     kind       = "ServiceMonitor"
     metadata = {
       name      = "roadrunner-monitor"
-      namespace = "monitoring" # Application namespace
+      namespace = var.monitoring_namespace # Application namespace
       labels = {
+
         release = "kube-prometheus-stack" # Prometheus release label
       }
     }

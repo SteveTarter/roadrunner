@@ -1,8 +1,9 @@
 resource "kubernetes_role_binding" "secret_updater_binding" {
   metadata {
     name      = "secret-updater-binding"
-    namespace = "monitoring"
+    namespace = var.monitoring_namespace
   }
+
 
   subject {
     kind      = "ServiceAccount"

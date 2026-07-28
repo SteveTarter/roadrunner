@@ -124,3 +124,9 @@ variable "kafka_topic_vehicle_position" {
   type        = string
   default     = null
 }
+
+variable "monitoring_namespace" {
+  description = "The namespace where monitoring services are deployed"
+  type        = string
+}
+

@@ -36,7 +36,8 @@ resource "kubernetes_deployment" "roadrunner" {
         container {
           name  = "roadrunner"
           image = "tarterware/roadrunner:${var.roadrunner_version}"
-          image_pull_policy = "Always"
+          image_pull_policy = terraform.workspace == "minikube" ? "IfNotPresent" : "Always"
+
 
           security_context {
             read_only_root_filesystem  = true
