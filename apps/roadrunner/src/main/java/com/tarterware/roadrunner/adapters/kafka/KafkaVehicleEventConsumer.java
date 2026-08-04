@@ -126,15 +126,17 @@ public class KafkaVehicleEventConsumer
             case "MOVING":
                 log.debug("MOVING: {}", event.vehicleId());
                 vehicleState = vehicleStateStore.getVehicle(event.vehicleId());
+                boolean isNew = false;
                 if (vehicleState == null)
                 {
                     // throw new RuntimeException("No vehicle with ID " + vehicleId);
                     vehicleState = new VehicleState();
+                    isNew = true;
                 }
 
                 // Ensure this isn't a stale event. The new sequence number should be greater.
                 long sequenceNumber = event.sequenceNumber();
-                if (sequenceNumber > vehicleState.getMsEpochLastRun())
+                if (isNew || sequenceNumber > vehicleState.getMsEpochLastRun())
                 {
                     vehicleState.setId(event.vehicleId());
                     vehicleState.setDegLatitude(event.latitude());
@@ -149,6 +151,10 @@ public class KafkaVehicleEventConsumer
                     vehicleState.setManagerHost(event.managerHost());
 
                     vehicleStateStore.saveVehicle(vehicleState);
+                    if (isNew)
+                    {
+                        vehicleStateStore.addActiveVehicle(event.vehicleId());
+                    }
                 }
 
                 break;

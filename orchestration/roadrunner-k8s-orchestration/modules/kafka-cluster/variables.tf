@@ -49,3 +49,8 @@ variable "operator_dependency" {
   description = "Operator dependency"
   type        = any
 }
+
+variable "kube_context" {
+  description = "The Kubernetes cluster context name (e.g. minikube or EKS ARN)"
+  type        = string
+}

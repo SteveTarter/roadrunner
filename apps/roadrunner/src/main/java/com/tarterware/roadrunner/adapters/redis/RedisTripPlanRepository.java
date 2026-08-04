@@ -47,15 +47,22 @@ public class RedisTripPlanRepository implements TripPlanRepository
     {
         String cacheKey = getCacheKey(vehicleId);
 
-        Object value = redisTemplate.opsForValue().get(cacheKey);
-
-        if (value instanceof TripPlan)
+        try
         {
-            // Update the ttl to this latest access time.
-            redisTemplate.expire(cacheKey, ttl);
+            Object value = redisTemplate.opsForValue().get(cacheKey);
 
-            TripPlan tripPlan = (TripPlan) value;
-            return tripPlan;
+            if (value instanceof TripPlan)
+            {
+                // Update the ttl to this latest access time.
+                redisTemplate.expire(cacheKey, ttl);
+
+                TripPlan tripPlan = (TripPlan) value;
+                return tripPlan;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.warn("Failed to get TripPlan from Redis: {}", ex.getMessage());
         }
 
         return null;
@@ -67,22 +74,43 @@ public class RedisTripPlanRepository implements TripPlanRepository
         if (tripPlan == null)
         {
             return;
-
         }
 
-        redisTemplate.opsForValue().set(getCacheKey(vehicleId), tripPlan, ttl);
+        try
+        {
+            redisTemplate.opsForValue().set(getCacheKey(vehicleId), tripPlan, ttl);
+        }
+        catch (Exception ex)
+        {
+            logger.warn("Failed to save TripPlan to Redis: {}", ex.getMessage());
+        }
     }
 
     @Override
     public void deleteTripPlan(String vehicleId)
     {
-        redisTemplate.delete(getCacheKey(vehicleId));
+        try
+        {
+            redisTemplate.delete(getCacheKey(vehicleId));
+        }
+        catch (Exception ex)
+        {
+            logger.warn("Failed to delete TripPlan from Redis: {}", ex.getMessage());
+        }
     }
 
     @Override
     public boolean exists(String vehicleId)
     {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(getCacheKey(vehicleId)));
+        try
+        {
+            return Boolean.TRUE.equals(redisTemplate.hasKey(getCacheKey(vehicleId)));
+        }
+        catch (Exception ex)
+        {
+            logger.warn("Failed to check TripPlan existence in Redis: {}", ex.getMessage());
+            return false;
+        }
     }
 
     @Override

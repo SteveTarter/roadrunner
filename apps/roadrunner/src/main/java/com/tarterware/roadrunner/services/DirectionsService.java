@@ -77,7 +77,16 @@ public class DirectionsService
                         logger.error("Unable to create Directions", e);
                     }
 
-                    directionsCache.put(directionsCacheKey, directions);
+                    if (directions != null && directions.getWaypoints() != null && !directions.getWaypoints().isEmpty()
+                            && directions.getRoutes() != null && !directions.getRoutes().isEmpty())
+                    {
+                        directionsCache.put(directionsCacheKey, directions);
+                    }
+                    else
+                    {
+                        logger.warn("Received invalid directions from Mapbox API (null or empty waypoints/routes). Not caching.");
+                        directions = null;
+                    }
                     return directions;
                 });
     }

@@ -283,6 +283,15 @@ public class VehicleManager
 
         processTripPlanData(vehicle.getId(), tripPlan);
 
+        Directions directions = directionsMap.get(vehicle.getId());
+        List<LineSegmentData> lineSegmentData = lineSegmentDataMap.get(vehicle.getId());
+        if (directions != null && lineSegmentData != null)
+        {
+            vehicle.setDirections(directions);
+            vehicle.setListLineSegmentData(lineSegmentData);
+            vehicle.updateMetersOffset(0.0);
+        }
+
         // Update the last calculated time, since processTripPlandata can take a
         // while...
         vehicle.setLastCalculationEpochMillis(Instant.now().toEpochMilli());
@@ -298,6 +307,57 @@ public class VehicleManager
         logger.info("User {} created vehicle ID {}", username, vehicle.getId());
         return vehicle;
     }
+
+    /**
+     * Starts the simulation for a specific vehicle with a predetermined ID.
+     *
+     * @param vehicleId The predefined ID of the vehicle.
+     * @param tripPlan  The TripPlan containing the route and stops.
+     * @param username  The username that requested the simulation.
+     */
+    public void startVehicleSimulation(String vehicleId, TripPlan tripPlan, String colorCode, String username)
+    {
+        if (vehicleId == null)
+        {
+            throw new IllegalArgumentException("Vehicle ID cannot be null!");
+        }
+        if (tripPlan == null)
+        {
+            throw new IllegalArgumentException("TripPlan cannot be null!");
+        }
+
+        Vehicle vehicle = new Vehicle();
+        vehicle.id = vehicleId;
+        if (colorCode != null)
+        {
+            vehicle.setColorCode(colorCode);
+        }
+
+        // Ensure TripPlan is saved in repository
+        this.tripPlanRepository.saveTripPlan(vehicleId, tripPlan);
+
+        processTripPlanData(vehicleId, tripPlan);
+
+        Directions directions = directionsMap.get(vehicleId);
+        List<LineSegmentData> lineSegmentData = lineSegmentDataMap.get(vehicleId);
+        if (directions != null && lineSegmentData != null)
+        {
+            vehicle.setDirections(directions);
+            vehicle.setListLineSegmentData(lineSegmentData);
+            vehicle.updateMetersOffset(0.0);
+        }
+
+        vehicle.setLastCalculationEpochMillis(Instant.now().toEpochMilli());
+        vehicle.setManagerHost(hostName);
+
+        this.vehicleMap.put(vehicleId, vehicle);
+        this.vehicleStateStore.saveVehicle(vehicle.getVehicleState());
+        this.vehicleStateStore.addActiveVehicle(vehicleId);
+        this.vehicleEventPublisher.publishVehicleCreated(vehicle, username);
+
+        logger.info("Simulation started for vehicle ID {} (user: {})", vehicleId, username);
+    }
+
 
     /**
      * Marks a Vehicle for deletion based on a TripPlan.
@@ -340,7 +400,6 @@ public class VehicleManager
      * <li>Stores the Directions and LineSegmentData in the respective maps for
      * later use.</li>
      * </ol>
-     *
      * @param vehicleId The ID of the Vehicle.
      * @param tripPlan  The TripPlan containing route and stop information.
      */
@@ -362,6 +421,12 @@ public class VehicleManager
 
         // Fetch directions for the trip plan.
         Directions directions = directionsService.getDirectionsForTripPlan(tripPlan);
+        if (directions == null || directions.getWaypoints() == null || directions.getWaypoints().isEmpty()
+                || directions.getRoutes() == null || directions.getRoutes().isEmpty())
+        {
+            throw new IllegalArgumentException("Invalid directions returned for vehicle " + vehicleId);
+        }
+
         GeometryFactory geometryFactory = new GeometryFactory();
 
         // Initialize coordinate transformers.

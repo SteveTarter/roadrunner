@@ -125,6 +125,18 @@ variable "kafka_topic_vehicle_position" {
   default     = null
 }
 
+variable "kafka_topic_creation_request" {
+  description = "Kafka topic for vehicle creation request events"
+  type        = string
+  default     = null
+}
+
+variable "kafka_topic_simulation_start" {
+  description = "Kafka topic for vehicle simulation start events"
+  type        = string
+  default     = null
+}
+
 variable "monitoring_namespace" {
   description = "The namespace where monitoring services are deployed"
   type        = string

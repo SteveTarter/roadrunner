@@ -48,15 +48,22 @@ public class RedisDirectionsCache implements DirectionsCache
     {
         String cacheKey = getCacheKey(key);
 
-        Object value = redisTemplate.opsForValue().get(cacheKey);
-
-        if (value instanceof Directions)
+        try
         {
-            // Update the ttl to this latest access time.
-            redisTemplate.expire(cacheKey, ttl);
+            Object value = redisTemplate.opsForValue().get(cacheKey);
 
-            Directions directions = (Directions) value;
-            return Optional.of(directions);
+            if (value instanceof Directions)
+            {
+                // Update the ttl to this latest access time.
+                redisTemplate.expire(cacheKey, ttl);
+
+                Directions directions = (Directions) value;
+                return Optional.of(directions);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.warn("Failed to get directions from Redis cache, failing back to API directly: {}", ex.getMessage());
         }
 
         return Optional.empty();
@@ -72,7 +79,14 @@ public class RedisDirectionsCache implements DirectionsCache
             return;
         }
 
-        redisTemplate.opsForValue().set(cacheKey, directions, ttl);
+        try
+        {
+            redisTemplate.opsForValue().set(cacheKey, directions, ttl);
+        }
+        catch (Exception ex)
+        {
+            logger.warn("Failed to save directions to Redis cache: {}", ex.getMessage());
+        }
     }
 
     @Override

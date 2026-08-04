@@ -117,6 +117,7 @@ public class Vehicle
 
     // The color code (hex) representing the vehicle's visual appearance.
     @Getter
+    @Setter
     @JsonProperty
     String colorCode;
 

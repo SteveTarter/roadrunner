@@ -73,10 +73,6 @@ module "strimzi_operator" {
 module "kafka_cluster" {
   source = "./modules/kafka-cluster"
 
-  providers = {
-    kubectl = kubectl
-  }
-
   namespace           = kubernetes_namespace.roadrunner_namespace.metadata[0].name
   cluster_name        = "roadrunner-kafka"
   kafka_version       = "4.2.0"
@@ -87,6 +83,7 @@ module "kafka_cluster" {
   storage_class       = var.kafka_storage_class
 
   operator_dependency = module.strimzi_operator
+  kube_context        = var.cluster_name
 
   depends_on = [
     module.strimzi_operator
@@ -96,12 +93,9 @@ module "kafka_cluster" {
 module "kafka_topics" {
   source = "./modules/kafka-topics"
 
-  providers = {
-    kubectl = kubectl
-  }
-
   namespace    = kubernetes_namespace.roadrunner_namespace.metadata[0].name
   cluster_name = module.kafka_cluster.name
+  kube_context = var.cluster_name
 
   topics = {
     "vehicle-position-v1" = {
@@ -112,6 +106,22 @@ module "kafka_topics" {
         "retention.ms" = "604800000"   # 7 days
       }
     }
+    "vehicle-creation-request-v1" = {
+      topic_name = "vehicle.creation-request.v1"
+      partitions = 10
+      replicas   = 1
+      config = {
+        "retention.ms" = "86400000"    # 1 day (request topic)
+      }
+    }
+    "vehicle-simulation-start-v1" = {
+      topic_name = "vehicle.simulation-start.v1"
+      partitions = 10
+      replicas   = 1
+      config = {
+        "retention.ms" = "86400000"    # 1 day
+      }
+    }
   }
 }
 
@@ -120,29 +130,31 @@ module "roadrunner" {
 
   # This module sets up the core infrastructure for the Roadrunner application, including networking, IAM roles, and Kubernetes resources.
 
-  cluster_name                 = var.cluster_name
-  region                       = var.region
-  roadrunner_version           = var.roadrunner_version
-  roadrunner_namespace         = var.roadrunner_namespace
-  roadrunner_view_url_base     = var.roadrunner_view_url_base
-  allowed_cors_origins         = var.allowed_cors_origins
-  mapbox_api_key               = var.mapbox_api_key
-  spring_mail_username         = var.spring_mail_username
-  spring_mail_password         = var.spring_mail_password
-  roadrunner_user_pool_arn     = var.roadrunner_user_pool_arn
-  cognito_authority            = var.cognito_authority
-  cognito_client_id            = var.cognito_client_id
-  cognito_user_pool_id         = var.cognito_user_pool_id
-  tarterware_cert_arn          = var.tarterware_cert_arn
-  aws_access_key_id            = var.aws_access_key_id
-  aws_secret_access_key        = var.aws_secret_access_key
-  eks_oidc_provider_arn        = var.eks_oidc_provider_arn
-  redis_host                   = module.redis.redis_host
-  redis_password               = module.redis.redis_password
-  prometheus_release_name      = module.prometheus.prometheus_release_name
-  monitoring_namespace         = module.prometheus.monitoring_namespace
-  kafka_bootstrap_servers      = module.kafka_cluster.bootstrap_servers
-  kafka_topic_vehicle_position = module.kafka_topics.topic_names["vehicle-position-v1"]
+  cluster_name                  = var.cluster_name
+  region                        = var.region
+  roadrunner_version            = var.roadrunner_version
+  roadrunner_namespace          = var.roadrunner_namespace
+  roadrunner_view_url_base      = var.roadrunner_view_url_base
+  allowed_cors_origins          = var.allowed_cors_origins
+  mapbox_api_key                = var.mapbox_api_key
+  spring_mail_username          = var.spring_mail_username
+  spring_mail_password          = var.spring_mail_password
+  roadrunner_user_pool_arn      = var.roadrunner_user_pool_arn
+  cognito_authority             = var.cognito_authority
+  cognito_client_id             = var.cognito_client_id
+  cognito_user_pool_id          = var.cognito_user_pool_id
+  tarterware_cert_arn           = var.tarterware_cert_arn
+  aws_access_key_id             = var.aws_access_key_id
+  aws_secret_access_key         = var.aws_secret_access_key
+  eks_oidc_provider_arn         = var.eks_oidc_provider_arn
+  redis_host                    = module.redis.redis_host
+  redis_password                = module.redis.redis_password
+  prometheus_release_name       = module.prometheus.prometheus_release_name
+  monitoring_namespace          = module.prometheus.monitoring_namespace
+  kafka_bootstrap_servers       = module.kafka_cluster.bootstrap_servers
+  kafka_topic_vehicle_position  = module.kafka_topics.topic_names["vehicle-position-v1"]
+  kafka_topic_creation_request  = module.kafka_topics.topic_names["vehicle-creation-request-v1"]
+  kafka_topic_simulation_start  = module.kafka_topics.topic_names["vehicle-simulation-start-v1"]
 }
 
 

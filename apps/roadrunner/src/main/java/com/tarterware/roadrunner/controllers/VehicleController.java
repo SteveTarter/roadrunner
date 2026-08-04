@@ -27,9 +27,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
+import java.util.Optional;
+import java.util.UUID;
+import java.time.Instant;
 
 import com.tarterware.roadrunner.components.Vehicle;
 import com.tarterware.roadrunner.components.VehicleManager;
+import com.tarterware.roadrunner.ports.TripPlanRepository;
+import com.tarterware.roadrunner.messaging.VehicleCreationRequestEvent;
+import com.tarterware.roadrunner.utilities.StringUtilities;
 import com.tarterware.roadrunner.models.Address;
 import com.tarterware.roadrunner.models.CrissCrossPlan;
 import com.tarterware.roadrunner.models.SimulationSession;
@@ -96,6 +104,13 @@ public class VehicleController
 
     private final BookmarkRepository bookmarkRepository;
 
+    private final TripPlanRepository tripPlanRepository;
+
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Value("${com.tarterware.roadrunner.kafka.topic.creation-request:vehicle.creation-request.v1}")
+    private String creationRequestTopic;
+
     private static final Logger log = LoggerFactory.getLogger(VehicleController.class);
 
     /**
@@ -118,6 +133,8 @@ public class VehicleController
      * @param vehicleUsageService  service that enforces per-user vehicle-start
      *                             limits
      * @param bookmarkRepository   port providing access to bookmarks
+     * @param tripPlanRepository   repository to store TripPlans
+     * @param kafkaTemplateOptional optional KafkaTemplate for publishing requests
      */
     VehicleController(
             VehicleManager vehicleManager,
@@ -128,7 +145,9 @@ public class VehicleController
             IdentityService identityService,
             UserPrincipalFactory userPrincipalFactory,
             VehicleUsageService vehicleUsageService,
-            BookmarkRepository bookmarkRepository)
+            BookmarkRepository bookmarkRepository,
+            TripPlanRepository tripPlanRepository,
+            Optional<KafkaTemplate<String, Object>> kafkaTemplateOptional)
     {
         this.vehicleManager = vehicleManager;
         this.vehicleStateStore = vehicleStateStore;
@@ -139,6 +158,8 @@ public class VehicleController
         this.userPrincipalFactory = userPrincipalFactory;
         this.vehicleUsageService = vehicleUsageService;
         this.bookmarkRepository = bookmarkRepository;
+        this.tripPlanRepository = tripPlanRepository;
+        this.kafkaTemplate = kafkaTemplateOptional.orElse(null);
 
         log.info("vehicleStateStore is {}", vehicleStateStore);
     }
@@ -176,13 +197,62 @@ public class VehicleController
         UserPrincipal user = userPrincipalFactory.fromJwt(jwt);
         vehicleUsageService.assertCanStartVehicles(user);
 
-        // Exception is thrown if we're not allowed
         String userEmail = identityService.getEmailBySub(jwt.getSubject());
-        Vehicle vehicle = vehicleManager.createVehicle(tripPlan, userEmail);
-        VehicleState vehicleState = vehicle.getVehicleState();
-        vehicleStateStore.saveVehicle(vehicleState);
-        vehicleStateStore.addActiveVehicle(vehicle.getId());
 
+        // Fallback to synchronous creation if Kafka is disabled
+        if (kafkaTemplate == null)
+        {
+            log.info("KafkaTemplate not found, falling back to synchronous vehicle creation");
+            Vehicle vehicle = vehicleManager.createVehicle(tripPlan, userEmail);
+            VehicleState vehicleState = vehicle.getVehicleState();
+            vehicleStateStore.saveVehicle(vehicleState);
+            vehicleStateStore.addActiveVehicle(vehicle.getId());
+            return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
+        }
+
+        String vehicleId = StringUtilities.shortenedUUID(UUID.randomUUID());
+
+        // Resolve coordinates of the first stop to set initial position
+        List<Address> stops = tripPlan.getListStops();
+        double lat = 0.0;
+        double lng = 0.0;
+        if (stops != null && stops.size() >= 2)
+        {
+            Address origin = stops.get(0);
+            if (StringUtilities.isNullEmptyOrBlank(origin.getSource()) || !origin.getSource().equals("NumericEntry"))
+            {
+                geocodingService.setPositionFromAddress(origin);
+            }
+            lat = origin.getLatitude();
+            lng = origin.getLongitude();
+        }
+
+        // Generate color code
+        java.util.Random random = new java.util.Random();
+        float hue = random.nextFloat();
+        int hexColor = java.awt.Color.getHSBColor(hue, 0.9f, 1.0f).getRGB();
+        String colorCode = String.format("#%06X", hexColor & 0xFFFFFF);
+
+        // Save TripPlan to repository
+        tripPlanRepository.saveTripPlan(vehicleId, tripPlan);
+
+        // Save initial VehicleState
+        VehicleState vehicleState = new VehicleState();
+        vehicleState.setId(vehicleId);
+        vehicleState.setDegLatitude(lat);
+        vehicleState.setDegLongitude(lng);
+        vehicleState.setColorCode(colorCode);
+        vehicleState.setMsEpochLastRun(Instant.now().toEpochMilli());
+
+        vehicleStateStore.saveVehicle(vehicleState);
+        vehicleStateStore.addActiveVehicle(vehicleId);
+
+        // Publish creation request to Kafka
+        VehicleCreationRequestEvent event = new VehicleCreationRequestEvent(
+                vehicleId, userEmail, tripPlan, colorCode, Instant.now());
+        kafkaTemplate.send(creationRequestTopic, vehicleId, event);
+
+        log.info("Asynchronously requested creation of vehicle ID {}", vehicleId);
         return new ResponseEntity<VehicleState>(vehicleState, HttpStatus.OK);
     }
 
@@ -217,16 +287,64 @@ public class VehicleController
 
         List<VehicleState> listVehicleStates = new ArrayList<VehicleState>();
 
-        // Create a Coordinate representing the center point.
+        // Fallback to synchronous creation if Kafka is disabled
+        if (kafkaTemplate == null)
+        {
+            log.info("KafkaTemplate not found, falling back to synchronous crisscross creation");
+            Coordinate centerCoordinate = new Coordinate(crissCrossPlan.getDegLongitude(), crissCrossPlan.getDegLatitude());
+            double degIncrement = 360.0 / crissCrossPlan.getVehicleCount();
+            double degStartBearing = degIncrement / 2.0;
+            for (int i = 0; i < crissCrossPlan.getVehicleCount(); ++i)
+            {
+                vehicleUsageService.assertCanStartVehicles(user);
+                double degEndBearing = degStartBearing + 180.0;
+                if (degEndBearing > 360.0)
+                {
+                    degEndBearing -= 360.0;
+                }
+
+                Coordinate startCoordinate = TopologyUtilities.getCoordinateAtBearingAndRange(centerCoordinate,
+                        crissCrossPlan.getKmRadius(), degStartBearing);
+                Coordinate endCoordinate = TopologyUtilities.getCoordinateAtBearingAndRange(centerCoordinate,
+                        crissCrossPlan.getKmRadius(), degEndBearing);
+
+                Address startAddress = new Address();
+                startAddress.setSource("NumericEntry");
+                startAddress.setLatitude(startCoordinate.getY());
+                startAddress.setLongitude(startCoordinate.getX());
+
+                Address centerAddress = new Address();
+                centerAddress.setSource("NumericEntry");
+                centerAddress.setLatitude(crissCrossPlan.getDegLatitude());
+                centerAddress.setLongitude(crissCrossPlan.getDegLongitude());
+
+                Address endAddress = new Address();
+                endAddress.setSource("NumericEntry");
+                endAddress.setLatitude(endCoordinate.getY());
+                endAddress.setLongitude(endCoordinate.getX());
+
+                TripPlan tripPlan = new TripPlan();
+                List<Address> listStops = new ArrayList<Address>();
+                listStops.add(startAddress);
+                listStops.add(centerAddress);
+                listStops.add(endAddress);
+                tripPlan.setListStops(listStops);
+
+                Vehicle vehicle = vehicleManager.createVehicle(tripPlan, userEmail);
+                VehicleState vehicleState = vehicle.getVehicleState();
+
+                listVehicleStates.add(vehicleState);
+                degStartBearing += degIncrement;
+            }
+            return new ResponseEntity<List<VehicleState>>(listVehicleStates, HttpStatus.OK);
+        }
+
         Coordinate centerCoordinate = new Coordinate(crissCrossPlan.getDegLongitude(), crissCrossPlan.getDegLatitude());
 
-        // Determine the angular distance between the start points
         double degIncrement = 360.0 / crissCrossPlan.getVehicleCount();
         double degStartBearing = degIncrement / 2.0;
         for (int i = 0; i < crissCrossPlan.getVehicleCount(); ++i)
         {
-            // Ensure user can start a vehicle. An exception will be thrown
-            // if the user is limited.
             vehicleUsageService.assertCanStartVehicles(user);
             double degEndBearing = degStartBearing + 180.0;
             if (degEndBearing > 360.0)
@@ -261,11 +379,31 @@ public class VehicleController
             listStops.add(endAddress);
             tripPlan.setListStops(listStops);
 
-            Vehicle vehicle = vehicleManager.createVehicle(tripPlan, userEmail);
-            VehicleState vehicleState = vehicle.getVehicleState();
+            String vehicleId = StringUtilities.shortenedUUID(UUID.randomUUID());
+
+            // Generate color
+            java.util.Random random = new java.util.Random();
+            float hue = random.nextFloat();
+            int hexColor = java.awt.Color.getHSBColor(hue, 0.9f, 1.0f).getRGB();
+            String colorCode = String.format("#%06X", hexColor & 0xFFFFFF);
+
+            tripPlanRepository.saveTripPlan(vehicleId, tripPlan);
+
+            VehicleState vehicleState = new VehicleState();
+            vehicleState.setId(vehicleId);
+            vehicleState.setDegLatitude(startAddress.getLatitude());
+            vehicleState.setDegLongitude(startAddress.getLongitude());
+            vehicleState.setColorCode(colorCode);
+            vehicleState.setMsEpochLastRun(Instant.now().toEpochMilli());
+
+            vehicleStateStore.saveVehicle(vehicleState);
+            vehicleStateStore.addActiveVehicle(vehicleId);
+
+            VehicleCreationRequestEvent event = new VehicleCreationRequestEvent(
+                    vehicleId, userEmail, tripPlan, colorCode, Instant.now());
+            kafkaTemplate.send(creationRequestTopic, vehicleId, event);
 
             listVehicleStates.add(vehicleState);
-
             degStartBearing += degIncrement;
         }
 

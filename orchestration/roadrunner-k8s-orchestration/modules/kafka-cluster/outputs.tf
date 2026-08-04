@@ -1,7 +1,7 @@
 output "name" {
-  value = kubectl_manifest.kafka_cluster.name
+  value = var.cluster_name
 }
 
 output "bootstrap_servers" {
-  value = "${kubectl_manifest.kafka_cluster.name}-kafka-bootstrap.${var.namespace}.svc.cluster.local:9092"
+  value = "${var.cluster_name}-kafka-bootstrap.${var.namespace}.svc.cluster.local:9092"
 }
