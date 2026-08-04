@@ -283,6 +283,15 @@ public class VehicleManager
 
         processTripPlanData(vehicle.getId(), tripPlan);
 
+        Directions directions = directionsMap.get(vehicle.getId());
+        List<LineSegmentData> lineSegmentData = lineSegmentDataMap.get(vehicle.getId());
+        if (directions != null && lineSegmentData != null)
+        {
+            vehicle.setDirections(directions);
+            vehicle.setListLineSegmentData(lineSegmentData);
+            vehicle.updateMetersOffset(0.0);
+        }
+
         // Update the last calculated time, since processTripPlandata can take a
         // while...
         vehicle.setLastCalculationEpochMillis(Instant.now().toEpochMilli());
@@ -328,6 +337,15 @@ public class VehicleManager
         this.tripPlanRepository.saveTripPlan(vehicleId, tripPlan);
 
         processTripPlanData(vehicleId, tripPlan);
+
+        Directions directions = directionsMap.get(vehicleId);
+        List<LineSegmentData> lineSegmentData = lineSegmentDataMap.get(vehicleId);
+        if (directions != null && lineSegmentData != null)
+        {
+            vehicle.setDirections(directions);
+            vehicle.setListLineSegmentData(lineSegmentData);
+            vehicle.updateMetersOffset(0.0);
+        }
 
         vehicle.setLastCalculationEpochMillis(Instant.now().toEpochMilli());
         vehicle.setManagerHost(hostName);
@@ -382,7 +400,6 @@ public class VehicleManager
      * <li>Stores the Directions and LineSegmentData in the respective maps for
      * later use.</li>
      * </ol>
-     *
      * @param vehicleId The ID of the Vehicle.
      * @param tripPlan  The TripPlan containing route and stop information.
      */
@@ -404,6 +421,12 @@ public class VehicleManager
 
         // Fetch directions for the trip plan.
         Directions directions = directionsService.getDirectionsForTripPlan(tripPlan);
+        if (directions == null || directions.getWaypoints() == null || directions.getWaypoints().isEmpty()
+                || directions.getRoutes() == null || directions.getRoutes().isEmpty())
+        {
+            throw new IllegalArgumentException("Invalid directions returned for vehicle " + vehicleId);
+        }
+
         GeometryFactory geometryFactory = new GeometryFactory();
 
         // Initialize coordinate transformers.
