@@ -40,13 +40,13 @@ public class VehicleSimulationStartConsumer
     )
     @KafkaListener(
             topics = "${com.tarterware.roadrunner.kafka.topic.simulation-start}",
-            groupId = "VehicleSimulationStartConsumer-${K8S_POD_NAME:default}")
+            groupId = "VehicleSimulationStartConsumer")
     public void receive(@Payload VehicleSimulationStartEvent event)
     {
         log.info("Received simulation start event for vehicle ID {}", event.vehicleId());
         try
         {
-            vehicleManager.startVehicleSimulation(event.vehicleId(), event.tripPlan(), event.username());
+            vehicleManager.startVehicleSimulation(event.vehicleId(), event.tripPlan(), event.colorCode(), event.username());
             log.info("Successfully started simulation for vehicle ID {}", event.vehicleId());
         }
         catch (Exception ex)

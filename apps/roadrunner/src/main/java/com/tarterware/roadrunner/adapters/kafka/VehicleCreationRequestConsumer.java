@@ -59,7 +59,7 @@ public class VehicleCreationRequestConsumer
     )
     @KafkaListener(
             topics = "${com.tarterware.roadrunner.kafka.topic.creation-request}",
-            groupId = "VehicleCreationRequestConsumer-${K8S_POD_NAME:default}")
+            groupId = "VehicleCreationRequestConsumer")
     public void receive(@Payload VehicleCreationRequestEvent event)
     {
         log.info("Received creation request event for vehicle ID {}", event.vehicleId());
@@ -98,6 +98,7 @@ public class VehicleCreationRequestConsumer
                 event.vehicleId(),
                 event.username(),
                 tripPlan,
+                event.colorCode(),
                 Instant.now()
         );
 

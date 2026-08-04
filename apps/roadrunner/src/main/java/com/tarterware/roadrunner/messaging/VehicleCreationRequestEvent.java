@@ -10,5 +10,6 @@ public record VehicleCreationRequestEvent(
         String vehicleId,
         String username,
         TripPlan tripPlan,
+        String colorCode,
         Instant eventTime
 ) {}

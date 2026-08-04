@@ -306,7 +306,7 @@ public class VehicleManager
      * @param tripPlan  The TripPlan containing the route and stops.
      * @param username  The username that requested the simulation.
      */
-    public void startVehicleSimulation(String vehicleId, TripPlan tripPlan, String username)
+    public void startVehicleSimulation(String vehicleId, TripPlan tripPlan, String colorCode, String username)
     {
         if (vehicleId == null)
         {
@@ -319,6 +319,10 @@ public class VehicleManager
 
         Vehicle vehicle = new Vehicle();
         vehicle.id = vehicleId;
+        if (colorCode != null)
+        {
+            vehicle.setColorCode(colorCode);
+        }
 
         // Ensure TripPlan is saved in repository
         this.tripPlanRepository.saveTripPlan(vehicleId, tripPlan);

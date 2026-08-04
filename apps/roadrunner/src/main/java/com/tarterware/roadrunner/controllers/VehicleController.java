@@ -234,7 +234,6 @@ public class VehicleController
         String colorCode = String.format("#%06X", hexColor & 0xFFFFFF);
 
         // Save TripPlan to repository
-        bookmarkRepository.deleteBookmark(vehicleId);
         tripPlanRepository.saveTripPlan(vehicleId, tripPlan);
 
         // Save initial VehicleState
@@ -250,7 +249,7 @@ public class VehicleController
 
         // Publish creation request to Kafka
         VehicleCreationRequestEvent event = new VehicleCreationRequestEvent(
-                vehicleId, userEmail, tripPlan, Instant.now());
+                vehicleId, userEmail, tripPlan, colorCode, Instant.now());
         kafkaTemplate.send(creationRequestTopic, vehicleId, event);
 
         log.info("Asynchronously requested creation of vehicle ID {}", vehicleId);
@@ -388,7 +387,6 @@ public class VehicleController
             int hexColor = java.awt.Color.getHSBColor(hue, 0.9f, 1.0f).getRGB();
             String colorCode = String.format("#%06X", hexColor & 0xFFFFFF);
 
-            bookmarkRepository.deleteBookmark(vehicleId);
             tripPlanRepository.saveTripPlan(vehicleId, tripPlan);
 
             VehicleState vehicleState = new VehicleState();
@@ -402,7 +400,7 @@ public class VehicleController
             vehicleStateStore.addActiveVehicle(vehicleId);
 
             VehicleCreationRequestEvent event = new VehicleCreationRequestEvent(
-                    vehicleId, userEmail, tripPlan, Instant.now());
+                    vehicleId, userEmail, tripPlan, colorCode, Instant.now());
             kafkaTemplate.send(creationRequestTopic, vehicleId, event);
 
             listVehicleStates.add(vehicleState);

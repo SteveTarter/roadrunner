@@ -32,11 +32,11 @@ public class VehicleSimulationStartConsumerTest
         TripPlan tripPlan = new TripPlan();
         tripPlan.setListStops(new ArrayList<>());
         VehicleSimulationStartEvent event = new VehicleSimulationStartEvent(
-                "vehicle-123", "user@test.com", tripPlan, Instant.now());
+                "vehicle-123", "user@test.com", tripPlan, "#FF0000", Instant.now());
 
         consumer.receive(event);
 
-        verify(vehicleManager).startVehicleSimulation("vehicle-123", tripPlan, "user@test.com");
+        verify(vehicleManager).startVehicleSimulation("vehicle-123", tripPlan, "#FF0000", "user@test.com");
     }
 
     @Test
@@ -45,10 +45,10 @@ public class VehicleSimulationStartConsumerTest
         TripPlan tripPlan = new TripPlan();
         tripPlan.setListStops(new ArrayList<>());
         VehicleSimulationStartEvent event = new VehicleSimulationStartEvent(
-                "vehicle-123", "user@test.com", tripPlan, Instant.now());
+                "vehicle-123", "user@test.com", tripPlan, "#FF0000", Instant.now());
 
         doThrow(new RuntimeException("Manager error")).when(vehicleManager)
-                .startVehicleSimulation("vehicle-123", tripPlan, "user@test.com");
+                .startVehicleSimulation("vehicle-123", tripPlan, "#FF0000", "user@test.com");
 
         assertThrows(RuntimeException.class, () -> consumer.receive(event));
     }

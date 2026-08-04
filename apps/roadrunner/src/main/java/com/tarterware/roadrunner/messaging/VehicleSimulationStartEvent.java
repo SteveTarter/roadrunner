@@ -10,5 +10,6 @@ public record VehicleSimulationStartEvent(
         String vehicleId,
         String username,
         TripPlan tripPlan,
+        String colorCode,
         Instant eventTime
 ) {}

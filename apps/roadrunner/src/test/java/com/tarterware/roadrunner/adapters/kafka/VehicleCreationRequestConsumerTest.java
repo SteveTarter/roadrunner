@@ -45,7 +45,7 @@ public class VehicleCreationRequestConsumerTest
         TripPlan tripPlan = new TripPlan();
         tripPlan.setListStops(new ArrayList<>());
         VehicleCreationRequestEvent event = new VehicleCreationRequestEvent(
-                "vehicle-123", "user@test.com", tripPlan, Instant.now());
+                "vehicle-123", "user@test.com", tripPlan, "#FF0000", Instant.now());
 
         Directions directions = new Directions();
         
@@ -63,7 +63,7 @@ public class VehicleCreationRequestConsumerTest
         TripPlan tripPlan = new TripPlan();
         tripPlan.setListStops(new ArrayList<>());
         VehicleCreationRequestEvent event = new VehicleCreationRequestEvent(
-                "vehicle-123", "user@test.com", tripPlan, Instant.now());
+                "vehicle-123", "user@test.com", tripPlan, "#FF0000", Instant.now());
 
         Directions directions = new Directions();
 
@@ -82,7 +82,7 @@ public class VehicleCreationRequestConsumerTest
         TripPlan tripPlan = new TripPlan();
         tripPlan.setListStops(new ArrayList<>());
         VehicleCreationRequestEvent event = new VehicleCreationRequestEvent(
-                "vehicle-123", "user@test.com", tripPlan, Instant.now());
+                "vehicle-123", "user@test.com", tripPlan, "#FF0000", Instant.now());
 
         when(tripPlanRepository.getTripPlan("vehicle-123")).thenReturn(tripPlan);
         when(directionsService.getDirectionsForTripPlan(tripPlan)).thenReturn(null);
