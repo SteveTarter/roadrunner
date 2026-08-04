@@ -12,6 +12,9 @@ import com.tarterware.roadrunner.models.TripPlan;
 import com.tarterware.roadrunner.ports.TripPlanRepository;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 
+import com.tarterware.roadrunner.models.TripPlanEntity;
+import com.tarterware.roadrunner.ports.TripPlanEntityRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 
 @Component
@@ -19,6 +22,10 @@ public class RedisTripPlanRepository implements TripPlanRepository
 {
     private final RedisTemplate<String, Object> redisTemplate;
     private final KafkaTopicMetadataService metadataService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TripPlanEntityRepository tripPlanEntityRepository;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ObjectMapper objectMapper;
     private Duration ttl;
 
     @Value("${com.tarterware.roadrunner.kafka.topic.vehicle-position}")
@@ -83,6 +90,23 @@ public class RedisTripPlanRepository implements TripPlanRepository
         catch (Exception ex)
         {
             logger.warn("Failed to save TripPlan to Redis: {}", ex.getMessage());
+        }
+
+        // Also persist to PostGIS
+        if (tripPlanEntityRepository != null && objectMapper != null)
+        {
+            try
+            {
+                String stopsJson = objectMapper.writeValueAsString(tripPlan.getListStops());
+                TripPlanEntity entity = new TripPlanEntity();
+                entity.setVehicleId(vehicleId);
+                entity.setStops(stopsJson);
+                tripPlanEntityRepository.save(entity);
+            }
+            catch (Exception ex)
+            {
+                logger.error("Failed to save TripPlanEntity to PostGIS", ex);
+            }
         }
     }
 
