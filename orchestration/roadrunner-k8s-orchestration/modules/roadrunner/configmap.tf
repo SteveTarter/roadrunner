@@ -61,6 +61,8 @@ spring.kafka.consumer.properties.spring.json.value.default.type=com.tarterware.r
 spring.kafka.consumer.properties.heartbeat.interval.ms=3000
 spring.kafka.consumer.properties.session.timeout.ms=10000
 com.tarterware.roadrunner.kafka.topics.vehicle-position=${var.kafka_topic_vehicle_position}
+com.tarterware.roadrunner.kafka.topic.creation-request=${var.kafka_topic_creation_request}
+com.tarterware.roadrunner.kafka.topic.simulation-start=${var.kafka_topic_simulation_start}
 spring.security.oauth2.resourceserver.jwt.issuer-uri=${var.cognito_authority}
 cognito.app-client-id=${var.cognito_client_id}
 com.tarterware.roadrunner.aws.cognito.user-pool-id=${var.cognito_user_pool_id}
@@ -70,6 +72,23 @@ spring.data.rest.cors.allowed-headers=*
 spring.data.rest.cors.allow-credentials=true
 spring.data.rest.cors.max-age=3600
 com.tarterware.roadrunner.frontend-url=${var.roadrunner_view_url_base}
+
+# PostGIS Persistence configuration
+com.tarterware.roadrunner.persistence.postgis.enabled=$${COM_TARTERWARE_ROADRUNNER_PERSISTENCE_POSTGIS_ENABLED:false}
+com.tarterware.roadrunner.persistence.postgis.auto-exclude=$${COM_TARTERWARE_ROADRUNNER_PERSISTENCE_POSTGIS_AUTO_EXCLUDE:org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration,org.springframework.boot.autoconfigure.sql.init.SqlInitializationAutoConfiguration}
+spring.autoconfigure.exclude=$${com.tarterware.roadrunner.persistence.postgis.auto-exclude}
+
+spring.datasource.url=jdbc:postgresql://$${SPRING_DATASOURCE_HOST:localhost}:$${SPRING_DATASOURCE_PORT:5432}/$${SPRING_DATASOURCE_DB:roadrunner_gis}
+spring.datasource.username=$${SPRING_DATASOURCE_USERNAME:roadrunner}
+spring.datasource.password=$${SPRING_DATASOURCE_PASSWORD:roadrunner}
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+
+# SQL Initialization script configuration
+spring.sql.init.mode=always
+spring.sql.init.username=postgres
+spring.sql.init.password=$${SPRING_SQL_INIT_PASSWORD:roadrunner}
+spring.sql.init.schema-locations=classpath:schema-postgis.sql
 EOT
   }
 }

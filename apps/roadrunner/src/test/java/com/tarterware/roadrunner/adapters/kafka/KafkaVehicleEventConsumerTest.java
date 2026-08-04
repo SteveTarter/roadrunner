@@ -93,6 +93,9 @@ public class KafkaVehicleEventConsumerTest
     @MockitoBean
     private KafkaTemplate<String, VehiclePositionEvent> kafkaTemplate;
 
+    @MockitoBean(name = "defaultRetryTopicKafkaTemplate")
+    private KafkaTemplate<String, Object> defaultRetryTopicKafkaTemplate;
+
     @MockitoBean
     private SetOperations<String, Object> mockSetOperations;
 

@@ -107,6 +107,9 @@ public class KafkaModeActiveTest
     @MockitoBean
     private KafkaTemplate<String, VehiclePositionEvent> kafkaTemplate;
 
+    @MockitoBean(name = "defaultRetryTopicKafkaTemplate")
+    private KafkaTemplate<String, Object> defaultRetryTopicKafkaTemplate;
+
     @MockitoBean
     private KafkaTopicMetadataService kafkaTopicMetadataService;
 

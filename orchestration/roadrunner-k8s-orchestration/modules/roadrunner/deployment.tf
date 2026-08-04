@@ -112,6 +112,76 @@ resource "kubernetes_deployment" "roadrunner" {
             }
           }
 
+          env {
+            name  = "COM_TARTERWARE_ROADRUNNER_PERSISTENCE_POSTGIS_ENABLED"
+            value = "true"
+          }
+
+          env {
+            name  = "COM_TARTERWARE_ROADRUNNER_PERSISTENCE_POSTGIS_AUTO_EXCLUDE"
+            value = "none"
+          }
+
+          env {
+            name = "SPRING_DATASOURCE_HOST"
+            value_from {
+              secret_key_ref {
+                name = "roadrunner-postgis-secret"
+                key  = "db-host"
+              }
+            }
+          }
+
+          env {
+            name = "SPRING_DATASOURCE_PORT"
+            value_from {
+              secret_key_ref {
+                name = "roadrunner-postgis-secret"
+                key  = "db-port"
+              }
+            }
+          }
+
+          env {
+            name = "SPRING_DATASOURCE_DB"
+            value_from {
+              secret_key_ref {
+                name = "roadrunner-postgis-secret"
+                key  = "db-name"
+              }
+            }
+          }
+
+          env {
+            name = "SPRING_DATASOURCE_USERNAME"
+            value_from {
+              secret_key_ref {
+                name = "roadrunner-postgis-secret"
+                key  = "db-user"
+              }
+            }
+          }
+
+          env {
+            name = "SPRING_DATASOURCE_PASSWORD"
+            value_from {
+              secret_key_ref {
+                name = "roadrunner-postgis-secret"
+                key  = "db-password"
+              }
+            }
+          }
+
+          env {
+            name = "SPRING_SQL_INIT_PASSWORD"
+            value_from {
+              secret_key_ref {
+                name = "roadrunner-postgis-secret"
+                key  = "db-password"
+              }
+            }
+          }
+
           # Dynamic args
           args = terraform.workspace == "minikube" ? [
             "--com.tarterware.redis.password=$(REDIS_PASSWORD)"

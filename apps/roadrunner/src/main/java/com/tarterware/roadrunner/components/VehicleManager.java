@@ -300,6 +300,44 @@ public class VehicleManager
     }
 
     /**
+     * Starts the simulation for a specific vehicle with a predetermined ID.
+     *
+     * @param vehicleId The predefined ID of the vehicle.
+     * @param tripPlan  The TripPlan containing the route and stops.
+     * @param username  The username that requested the simulation.
+     */
+    public void startVehicleSimulation(String vehicleId, TripPlan tripPlan, String username)
+    {
+        if (vehicleId == null)
+        {
+            throw new IllegalArgumentException("Vehicle ID cannot be null!");
+        }
+        if (tripPlan == null)
+        {
+            throw new IllegalArgumentException("TripPlan cannot be null!");
+        }
+
+        Vehicle vehicle = new Vehicle();
+        vehicle.id = vehicleId;
+
+        // Ensure TripPlan is saved in repository
+        this.tripPlanRepository.saveTripPlan(vehicleId, tripPlan);
+
+        processTripPlanData(vehicleId, tripPlan);
+
+        vehicle.setLastCalculationEpochMillis(Instant.now().toEpochMilli());
+        vehicle.setManagerHost(hostName);
+
+        this.vehicleMap.put(vehicleId, vehicle);
+        this.vehicleStateStore.saveVehicle(vehicle.getVehicleState());
+        this.vehicleStateStore.addActiveVehicle(vehicleId);
+        this.vehicleEventPublisher.publishVehicleCreated(vehicle, username);
+
+        logger.info("Simulation started for vehicle ID {} (user: {})", vehicleId, username);
+    }
+
+
+    /**
      * Marks a Vehicle for deletion based on a TripPlan.
      *
      * @param vehicleId The ID of the Vehicle to be deleted.

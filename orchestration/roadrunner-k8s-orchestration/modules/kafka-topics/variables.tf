@@ -18,3 +18,8 @@ variable "topics" {
   }))
   default = {}
 }
+
+variable "kube_context" {
+  description = "The Kubernetes cluster context name (e.g. minikube or EKS ARN)"
+  type        = string
+}
