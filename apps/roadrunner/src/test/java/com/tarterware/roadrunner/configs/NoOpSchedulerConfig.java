@@ -6,14 +6,43 @@ import java.util.concurrent.Delayed;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.clients.admin.AdminClient;
+import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.Trigger;
 
+import org.springframework.context.annotation.Primary;
+import java.util.concurrent.TimeUnit;
+
 @TestConfiguration
 public class NoOpSchedulerConfig
 {
+
+    @Bean
+    @Primary
+    AdminClient adminClient()
+    {
+        AdminClient mock = Mockito.mock(AdminClient.class);
+        org.apache.kafka.clients.admin.DeleteConsumerGroupsResult mockResult =
+                Mockito.mock(org.apache.kafka.clients.admin.DeleteConsumerGroupsResult.class);
+        @SuppressWarnings("unchecked")
+        org.apache.kafka.common.KafkaFuture<Void> mockFuture =
+                Mockito.mock(org.apache.kafka.common.KafkaFuture.class);
+
+        Mockito.when(mock.deleteConsumerGroups(Mockito.anyCollection())).thenReturn(mockResult);
+        Mockito.when(mockResult.all()).thenReturn(mockFuture);
+        try
+        {
+            Mockito.when(mockFuture.get(Mockito.anyLong(), Mockito.any(TimeUnit.class))).thenReturn(null);
+        }
+        catch (Exception e)
+        {
+            // ignore
+        }
+        return mock;
+    }
 
     @Bean
     TaskScheduler taskScheduler()

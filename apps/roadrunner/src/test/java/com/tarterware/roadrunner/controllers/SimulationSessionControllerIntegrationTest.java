@@ -22,6 +22,7 @@ import org.springframework.http.MediaType;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -37,6 +38,7 @@ import com.tarterware.roadrunner.adapters.redis.RedisFeatureCollectionCache;
 import com.tarterware.roadrunner.adapters.redis.RedisIsochroneCache;
 import com.tarterware.roadrunner.adapters.redis.RedisTripPlanRepository;
 import com.tarterware.roadrunner.components.Vehicle;
+import com.tarterware.roadrunner.configs.NoOpSchedulerConfig;
 import com.tarterware.roadrunner.configs.RedisConfig;
 import com.tarterware.roadrunner.configs.SecurityConfig;
 import com.tarterware.roadrunner.ports.BookmarkRepository;
@@ -56,6 +58,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 @SpringBootTest
 @Testcontainers
 @AutoConfigureMockMvc
+@Import(NoOpSchedulerConfig.class)
 @ActiveProfiles("test")
 public class SimulationSessionControllerIntegrationTest
 {
