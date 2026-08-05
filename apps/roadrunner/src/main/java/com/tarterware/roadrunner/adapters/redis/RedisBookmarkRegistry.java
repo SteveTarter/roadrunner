@@ -127,6 +127,19 @@ public class RedisBookmarkRegistry implements BookmarkRepository
 
         Bookmark bookmark = getBookmark(vehicleId);
         removeFromZSet(bookmark);
+
+        // Also delete from PostGIS
+        if (bookmarkEntityRepository != null)
+        {
+            try
+            {
+                bookmarkEntityRepository.deleteById(vehicleId);
+            }
+            catch (Exception e)
+            {
+                logger.error("Failed to delete BookmarkEntity from PostGIS", e);
+            }
+        }
     }
 
     @Override
