@@ -43,6 +43,9 @@ import com.tarterware.roadrunner.services.DirectionsService;
 import com.tarterware.roadrunner.utilities.JitterStatisticsCollector;
 import com.tarterware.roadrunner.utilities.TopologyUtilities;
 
+import com.tarterware.roadrunner.models.VehicleRouteEntity;
+import com.tarterware.roadrunner.ports.VehicleRouteRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 
@@ -111,6 +114,10 @@ public class VehicleManager
     private SimulationVehicleStateStore vehicleStateStore;
     private VehicleEventPublisher vehicleEventPublisher;
     private TripPlanRepository tripPlanRepository;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private VehicleRouteRepository vehicleRouteRepository;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ObjectMapper objectMapper;
 
     // Class to provide jitter statistics over last few runs of update loop
     private JitterStatisticsCollector statisticsCollector;
@@ -502,6 +509,48 @@ public class VehicleManager
         // Store the Directions and LineSegmentData locally in Maps
         directionsMap.put(vehicleId, directions);
         lineSegmentDataMap.put(vehicleId, listLineSegmentData);
+
+        // Also persist route geometry to PostGIS
+        if (vehicleRouteRepository != null && objectMapper != null)
+        {
+            try
+            {
+                List<Coordinate> geoCoordList = new ArrayList<>();
+                for (RouteLeg leg : directions.getRoutes().get(0).getLegs())
+                {
+                    for (RouteStep step : leg.getSteps())
+                    {
+                        for (List<Double> coordinate : step.getGeometry().getCoordinates())
+                        {
+                            geoCoordList.add(new Coordinate(coordinate.get(0), coordinate.get(1)));
+                        }
+                    }
+                }
+
+                GeometryFactory geoGeometryFactory = new GeometryFactory(new org.locationtech.jts.geom.PrecisionModel(), 4326);
+                LineString geoLineString = geoGeometryFactory.createLineString(geoCoordList.toArray(new Coordinate[0]));
+
+                VehicleRouteEntity routeEntity = new VehicleRouteEntity();
+                routeEntity.setVehicleId(vehicleId);
+                routeEntity.setDistanceMeters(directions.getRoutes().get(0).getDistance());
+                routeEntity.setDurationSeconds(directions.getRoutes().get(0).getDuration());
+                routeEntity.setRoutePath(geoLineString);
+                routeEntity.setWaypoints(objectMapper.writeValueAsString(directions.getWaypoints()));
+
+                String speedAnn = null;
+                if (directions.getRoutes().get(0).getLegs().get(0).getAnnotation() != null)
+                {
+                    speedAnn = objectMapper.writeValueAsString(directions.getRoutes().get(0).getLegs().get(0).getAnnotation());
+                }
+                routeEntity.setSpeedAnnotations(speedAnn);
+
+                vehicleRouteRepository.save(routeEntity);
+            }
+            catch (Exception e)
+            {
+                logger.error("Failed to save VehicleRouteEntity to PostGIS", e);
+            }
+        }
     }
 
     /**

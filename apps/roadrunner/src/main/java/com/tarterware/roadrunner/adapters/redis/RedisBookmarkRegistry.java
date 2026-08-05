@@ -23,6 +23,8 @@ import com.tarterware.roadrunner.ports.BookmarkRepository;
 import com.tarterware.roadrunner.ports.SimulationRegistry;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 
+import com.tarterware.roadrunner.models.BookmarkEntity;
+import com.tarterware.roadrunner.ports.BookmarkEntityRepository;
 import jakarta.annotation.PostConstruct;
 
 @Component
@@ -34,6 +36,8 @@ public class RedisBookmarkRegistry implements BookmarkRepository
     private final ObjectMapper objectMapper;
     private final SimulationRegistry simulationRegistry;
     private final KafkaTopicMetadataService metadataService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private BookmarkEntityRepository bookmarkEntityRepository;
     private Duration ttl;
 
     @Value("${com.tarterware.roadrunner.kafka.topic.vehicle-position}")
@@ -86,6 +90,24 @@ public class RedisBookmarkRegistry implements BookmarkRepository
 
         saveToZSet(bookmark);
 
+        // Also persist to PostGIS
+        if (bookmarkEntityRepository != null)
+        {
+            try
+            {
+                BookmarkEntity entity = new BookmarkEntity();
+                entity.setVehicleId(bookmark.getVehicleId());
+                entity.setTitle(bookmark.getTitle());
+                entity.setDescription(bookmark.getDescription());
+                entity.setStartTime(Instant.ofEpochMilli(bookmark.getStart()));
+                bookmarkEntityRepository.save(entity);
+            }
+            catch (Exception e)
+            {
+                logger.error("Failed to save BookmarkEntity to PostGIS", e);
+            }
+        }
+
         return bookmark;
     }
 
@@ -105,6 +127,19 @@ public class RedisBookmarkRegistry implements BookmarkRepository
 
         Bookmark bookmark = getBookmark(vehicleId);
         removeFromZSet(bookmark);
+
+        // Also delete from PostGIS
+        if (bookmarkEntityRepository != null)
+        {
+            try
+            {
+                bookmarkEntityRepository.deleteById(vehicleId);
+            }
+            catch (Exception e)
+            {
+                logger.error("Failed to delete BookmarkEntity from PostGIS", e);
+            }
+        }
     }
 
     @Override

@@ -21,6 +21,8 @@ import com.tarterware.roadrunner.models.SimulationSession;
 import com.tarterware.roadrunner.ports.SimulationRegistry;
 import com.tarterware.roadrunner.services.KafkaTopicMetadataService;
 
+import com.tarterware.roadrunner.models.SimulationSessionEntity;
+import com.tarterware.roadrunner.ports.SimulationSessionEntityRepository;
 import jakarta.annotation.PostConstruct;
 
 /**
@@ -45,6 +47,8 @@ public class RedisSimulationRegistry implements SimulationRegistry
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final KafkaTopicMetadataService metadataService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private SimulationSessionEntityRepository sessionRepository;
     private Duration ttl;
 
     @Value("${com.tarterware.roadrunner.kafka.topic.vehicle-position}")
@@ -85,6 +89,26 @@ public class RedisSimulationRegistry implements SimulationRegistry
         session.setEnd(null); // Explicitly null for active sessions
 
         saveToZSet(session);
+
+        // Also persist to PostGIS
+        if (sessionRepository != null)
+        {
+            try
+            {
+                SimulationSessionEntity entity = new SimulationSessionEntity();
+                entity.setVehicleId(vehicle.getId());
+                entity.setUsername(username);
+                entity.setColorCode(vehicle.getColorCode());
+                entity.setStartTime(startTime);
+                entity.setEndTime(null);
+                sessionRepository.save(entity);
+            }
+            catch (Exception e)
+            {
+                logger.error("Failed to save SimulationSessionEntity to PostGIS", e);
+            }
+        }
+
         logger.info("Recorded start of simulation session: {}", vehicle.getId());
     }
 
@@ -106,6 +130,23 @@ public class RedisSimulationRegistry implements SimulationRegistry
                     saveToZSet(session);
                     logger.info("Recorded end of simulation session: {}", vehicleID);
                 });
+
+        // Also update end_time in PostGIS
+        if (sessionRepository != null)
+        {
+            try
+            {
+                sessionRepository.findById(vehicleID).ifPresent(entity ->
+                {
+                    entity.setEndTime(endTime);
+                    sessionRepository.save(entity);
+                });
+            }
+            catch (Exception e)
+            {
+                logger.error("Failed to update SimulationSessionEntity end_time in PostGIS", e);
+            }
+        }
     }
 
     @Override
