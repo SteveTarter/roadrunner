@@ -79,7 +79,7 @@ public class PostGISTelemetryConsumer
                 telemetry.setColorCode(event.colorCode());
                 telemetry.setManagerHost(event.managerHost());
                 telemetry.setStatus(event.status());
-                telemetry.setTimestamp(Instant.now());
+                telemetry.setTimestamp(event.eventTime() != null ? event.eventTime() : Instant.now());
 
                 // Build JTS Point (Longitude, Latitude)
                 Point position = geometryFactory.createPoint(new Coordinate(event.longitude(), event.latitude()));
