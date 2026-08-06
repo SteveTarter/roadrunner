@@ -34,9 +34,14 @@
   >
   </script>
   <script>
+    let wasHidden = false;
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
+      if (document.visibilityState === "hidden") {
+        wasHidden = true;
+      }
+      if (document.visibilityState === "visible" && wasHidden) {
         console.log("Tab returned to focus or device woken up. Refreshing page...");
+        wasHidden = false;
         window.location.reload();
       }
     });
