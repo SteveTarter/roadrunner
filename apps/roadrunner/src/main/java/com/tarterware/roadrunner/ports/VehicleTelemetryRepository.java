@@ -1,6 +1,11 @@
 package com.tarterware.roadrunner.ports;
 
+import java.time.Instant;
+import java.util.List;
+
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.tarterware.roadrunner.models.VehicleTelemetry;
@@ -11,4 +16,13 @@ import com.tarterware.roadrunner.models.VehicleTelemetry;
 @Repository
 public interface VehicleTelemetryRepository extends CrudRepository<VehicleTelemetry, Long>
 {
+    @Query("SELECT t FROM VehicleTelemetry t WHERE t.id IN (" +
+           "  SELECT MAX(sub.id) FROM VehicleTelemetry sub " +
+           "  WHERE sub.timestamp >= :startTime AND sub.timestamp <= :endTime " +
+           "  GROUP BY sub.vehicleId" +
+           ")")
+    List<VehicleTelemetry> findLatestTelemetryWithinWindow(
+            @Param("startTime") Instant startTime,
+            @Param("endTime") Instant endTime
+    );
 }

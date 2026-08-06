@@ -5,6 +5,7 @@ import { Card, CardHeader, CardBody, ListGroup, ListGroupItem, Spinner } from 'r
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import { Button } from "react-bootstrap";
+import { usePlayback } from "../../context/PlaybackContext";
 
 export type Bookmark = {
   vehicleId: string;
@@ -20,6 +21,7 @@ interface BookmarksPanelProps {
 }
 
 export const BookmarksPanel: React.FC<BookmarksPanelProps> = ({ onClose, onSelectBookmark }) => {
+  const { dataSource } = usePlayback();
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +38,8 @@ export const BookmarksPanel: React.FC<BookmarksPanelProps> = ({ onClose, onSelec
           return;
         }
 
-        const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/bookmarks`;
+        const apiPath = dataSource === 'postgis' ? '/api/db-bookmarks' : '/api/bookmarks';
+        const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}${apiPath}`;
 
         const response = await fetch(url, {
           method: 'get',
@@ -60,7 +63,7 @@ export const BookmarksPanel: React.FC<BookmarksPanelProps> = ({ onClose, onSelec
     };
 
     fetchBookmarks();
-  }, []);
+  }, [dataSource]);
 
   return (
     <Card style={{ width: '20rem', alignSelf: 'end', top: 40, left:20 }}>

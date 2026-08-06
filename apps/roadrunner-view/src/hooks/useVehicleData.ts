@@ -18,7 +18,7 @@ export const useVehicleData = ({
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isInterpolationEnabled, setIsInterpolationEnabled] = useState(true);
   const isFetchingRef = useRef(false);
-  const { playbackOffset, setPlaybackOffset } = usePlayback();
+  const { playbackOffset, setPlaybackOffset, dataSource } = usePlayback();
 
   // The master storage of every state we've fetched
   const masterBuffer = useRef<VehicleState[]>([]);
@@ -63,8 +63,9 @@ export const useVehicleData = ({
 
       // Loop until we have swallowed every page for the current timeAnchor
       while (currentPage < totalPages) {
+        const apiPath = dataSource === 'postgis' ? '/api/db-playback' : '/api/playback';
         let url =
-          `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/playback/state?page=${currentPage}`;
+          `${CONFIG.ROADRUNNER_REST_URL_BASE}${apiPath}/state?page=${currentPage}`;
 
         url += `&pageSize=${pageSize}`;
 
@@ -254,6 +255,11 @@ export const useVehicleData = ({
     vehicleDisplayMapRef.current.clear();
     setVersion(v => v + 1);
   }, []);
+
+  // Clear data buffer on data source toggle
+  useEffect(() => {
+    clearData();
+  }, [dataSource, clearData]);
 
   const setAllRoutesVisibility = useCallback((visible: boolean) => {
     vehicleDisplayMapRef.current.forEach((display: any) => {

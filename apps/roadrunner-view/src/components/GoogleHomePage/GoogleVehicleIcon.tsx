@@ -7,12 +7,14 @@ import { Button, Card } from "react-bootstrap";
 import { CONFIG } from "../../config";
 import { GooglePolyline } from "./GooglePolyline";
 import { useNavigate } from "react-router-dom";
+import { usePlayback } from "../../context/PlaybackContext";
 
 export const GoogleVehicleIcon: React.FC<{
   vehicleState: VehicleState,
   vehicleDisplay: VehicleDisplay
 }> = (props) => {
   const navigate = useNavigate();
+  const { dataSource } = usePlayback();
   const [token, setToken] = useState("");
   const [directionsGeometry, setDirectionsGeometry] = useState<any[]>([]);
   const [popupVisible, setPopupVisible] = useState(props.vehicleDisplay.popupVisible);
@@ -74,7 +76,8 @@ export const GoogleVehicleIcon: React.FC<{
 
       try {
         const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
-        const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-vehicle-directions/${props.vehicleState.id}`;
+        const apiPath = dataSource === 'postgis' ? '/api/db-vehicle' : '/api/vehicle';
+        const getStatesUrl: string = `${restUrlBase}${apiPath}/get-vehicle-directions/${props.vehicleState.id}`;
         fetch(getStatesUrl, {
           method: 'get',
           headers: {
@@ -94,7 +97,7 @@ export const GoogleVehicleIcon: React.FC<{
       }
     }
     fetchVehicleDirections();
-  }, [props.vehicleState.id, token]);
+  }, [props.vehicleState.id, token, dataSource]);
 
   const pxSize = Math.round(2.5 * props.vehicleDisplay.size) + "px";
 
