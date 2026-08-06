@@ -16,11 +16,9 @@ import com.tarterware.roadrunner.models.VehicleTelemetry;
 @Repository
 public interface VehicleTelemetryRepository extends CrudRepository<VehicleTelemetry, Long>
 {
-    @Query("SELECT t FROM VehicleTelemetry t WHERE t.id IN (" +
-           "  SELECT MAX(sub.id) FROM VehicleTelemetry sub " +
-           "  WHERE sub.timestamp >= :startTime AND sub.timestamp <= :endTime " +
-           "  GROUP BY sub.vehicleId" +
-           ")")
+    @Query("SELECT t FROM VehicleTelemetry t " +
+           "WHERE t.timestamp >= :startTime AND t.timestamp <= :endTime " +
+           "ORDER BY t.timestamp DESC")
     List<VehicleTelemetry> findLatestTelemetryWithinWindow(
             @Param("startTime") Instant startTime,
             @Param("endTime") Instant endTime

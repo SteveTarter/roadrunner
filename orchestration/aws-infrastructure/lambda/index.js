@@ -103,10 +103,10 @@ export const handler = async (event) => {
       const startTime = new Date(endTime.getTime() - msWindowPeriod);
 
       const query = `
-        SELECT DISTINCT ON (vehicle_id) id, vehicle_id, ST_Y(position) as latitude, ST_X(position) as longitude, heading, speed, sequence_number, ns_last_exec, position_valid, position_limited, color_code, manager_host, status, timestamp
+        SELECT id, vehicle_id, ST_Y(position) as latitude, ST_X(position) as longitude, heading, speed, sequence_number, ns_last_exec, position_valid, position_limited, color_code, manager_host, status, timestamp
         FROM vehicle_telemetry
         WHERE timestamp >= $1 AND timestamp <= $2
-        ORDER BY vehicle_id, id DESC
+        ORDER BY timestamp DESC
       `;
 
       const result = await pool.query(query, [startTime.toISOString(), endTime.toISOString()]);
