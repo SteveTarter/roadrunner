@@ -131,7 +131,7 @@ export const useVehicleData = ({
     return (start + delta * ratio + 360) % 360;
   };
 
-  const LIVE_INTERPOLATION_DELAY_MS = 2000;
+  const LIVE_INTERPOLATION_DELAY_MS = 5000;
 
   /**
    * THE PLAYBACK ENGINE: Syncs the UI maps to the specific playback time.
