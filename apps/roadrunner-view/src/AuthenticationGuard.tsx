@@ -48,18 +48,19 @@ export const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({
         }
 
         // No token/session
-        if (!cancelled) setStatus("unauth");
+        if (!cancelled) {
+          setStatus("unauth");
 
-        if (autoRedirect && !redirectStartedRef.current) {
-          redirectStartedRef.current = true;
+          if (autoRedirect && !redirectStartedRef.current) {
+            redirectStartedRef.current = true;
 
-          // Save Intended Destination Before Redirect
-          // Capture the exact deep link path (e.g., /driver-view/deb6907a)
-          if (window.location.pathname && window.location.pathname !== "/") {
-            sessionStorage.setItem("redirect_after_login", window.location.pathname);
+            // Save Intended Destination Before Redirect
+            if (window.location.pathname && window.location.pathname !== "/") {
+              sessionStorage.setItem("redirect_after_login", window.location.pathname);
+            }
+
+            await signInWithRedirect();
           }
-
-          await signInWithRedirect();
         }
       } catch (err: any) {
         console.error("Auth check failed:", err);
