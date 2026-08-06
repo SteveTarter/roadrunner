@@ -47,4 +47,16 @@ public class KafkaConfig
         configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         return AdminClient.create(configs);
     }
+
+    @Bean
+    public org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory<Object, Object> batchKafkaListenerContainerFactory(
+            org.springframework.boot.autoconfigure.kafka.ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
+            org.springframework.kafka.core.ConsumerFactory<Object, Object> kafkaConsumerFactory)
+    {
+        org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory<Object, Object> factory =
+                new org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory<>();
+        configurer.configure(factory, kafkaConsumerFactory);
+        factory.setBatchListener(true);
+        return factory;
+    }
 }
