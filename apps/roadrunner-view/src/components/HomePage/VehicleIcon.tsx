@@ -7,12 +7,13 @@ import { VehicleDisplay } from "../../models/VehicleDisplay";
 import { VehicleState } from "../../models/VehicleState";
 import { Button, Card } from "react-bootstrap";
 import { CONFIG } from "../../config";
+import { usePlayback } from "../../context/PlaybackContext";
 
 export const VehicleIcon: React.FC<{
   vehicleState: VehicleState,
   vehicleDisplay: VehicleDisplay
 }> = (props) => {
-
+  const { dataSource } = usePlayback();
   const [token, setToken] = useState("");
   const [directionsGeometry, setDirectionsGeometry] = useState([]);
 
@@ -53,7 +54,8 @@ export const VehicleIcon: React.FC<{
       try {
         // Get the latest VehicleStates
         const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
-        const getStatesUrl: string = `${restUrlBase}/api/vehicle/get-vehicle-directions/${props.vehicleState.id}`;
+        const apiPath = dataSource === 'postgis' ? '/api/db-vehicle' : '/api/vehicle';
+        const getStatesUrl: string = `${restUrlBase}${apiPath}/get-vehicle-directions/${props.vehicleState.id}`;
         fetch(getStatesUrl, {
           method: 'get',
           headers: {
@@ -76,7 +78,7 @@ export const VehicleIcon: React.FC<{
       }
     };
     fetchVehicleDirections();
-  }, [props.vehicleState.id, token]);
+  }, [props.vehicleState.id, token, dataSource]);
 
   function getLineLayer(id: string, colorCode: string, vehicleSize: number): LayerProps {
     return {

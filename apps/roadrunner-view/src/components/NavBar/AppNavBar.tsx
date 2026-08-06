@@ -21,6 +21,8 @@ import {
 import { signInWithRedirect, signOut, fetchAuthSession } from "aws-amplify/auth";
 import { NavBarBrand } from "./NavBarBrand";
 
+import { usePlayback } from "../../context/PlaybackContext";
+
 type UserInfo = {
   name?: string;
   email?: string;
@@ -39,6 +41,8 @@ export const AppNavBar = ({
   const [user, setUser] = useState<UserInfo | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const { dataSource, setDataSource } = usePlayback();
 
   const [mapProvider, setMapProvider] = useState<'mapbox' | 'google'>(() => {
     return (localStorage.getItem('roadrunner_map_provider') as 'mapbox' | 'google') || 'mapbox';
@@ -213,6 +217,19 @@ export const AppNavBar = ({
                 </DropdownItem>
                 <DropdownItem onClick={() => handleProviderChange('google')}>
                   Google Maps
+                </DropdownItem>
+              </DropdownMenu>
+            </UncontrolledDropdown>
+            <UncontrolledDropdown nav inNavbar>
+              <DropdownToggle nav caret id="dataSourceDropDown">
+                Source: {dataSource === 'postgis' ? 'PostGIS' : 'Kafka/Redis'}
+              </DropdownToggle>
+              <DropdownMenu>
+                <DropdownItem onClick={() => setDataSource('redis_kafka')}>
+                  Kafka/Redis (Real-time)
+                </DropdownItem>
+                <DropdownItem onClick={() => setDataSource('postgis')}>
+                  PostGIS (Database)
                 </DropdownItem>
               </DropdownMenu>
             </UncontrolledDropdown>

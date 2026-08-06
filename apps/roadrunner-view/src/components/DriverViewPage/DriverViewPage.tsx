@@ -48,7 +48,7 @@ export const DriverViewPage = () => {
   // Driver view offset from straight ahead
   const [degViewOffset, setDegViewOffset] = useState(0);
 
-  const { playbackOffset, setPlaybackSession } = usePlayback();
+  const { playbackOffset, setPlaybackSession, dataSource } = usePlayback();
 
   const {
     homeMapViewState,
@@ -113,7 +113,8 @@ export const DriverViewPage = () => {
           return;
         }
 
-        const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/get-vehicle-session/${vehicleId}`;
+        const apiPath = dataSource === 'postgis' ? '/api/db-vehicle' : '/api/vehicle';
+        const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}${apiPath}/get-vehicle-session/${vehicleId}`;
         const res = await fetch(url, {
           method: 'GET',
           headers: {
@@ -141,12 +142,9 @@ export const DriverViewPage = () => {
           else if ((msEpochPlayback > sessionData.start) && (msEpochPlayback < sessionData.end)) {
             console.debug("Within start/end window: Not messing with time")
           }
-          else if (lastState && sessionData.end && (msEpochPlayback >= sessionData.end)) {
-            console.log("Playback has reached the end of the session. Navigating home.");
-            gotoHomePage();
-          }
           else {
-            console.log("Setting playback session to ", sessionData.start);
+            // Need to set map offset so that clock corresponds to playback Offset
+            console.debug("Snapping playback clock to start of simulation session:", new Date(sessionData.start).toISOString());
             setPlaybackSession(sessionData.start);
           }
         }
@@ -160,7 +158,7 @@ export const DriverViewPage = () => {
     }
 
     fetchHistoricalSession();
-  }, [isDataLoaded, vehicleStateMap, vehicleId, gotoHomePage, isSearchingSession, navigate, playbackOffset, setPlaybackSession, lastState, goingHome, version]);
+  }, [isDataLoaded, vehicleStateMap, vehicleId, gotoHomePage, isSearchingSession, navigate, playbackOffset, setPlaybackSession, lastState, goingHome, version, dataSource]);
 
 
   // Handle Auto-Redirects as a Side Effect

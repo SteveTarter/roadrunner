@@ -3,8 +3,10 @@ import { getCachedAuthToken } from '../components/Utils/AuthUtils';
 import { CONFIG } from "../config";
 import { SimulationSession } from '../models/SimulationSession';
 import { MapWrapper } from '../components/Utils/MapWrapper';
+import { usePlayback } from '../context/PlaybackContext';
 
 export const useSimulationSessionData = () => {
+  const { dataSource } = usePlayback();
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const isFetchingRef = useRef(false);
   const [bufferNum, setBufferNum] = useState(0);
@@ -32,8 +34,9 @@ export const useSimulationSessionData = () => {
 
       // Loop until we have swallowed every page for the current timeAnchor
       while (currentPage < totalPages) {
+        const apiPath = dataSource === 'postgis' ? '/api/db-vehicle' : '/api/vehicle';
         let url = `${CONFIG.ROADRUNNER_REST_URL_BASE}` +
-          `/api/vehicle/simulation-sessions?page=${currentPage}`;
+          `${apiPath}/simulation-sessions?page=${currentPage}`;
 
         url += `&pageSize=${pageSize}`;
 
@@ -75,8 +78,7 @@ export const useSimulationSessionData = () => {
     } finally {
       isFetchingRef.current = false;
     }
-  // eslint-disable-next-line
-  }, []);
+  }, [dataSource]);
 
   useEffect(() => {
     if (!isDataLoaded || (simulationSessionMapRef.current.size() === 0)) return;
@@ -137,6 +139,13 @@ export const useSimulationSessionData = () => {
     const fetchTimer = window.setInterval(fetchBatch, 2500);
     return () => window.clearInterval(fetchTimer);
   }, [fetchBatch]);
+
+  // Clear map cache when data source toggles
+  useEffect(() => {
+    simulationSessionMapRef.current.clear();
+    setIsDataLoaded(false);
+    fetchBatch();
+  }, [dataSource, fetchBatch]);
 
   return {
     simulationSessionMap: simulationSessionMapRef.current,

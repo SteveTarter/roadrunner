@@ -26,7 +26,7 @@ export const SimulationTable = (props: {
   const [data, setData] = useState([]);
   const [rowCount, setRowCount] = useState(0);
 
-  const { playbackOffset, setPlaybackSession } = usePlayback();
+  const { playbackOffset, setPlaybackSession, dataSource } = usePlayback();
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -47,9 +47,10 @@ export const SimulationTable = (props: {
           return;
         }
 
+        const apiPath = dataSource === 'postgis' ? '/api/db-vehicle' : '/api/vehicle';
         const url =
           `${CONFIG.ROADRUNNER_REST_URL_BASE}` +
-          `/api/vehicle/simulation-sessions?page=${pagination.pageIndex}&pageSize=${pagination.pageSize}`
+          `${apiPath}/simulation-sessions?page=${pagination.pageIndex}&pageSize=${pagination.pageSize}`
 
         const res = await fetch(url, {
           method: 'GET',
@@ -76,7 +77,7 @@ export const SimulationTable = (props: {
     loadPage();
 
     return () => controller.abort();
-  }, [pagination.pageIndex, pagination.pageSize]);
+  }, [pagination.pageIndex, pagination.pageSize, dataSource]);
 
   const columns = useMemo(() => [
     {

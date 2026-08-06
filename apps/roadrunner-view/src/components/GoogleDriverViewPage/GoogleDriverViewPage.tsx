@@ -109,7 +109,7 @@ export const GoogleDriverViewPage = () => {
   const [degViewOffset, setDegViewOffset] = useState(0);
   const MPS_TO_MPH = 2.236936;
 
-  const { playbackOffset, setPlaybackSession } = usePlayback();
+  const { playbackOffset, setPlaybackSession, dataSource } = usePlayback();
   const { homeMapViewState, setHomeMapViewState } = useMapViewState();
 
   const mapRef = useRef<any>(null);
@@ -198,7 +198,8 @@ export const GoogleDriverViewPage = () => {
           return;
         }
 
-        const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/get-vehicle-session/${vehicleId}`;
+        const apiPath = dataSource === 'postgis' ? '/api/db-vehicle' : '/api/vehicle';
+        const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}${apiPath}/get-vehicle-session/${vehicleId}`;
         const res = await fetch(url, {
           method: 'GET',
           headers: {
@@ -239,7 +240,7 @@ export const GoogleDriverViewPage = () => {
     }
 
     fetchHistoricalSession();
-  }, [isDataLoaded, vehicleStateMap, vehicleId, gotoHomePage, isSearchingSession, navigate, playbackOffset, setPlaybackSession, lastState, goingHome, version]);
+  }, [isDataLoaded, vehicleStateMap, vehicleId, gotoHomePage, isSearchingSession, navigate, playbackOffset, setPlaybackSession, lastState, goingHome, version, dataSource]);
 
   // Handle Auto-Redirects
   useEffect(() => {
