@@ -15,7 +15,8 @@ import {
   faUpRightAndDownLeftFromCenter,
   faChartLine,
   faChevronDown,
-  faChevronUp
+  faChevronUp,
+  faExchangeAlt
 } from '@fortawesome/free-solid-svg-icons';
 import { useVehicleData } from '../../hooks/useVehicleData';
 import { usePlayback } from "../../context/PlaybackContext";

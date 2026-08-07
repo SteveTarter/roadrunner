@@ -14,7 +14,6 @@ import {
   faBars, 
   faUpRightAndDownLeftFromCenter, 
   faCompass,
-  faInfoCircle,
   faChartLine,
   faChevronDown,
   faChevronUp,
@@ -50,7 +49,6 @@ export const Vehicle3DMapPage = () => {
   const missingTimestampRef = useRef<number | null>(null);
   const [cameraMode, setCameraMode] = useState<'chase' | 'fixed'>('chase');
   const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
-  const [isGuideMinimized, setIsGuideMinimized] = useState(true);
   const [isFocusMinimized, setIsFocusMinimized] = useState(false);
 
   // Camera state variables matching Google version
@@ -98,7 +96,7 @@ export const Vehicle3DMapPage = () => {
     if (mode === 'chase' && focusedVehicleId) {
       const vehicle = vehicleStateMap.get(focusedVehicleId);
       if (vehicle) {
-        const rawYaw = (currentHeading - (vehicle.degBearing + 45) + 720) % 360;
+        const rawYaw = (currentHeading - vehicle.degBearing + 720) % 360;
         const roundedYaw = Math.round(rawYaw / 5) * 5 % 360;
         setCameraYaw(roundedYaw > 180 ? roundedYaw - 360 : roundedYaw);
       }
@@ -158,7 +156,7 @@ export const Vehicle3DMapPage = () => {
       const calculatedZoom = 24.5 - Math.log2(cameraDistance);
       const calculatedPitch = 90 - cameraElevation;
       const calculatedBearing = cameraMode === 'chase' 
-        ? (vehicle.degBearing + 45 + cameraYaw) 
+        ? (vehicle.degBearing + cameraYaw) 
         : cameraYaw;
         
       setMapViewState(prev => ({
@@ -325,7 +323,7 @@ export const Vehicle3DMapPage = () => {
         
         // 3. Calculate cameraYaw from bearing
         if (cameraMode === 'chase') {
-          const yaw = (evt.viewState.bearing - (vehicle.degBearing + 45) + 360) % 360;
+          const yaw = (evt.viewState.bearing - vehicle.degBearing + 360) % 360;
           setCameraYaw(yaw > 180 ? yaw - 360 : yaw);
         } else {
           setCameraYaw(evt.viewState.bearing);
@@ -438,38 +436,6 @@ export const Vehicle3DMapPage = () => {
 
             {/* Timeline playback control */}
             <PlaybackClock />
-
-            {/* Google Earth Navigation Guide */}
-            <div className="controls-guide-card">
-              <div 
-                className="controls-guide-title" 
-                onClick={() => setIsGuideMinimized(!isGuideMinimized)}
-                style={{ 
-                  cursor: 'pointer', 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  width: '100%', 
-                  marginBottom: isGuideMinimized ? '0' : '6px', 
-                  borderBottom: isGuideMinimized ? 'none' : '1px solid rgba(0, 0, 0, 0.1)', 
-                  paddingBottom: isGuideMinimized ? '0' : '4px' 
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <FontAwesomeIcon icon={faInfoCircle} />
-                  <span>3D Camera Controls</span>
-                </div>
-                <FontAwesomeIcon icon={isGuideMinimized ? faChevronUp : faChevronDown} style={{ fontSize: '0.75rem', color: '#666', marginLeft: '8px' }} />
-              </div>
-              {!isGuideMinimized && (
-                <ul className="controls-guide-list">
-                  <li><strong>Left-Click + Drag</strong>: Pan map</li>
-                  <li><strong>Right-Click + Drag</strong>: Orbit / Tilt perspective</li>
-                  <li><strong>Ctrl + Drag</strong>: Tilt perspective</li>
-                  <li><strong>Scroll / Pinch</strong>: Zoom in/out</li>
-                </ul>
-              )}
-            </div>
 
             {/* Focus Panel */}
             <div className="focus-panel-container">
