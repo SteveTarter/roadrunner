@@ -702,20 +702,6 @@ export const GoogleVehicle3DMapPage = () => {
                           >
                             Release Lock
                           </Button>
-
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            className="mt-1"
-                            onClick={() => {
-                              if (window.confirm("Are you sure?")) {
-                                navigate(`/google/driver-view/${focusedVehicleId}`);
-                              }
-                            }}
-                            style={{ fontSize: '0.75rem', padding: '2px 8px', width: '100%' }}
-                          >
-                            Jump to Driver View
-                          </Button>
                         </>
                       )}
                     </>
@@ -726,6 +712,16 @@ export const GoogleVehicle3DMapPage = () => {
 
             {/* --- Float-Right Toolbar --- */}
             <div className="map-tools-container-3d">
+              {focusedVehicleId && (
+                <Button
+                  variant="light"
+                  className="shadow-sm border border-primary animate-pulse"
+                  onClick={() => navigate(`/google/driver-view/${focusedVehicleId}`)}
+                  title="Switch to Driver View"
+                >
+                  <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />
+                </Button>
+              )}
               <Button
                 variant="light"
                 className="shadow-sm"
