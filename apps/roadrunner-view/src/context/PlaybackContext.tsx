@@ -28,11 +28,19 @@ export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   const [dataSource, setDataSourceState] = useState<'redis_kafka' | 'postgis'>(() => {
+    if (window.location.hostname === 'roadrunner-view.tarterware.com') {
+      return 'postgis';
+    }
     const saved = sessionStorage.getItem(dataSourceKey);
     return (saved as 'redis_kafka' | 'postgis') || 'redis_kafka';
   });
 
   const setDataSource = (source: 'redis_kafka' | 'postgis') => {
+    if (window.location.hostname === 'roadrunner-view.tarterware.com') {
+      setDataSourceState('postgis');
+      sessionStorage.setItem(dataSourceKey, 'postgis');
+      return;
+    }
     setDataSourceState(source);
     sessionStorage.setItem(dataSourceKey, source);
   };

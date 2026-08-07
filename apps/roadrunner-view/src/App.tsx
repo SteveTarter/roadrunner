@@ -23,7 +23,7 @@ library.add(faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, f
 fontawesome.library.add(faPowerOff, faUser);
 
 const HomeRedirect = () => {
-  const provider = localStorage.getItem('roadrunner_map_provider') || 'mapbox';
+  const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
   return <Navigate to={provider === 'google' ? '/google/home' : '/home'} replace />;
 };
 
