@@ -138,6 +138,34 @@ export const GoogleDriverViewPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicleId, vehicleStateMap, lastState, version]);
 
+  const initialCameraRef = useRef<{
+    center: { lat: number; lng: number; altitude: number };
+    heading: number;
+    tilt: number;
+    range: number;
+  } | null>(null);
+
+  if (!initialCameraRef.current && isDataLoaded && vehicleState) {
+    if (vehicleState.degLatitude !== 0 && vehicleState.degLongitude !== 0) {
+      initialCameraRef.current = {
+        center: { lat: vehicleState.degLatitude, lng: vehicleState.degLongitude, altitude: 0 },
+        heading: (vehicleState.degBearing + 180 + degViewOffset) % 360,
+        tilt: 75,
+        range: 60.96
+      };
+    }
+  }
+
+  const setMapRef = useCallback((mapEl: any) => {
+    mapRef.current = mapEl;
+    if (mapEl && initialCameraRef.current) {
+      mapEl.center = initialCameraRef.current.center;
+      mapEl.heading = initialCameraRef.current.heading;
+      mapEl.tilt = initialCameraRef.current.tilt;
+      mapEl.range = initialCameraRef.current.range;
+    }
+  }, []);
+
   const managerHost = useMemo(() => {
     if (!vehicleState) return "";
     const host = vehicleState.managerHost;
@@ -360,14 +388,14 @@ export const GoogleDriverViewPage = () => {
     hasSeenValidPosition
   ]);
 
-  const shouldShowMap = isDataLoaded && vehicleState;
+  const shouldShowMap = isDataLoaded && vehicleState && initialCameraRef.current !== null;
 
   return (
     <div className="body row scroll-y">
         {shouldShowMap && isMapReady ? (
         <div style={{ width: '100%', height: '100%', position: 'absolute' }}>
           <gmp-map-3d
-            ref={mapRef}
+            ref={setMapRef}
             mode="satellite"
             default-ui-hidden="true"
             altitude-mode="RELATIVE_TO_GROUND"

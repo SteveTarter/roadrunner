@@ -147,6 +147,55 @@ export const GoogleVehicle3DMapPage = () => {
     intervalMs: 50
   });
 
+
+  const initialCameraRef = useRef<{
+    center: { lat: number; lng: number; altitude: number };
+    heading: number;
+    tilt: number;
+    range: number;
+  } | null>(null);
+
+  // Compute the first resolved camera target as soon as data is ready
+  if (!initialCameraRef.current && isDataLoaded) {
+    if (focusedVehicleId) {
+      const v = vehicleStateMap.get(focusedVehicleId);
+      if (v && v.degLatitude !== 0 && v.degLongitude !== 0) {
+        initialCameraRef.current = {
+          center: { lat: v.degLatitude, lng: v.degLongitude, altitude: 0 },
+          heading: (v.degBearing + 180) % 360,
+          tilt: 75,
+          range: 60.96
+        };
+      }
+    } else {
+      const validVehicles = Array.from(vehicleStateMap.values()).filter(v => v.degLatitude !== 0 && v.degLongitude !== 0);
+      if (validVehicles.length > 0) {
+        const sumLat = validVehicles.reduce((sum, v) => sum + v.degLatitude, 0);
+        const sumLng = validVehicles.reduce((sum, v) => sum + v.degLongitude, 0);
+        initialCameraRef.current = {
+          center: {
+            lat: sumLat / validVehicles.length,
+            lng: sumLng / validVehicles.length,
+            altitude: 0
+          },
+          heading: 0,
+          tilt: 75,
+          range: 1000
+        };
+      }
+    }
+  }
+
+  const setMapRef = useCallback((mapEl: any) => {
+    mapRef.current = mapEl;
+    if (mapEl && initialCameraRef.current) {
+      mapEl.center = initialCameraRef.current.center;
+      mapEl.heading = initialCameraRef.current.heading;
+      mapEl.tilt = initialCameraRef.current.tilt;
+      mapEl.range = initialCameraRef.current.range;
+    }
+  }, []);
+
   const handleCameraModeChange = useCallback((mode: 'chase' | 'fixed') => {
     setCameraMode(mode);
     const mapEl = mapRef.current;
@@ -527,14 +576,14 @@ export const GoogleVehicle3DMapPage = () => {
   const focusedVehicle = vehicleStateMap.get(focusedVehicleId);
   const focusedVehicleColor = focusedVehicle?.colorCode;
 
-  const shouldShowMap = isDataLoaded || vehicleList.length > 0;
+  const shouldShowMap = (isDataLoaded || vehicleList.length > 0) && initialCameraRef.current !== null;
 
   return (
     <div className="body row scroll-y">
         {shouldShowMap && isMapReady ? (
           <div className="map-container-3d">
             <gmp-map-3d
-              ref={mapRef}
+              ref={setMapRef}
               mode={mapStyle}
               default-ui-hidden="true"
               altitude-mode="RELATIVE_TO_GROUND"
