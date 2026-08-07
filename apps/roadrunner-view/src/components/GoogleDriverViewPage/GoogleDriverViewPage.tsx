@@ -8,7 +8,7 @@ import { Button, Card } from 'react-bootstrap';
 import { useApiIsLoaded } from '@vis.gl/react-google-maps';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHome, faMagic, faBars, faChartLine, faSatellite } from '@fortawesome/free-solid-svg-icons';
+import { faHome, faMagic, faBars, faChartLine, faExchangeAlt } from '@fortawesome/free-solid-svg-icons';
 import { ViewControl } from '../DriverViewPage/ViewControl';
 import { getRestUrl } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
@@ -405,11 +405,11 @@ export const GoogleDriverViewPage = () => {
               </Button>
               <Button
                 variant="light"
-                onClick={() => navigate(`/google/3d-view?vehicleId=${vehicleId}`)}
-                className="shadow-sm"
-                title="Go to 3D View"
-              >
-                <FontAwesomeIcon icon={faSatellite} />
+                 onClick={() => navigate(`/google/3d-view?vehicleId=${vehicleId}`)}
+                 className="shadow-sm border border-primary animate-pulse"
+                 title="Switch to 3D Map View"
+               >
+                 <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />
               </Button>
             </div>
 
