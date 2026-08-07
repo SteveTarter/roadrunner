@@ -17,7 +17,8 @@ import {
   faInfoCircle,
   faChartLine,
   faChevronDown,
-  faChevronUp
+  faChevronUp,
+  faExchangeAlt
 } from '@fortawesome/free-solid-svg-icons';
 import { CONFIG } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
@@ -64,7 +65,7 @@ export const Vehicle3DMapPage = () => {
       longitude: -97.5,
       latitude: 32.75,
       zoom: 16,
-      pitch: 65,
+      pitch: 75,
       bearing: -20,
       padding: { top: 0, bottom: 0, left: 0, right: 0 }
     };
@@ -132,7 +133,7 @@ export const Vehicle3DMapPage = () => {
         ...prev,
         longitude: vehicle.degLongitude,
         latitude: vehicle.degLatitude,
-        pitch: 45, // Lock pitch to 45 degrees looking down
+        pitch: 75, // Lock pitch to 75 degrees (15 degrees elevation)
         ...(cameraMode === 'chase' ? { bearing: vehicle.degBearing + 45 + userBearingOffsetRef.current } : {})
       }));
     }
@@ -157,7 +158,7 @@ export const Vehicle3DMapPage = () => {
           longitude: vehicle.degLongitude,
           latitude: vehicle.degLatitude,
           zoom: 21.5, // Zoom in close to see the vehicle model
-          pitch: 45, // Set pitch to 45 degrees looking down
+          pitch: 75, // Set pitch to 75 degrees (15 degrees elevation)
           ...(cameraMode === 'chase' ? { bearing: vehicle.degBearing + 45 } : {})
         }));
       }
@@ -383,7 +384,7 @@ export const Vehicle3DMapPage = () => {
     setMapViewState(prev => ({
       ...prev,
       zoom: 16,
-      pitch: 65,
+      pitch: 75,
       bearing: -20
     }));
   }, []);
@@ -509,21 +510,15 @@ export const Vehicle3DMapPage = () => {
                               style={{ cursor: 'pointer' }}
                             />
                           </div>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            className="mt-2"
-                            onClick={() => navigate(`/driver-view/${focusedVehicleId}`)}
-                            style={{ fontSize: '0.75rem', padding: '2px 8px', width: '100%' }}
-                          >
-                            Jump to Driver View
-                          </Button>
-
                           <Button 
                             variant="outline-danger" 
                             size="sm" 
-                            className="mt-1"
-                            onClick={() => setFocusedVehicleId("")}
+                            className="mt-2"
+                            onClick={() => {
+                              if (window.confirm("Are you sure?")) {
+                                setFocusedVehicleId("");
+                              }
+                            }}
                             style={{ fontSize: '0.75rem', padding: '2px 8px', width: '100%' }}
                           >
                             Release Lock
@@ -538,6 +533,16 @@ export const Vehicle3DMapPage = () => {
 
             {/* --- Float-Right Toolbar --- */}
             <div className="map-tools-container-3d">
+              {focusedVehicleId && (
+                <Button
+                  variant="light"
+                  className="shadow-sm border border-primary animate-pulse"
+                  onClick={() => navigate(`/driver-view/${focusedVehicleId}`)}
+                  title="Switch to Driver View"
+                >
+                  <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />
+                </Button>
+              )}
               <Button
                 variant="light"
                 className="shadow-sm"

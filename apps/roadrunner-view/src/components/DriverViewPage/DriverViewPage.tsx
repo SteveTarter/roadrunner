@@ -8,7 +8,7 @@ import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Button, Card } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSatellite, faHome, faMap, faMagic, faBars, faChartLine } from '@fortawesome/free-solid-svg-icons';
+import { faSatellite, faHome, faMap, faMagic, faBars, faChartLine, faExchangeAlt } from '@fortawesome/free-solid-svg-icons';
 import { ViewControl } from './ViewControl';
 import { CONFIG, getRestUrl } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
@@ -458,14 +458,14 @@ export const DriverViewPage = () => {
                 <FontAwesomeIcon icon={faHome} />
               </Button>
 
-              <Button
-                variant="light"
-                className="shadow-sm"
-                onClick={() => navigate(`/3d-view?vehicleId=${vehicleId}`)}
-                title="Go to 3D View"
-              >
-                <FontAwesomeIcon icon={faSatellite} />
-              </Button>
+               <Button
+                 variant="light"
+                 className="shadow-sm border border-primary animate-pulse"
+                 onClick={() => navigate(`/3d-view?vehicleId=${vehicleId}`)}
+                 title="Switch to 3D Map View"
+               >
+                 <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />
+               </Button>
 
               <Button
                 variant="light"
