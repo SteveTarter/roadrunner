@@ -3,7 +3,7 @@ name: Release Frontend to DockerHub
 on:
   push:
     tags:
-      - 'roadrunner-view-v[0-9]*'
+      - 'roadrunner-view-v*'
   workflow_dispatch:
 
 jobs:

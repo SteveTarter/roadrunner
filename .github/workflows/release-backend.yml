@@ -3,7 +3,8 @@ name: Release Backend to DockerHub
 on:
   push:
     tags:
-      - 'roadrunner-v[0-9]*'
+      - 'roadrunner-v*'
+      - '!roadrunner-view-v*'
   workflow_dispatch:
 
 jobs:
