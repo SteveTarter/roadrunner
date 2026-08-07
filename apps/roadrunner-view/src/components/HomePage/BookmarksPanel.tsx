@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchAuthSession } from "aws-amplify/auth";
-import { CONFIG } from "../../config";
+import { CONFIG, getRestUrl } from "../../config";
 import { Card, CardHeader, CardBody, ListGroup, ListGroupItem, Spinner } from 'reactstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
@@ -39,7 +39,7 @@ export const BookmarksPanel: React.FC<BookmarksPanelProps> = ({ onClose, onSelec
         }
 
         const apiPath = dataSource === 'postgis' ? '/api/db-bookmarks' : '/api/bookmarks';
-        const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}${apiPath}`;
+        const url = getRestUrl(apiPath);
 
         const response = await fetch(url, {
           method: 'get',

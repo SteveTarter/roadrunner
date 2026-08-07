@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getCachedAuthToken } from '../components/Utils/AuthUtils';
-import { CONFIG } from "../config";
+import { CONFIG, getRestUrl } from "../config";
 import { SimulationSession } from '../models/SimulationSession';
 import { MapWrapper } from '../components/Utils/MapWrapper';
 import { usePlayback } from '../context/PlaybackContext';
@@ -35,8 +35,7 @@ export const useSimulationSessionData = () => {
       // Loop until we have swallowed every page for the current timeAnchor
       while (currentPage < totalPages) {
         const apiPath = dataSource === 'postgis' ? '/api/db-vehicle' : '/api/vehicle';
-        let url = `${CONFIG.ROADRUNNER_REST_URL_BASE}` +
-          `${apiPath}/simulation-sessions?page=${currentPage}`;
+        let url = getRestUrl(`${apiPath}/simulation-sessions?page=${currentPage}`);
 
         url += `&pageSize=${pageSize}`;
 

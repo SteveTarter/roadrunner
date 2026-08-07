@@ -1,7 +1,7 @@
 import { fetchAuthSession } from "aws-amplify/auth";
 import { useMemo, useState, useEffect } from 'react';
 import { MaterialReactTable } from 'material-react-table';
-import { CONFIG } from "../../config";
+import { CONFIG, getRestUrl } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
 import { Button } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
@@ -48,9 +48,9 @@ export const SimulationTable = (props: {
         }
 
         const apiPath = dataSource === 'postgis' ? '/api/db-vehicle' : '/api/vehicle';
-        const url =
-          `${CONFIG.ROADRUNNER_REST_URL_BASE}` +
+        const url = getRestUrl(
           `${apiPath}/simulation-sessions?page=${pagination.pageIndex}&pageSize=${pagination.pageSize}`
+        );
 
         const res = await fetch(url, {
           method: 'GET',

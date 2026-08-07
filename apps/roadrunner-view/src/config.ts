@@ -37,6 +37,28 @@ export const CONFIG = {
   IS_PRODUCTION: getEnv("NODE_ENV") === "production",
 };
 
+/**
+ * Dynamically resolves the full URL based on the API path.
+ * - Database paths (`/api/db-*`) route to the AWS API Gateway (if configured).
+ * - Control plane/simulation paths (like `/api/vehicle/*` or `/api/playback/*`)
+ *   route to the local Minikube cluster (`https://roadrunner.tarterware.info`) when deployed to CloudFront.
+ */
+export const getRestUrl = (apiPath: string): string => {
+  const base = CONFIG.ROADRUNNER_REST_URL_BASE || "";
+  const isDbPath = apiPath.startsWith('/api/db-');
+
+  if (isDbPath) {
+    return `${base}${apiPath}`;
+  }
+
+  // If REST URL base points to the AWS custom domain (.com), route control plane requests to local Minikube (.info)
+  if (base.includes('.tarterware.com')) {
+    return `https://roadrunner.tarterware.info${apiPath}`;
+  }
+
+  return `${base}${apiPath}`;
+};
+
 // Validate critical configs on load
 if (!CONFIG.COGNITO_USER_POOL_ID && !CONFIG.IS_PRODUCTION) {
     console.error("CRITICAL ERROR: Cognito User Pool ID is missing!");

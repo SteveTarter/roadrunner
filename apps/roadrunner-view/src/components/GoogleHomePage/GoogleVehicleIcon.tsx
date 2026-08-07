@@ -4,7 +4,7 @@ import { getCachedAuthToken } from "../Utils/AuthUtils";
 import { VehicleDisplay } from "../../models/VehicleDisplay";
 import { VehicleState } from "../../models/VehicleState";
 import { Button, Card } from "react-bootstrap";
-import { CONFIG } from "../../config";
+import { CONFIG, getRestUrl } from "../../config";
 import { GooglePolyline } from "./GooglePolyline";
 import { useNavigate } from "react-router-dom";
 import { usePlayback } from "../../context/PlaybackContext";
@@ -75,9 +75,8 @@ export const GoogleVehicleIcon: React.FC<{
       }
 
       try {
-        const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
         const apiPath = dataSource === 'postgis' ? '/api/db-vehicle' : '/api/vehicle';
-        const getStatesUrl: string = `${restUrlBase}${apiPath}/get-vehicle-directions/${props.vehicleState.id}`;
+        const getStatesUrl = getRestUrl(`${apiPath}/get-vehicle-directions/${props.vehicleState.id}`);
         fetch(getStatesUrl, {
           method: 'get',
           headers: {
