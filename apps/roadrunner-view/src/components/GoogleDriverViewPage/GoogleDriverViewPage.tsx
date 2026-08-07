@@ -8,7 +8,7 @@ import { Button, Card } from 'react-bootstrap';
 import { useApiIsLoaded } from '@vis.gl/react-google-maps';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHome, faMagic, faBars, faChartLine, faSatellite } from '@fortawesome/free-solid-svg-icons';
+import { faHome, faMagic, faBars, faChartLine, faExchangeAlt } from '@fortawesome/free-solid-svg-icons';
 import { ViewControl } from '../DriverViewPage/ViewControl';
 import { getRestUrl } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
@@ -137,6 +137,34 @@ export const GoogleDriverViewPage = () => {
     return vehicleStateMap.get(vehicleId) || lastState;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicleId, vehicleStateMap, lastState, version]);
+
+  const initialCameraRef = useRef<{
+    center: { lat: number; lng: number; altitude: number };
+    heading: number;
+    tilt: number;
+    range: number;
+  } | null>(null);
+
+  if (!initialCameraRef.current && isDataLoaded && vehicleState) {
+    if (vehicleState.degLatitude !== 0 && vehicleState.degLongitude !== 0) {
+      initialCameraRef.current = {
+        center: { lat: vehicleState.degLatitude, lng: vehicleState.degLongitude, altitude: 0 },
+        heading: (vehicleState.degBearing + 180 + degViewOffset) % 360,
+        tilt: 75,
+        range: 60.96
+      };
+    }
+  }
+
+  const setMapRef = useCallback((mapEl: any) => {
+    mapRef.current = mapEl;
+    if (mapEl && initialCameraRef.current) {
+      mapEl.center = initialCameraRef.current.center;
+      mapEl.heading = initialCameraRef.current.heading;
+      mapEl.tilt = initialCameraRef.current.tilt;
+      mapEl.range = initialCameraRef.current.range;
+    }
+  }, []);
 
   const managerHost = useMemo(() => {
     if (!vehicleState) return "";
@@ -360,14 +388,14 @@ export const GoogleDriverViewPage = () => {
     hasSeenValidPosition
   ]);
 
-  const shouldShowMap = isDataLoaded && vehicleState;
+  const shouldShowMap = isDataLoaded && vehicleState && initialCameraRef.current !== null;
 
   return (
     <div className="body row scroll-y">
         {shouldShowMap && isMapReady ? (
         <div style={{ width: '100%', height: '100%', position: 'absolute' }}>
           <gmp-map-3d
-            ref={mapRef}
+            ref={setMapRef}
             mode="satellite"
             default-ui-hidden="true"
             altitude-mode="RELATIVE_TO_GROUND"
@@ -405,11 +433,11 @@ export const GoogleDriverViewPage = () => {
               </Button>
               <Button
                 variant="light"
-                onClick={() => navigate(`/google/3d-view?vehicleId=${vehicleId}`)}
-                className="shadow-sm"
-                title="Go to 3D View"
-              >
-                <FontAwesomeIcon icon={faSatellite} />
+                 onClick={() => navigate(`/google/3d-view?vehicleId=${vehicleId}`)}
+                 className="shadow-sm border border-primary animate-pulse"
+                 title="Switch to 3D Map View"
+               >
+                 <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />
               </Button>
             </div>
 

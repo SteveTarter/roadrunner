@@ -15,7 +15,8 @@ import {
   faUpRightAndDownLeftFromCenter,
   faChartLine,
   faChevronDown,
-  faChevronUp
+  faChevronUp,
+  faExchangeAlt
 } from '@fortawesome/free-solid-svg-icons';
 import { useVehicleData } from '../../hooks/useVehicleData';
 import { usePlayback } from "../../context/PlaybackContext";
@@ -118,7 +119,7 @@ export const GoogleVehicle3DMapPage = () => {
 
   const [cameraDistance, setCameraDistance] = useState<number>(60.96); // 200 feet in meters
   const [cameraYaw, setCameraYaw] = useState<number>(0); // Yaw (horizontal offset from car's heading)
-  const [cameraElevation, setCameraElevation] = useState<number>(45); // Azimuth elevation angle (0 = ground, 90 = zenith)
+  const [cameraElevation, setCameraElevation] = useState<number>(15); // Azimuth elevation angle (0 = ground, 90 = zenith)
 
 
 
@@ -145,6 +146,55 @@ export const GoogleVehicle3DMapPage = () => {
     vehicleSize: 20,
     intervalMs: 50
   });
+
+
+  const initialCameraRef = useRef<{
+    center: { lat: number; lng: number; altitude: number };
+    heading: number;
+    tilt: number;
+    range: number;
+  } | null>(null);
+
+  // Compute the first resolved camera target as soon as data is ready
+  if (!initialCameraRef.current && isDataLoaded) {
+    if (focusedVehicleId) {
+      const v = vehicleStateMap.get(focusedVehicleId);
+      if (v && v.degLatitude !== 0 && v.degLongitude !== 0) {
+        initialCameraRef.current = {
+          center: { lat: v.degLatitude, lng: v.degLongitude, altitude: 0 },
+          heading: (v.degBearing + 180) % 360,
+          tilt: 75,
+          range: 60.96
+        };
+      }
+    } else {
+      const validVehicles = Array.from(vehicleStateMap.values()).filter(v => v.degLatitude !== 0 && v.degLongitude !== 0);
+      if (validVehicles.length > 0) {
+        const sumLat = validVehicles.reduce((sum, v) => sum + v.degLatitude, 0);
+        const sumLng = validVehicles.reduce((sum, v) => sum + v.degLongitude, 0);
+        initialCameraRef.current = {
+          center: {
+            lat: sumLat / validVehicles.length,
+            lng: sumLng / validVehicles.length,
+            altitude: 0
+          },
+          heading: 0,
+          tilt: 75,
+          range: 1000
+        };
+      }
+    }
+  }
+
+  const setMapRef = useCallback((mapEl: any) => {
+    mapRef.current = mapEl;
+    if (mapEl && initialCameraRef.current) {
+      mapEl.center = initialCameraRef.current.center;
+      mapEl.heading = initialCameraRef.current.heading;
+      mapEl.tilt = initialCameraRef.current.tilt;
+      mapEl.range = initialCameraRef.current.range;
+    }
+  }, []);
 
   const handleCameraModeChange = useCallback((mode: 'chase' | 'fixed') => {
     setCameraMode(mode);
@@ -384,7 +434,7 @@ export const GoogleVehicle3DMapPage = () => {
         isProgrammaticUpdateRef.current = true;
         setCameraDistance(60.96); // Reset to 200 feet
         setCameraYaw(0); // Reset to 0 degrees (directly behind)
-        setCameraElevation(45); // Reset to 45 degrees elevation
+        setCameraElevation(15); // Reset to 15 degrees elevation
 
         const targetHeading = cameraMode === 'chase' ? vehicle.degBearing : 0;
 
@@ -392,7 +442,7 @@ export const GoogleVehicle3DMapPage = () => {
           endCamera: {
             center: { lat: vehicle.degLatitude, lng: vehicle.degLongitude, altitude: 0 },
             range: 60.96,
-            tilt: 45,
+            tilt: 75,
             heading: targetHeading,
             altitudeMode: 'RELATIVE_TO_GROUND'
           },
@@ -526,14 +576,14 @@ export const GoogleVehicle3DMapPage = () => {
   const focusedVehicle = vehicleStateMap.get(focusedVehicleId);
   const focusedVehicleColor = focusedVehicle?.colorCode;
 
-  const shouldShowMap = isDataLoaded || vehicleList.length > 0;
+  const shouldShowMap = (isDataLoaded || vehicleList.length > 0) && initialCameraRef.current !== null;
 
   return (
     <div className="body row scroll-y">
         {shouldShowMap && isMapReady ? (
           <div className="map-container-3d">
             <gmp-map-3d
-              ref={mapRef}
+              ref={setMapRef}
               mode={mapStyle}
               default-ui-hidden="true"
               altitude-mode="RELATIVE_TO_GROUND"
@@ -643,7 +693,7 @@ export const GoogleVehicle3DMapPage = () => {
                             </div>
 
                             <div className="d-flex justify-content-between align-items-center mb-1">
-                              <span className="fw-bold" style={{ fontSize: '0.75rem', color: '#666' }}>{cameraMode === 'chase' ? 'Yaw (Relative)' : 'Yaw (Compass)'}</span>
+                              <span className="fw-bold" style={{ fontSize: '0.75rem', color: '#666' }}>{cameraMode === 'chase' ? 'Yaw' : 'Yaw (Compass)'}</span>
                               <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{Math.round(cameraYaw)}°</span>
                             </div>
                             <div className="d-flex gap-1 mb-2">
@@ -666,7 +716,7 @@ export const GoogleVehicle3DMapPage = () => {
                             </div>
 
                             <div className="d-flex justify-content-between align-items-center mb-1">
-                              <span className="fw-bold" style={{ fontSize: '0.75rem', color: '#666' }}>Azimuth (Elevation)</span>
+                              <span className="fw-bold" style={{ fontSize: '0.75rem', color: '#666' }}>Elevation</span>
                               <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{Math.round(cameraElevation)}°</span>
                             </div>
                             <div className="d-flex gap-1 mb-2">
@@ -690,20 +740,14 @@ export const GoogleVehicle3DMapPage = () => {
                           </div>
 
                           <Button
-                            variant="primary"
-                            size="sm"
-                            className="mt-2"
-                            onClick={() => navigate(`/google/driver-view/${focusedVehicleId}`)}
-                            style={{ fontSize: '0.75rem', padding: '2px 8px', width: '100%' }}
-                          >
-                            Jump to Driver View
-                          </Button>
-
-                          <Button
                             variant="outline-danger"
                             size="sm"
-                            className="mt-1"
-                            onClick={() => setFocusedVehicleId("")}
+                            className="mt-2"
+                            onClick={() => {
+                              if (window.confirm("Are you sure?")) {
+                                setFocusedVehicleId("");
+                              }
+                            }}
                             style={{ fontSize: '0.75rem', padding: '2px 8px', width: '100%' }}
                           >
                             Release Lock
@@ -718,6 +762,16 @@ export const GoogleVehicle3DMapPage = () => {
 
             {/* --- Float-Right Toolbar --- */}
             <div className="map-tools-container-3d">
+              {focusedVehicleId && (
+                <Button
+                  variant="light"
+                  className="shadow-sm border border-primary animate-pulse"
+                  onClick={() => navigate(`/google/driver-view/${focusedVehicleId}`)}
+                  title="Switch to Driver View"
+                >
+                  <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />
+                </Button>
+              )}
               <Button
                 variant="light"
                 className="shadow-sm"

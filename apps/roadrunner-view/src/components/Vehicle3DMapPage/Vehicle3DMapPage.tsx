@@ -14,10 +14,10 @@ import {
   faBars, 
   faUpRightAndDownLeftFromCenter, 
   faCompass,
-  faInfoCircle,
   faChartLine,
   faChevronDown,
-  faChevronUp
+  faChevronUp,
+  faExchangeAlt
 } from '@fortawesome/free-solid-svg-icons';
 import { CONFIG } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
@@ -46,12 +46,15 @@ export const Vehicle3DMapPage = () => {
   const initialVehicleId = searchParams.get('vehicleId') || "";
   const [focusedVehicleId, setFocusedVehicleId] = useState<string>(initialVehicleId);
   const [hasCenteredInitially, setHasCenteredInitially] = useState(false);
-  const userBearingOffsetRef = useRef<number>(0);
   const missingTimestampRef = useRef<number | null>(null);
   const [cameraMode, setCameraMode] = useState<'chase' | 'fixed'>('chase');
   const [showActiveVehiclePlot, setShowActiveVehiclePlot] = useState(false);
-  const [isGuideMinimized, setIsGuideMinimized] = useState(true);
   const [isFocusMinimized, setIsFocusMinimized] = useState(false);
+
+  // Camera state variables matching Google version
+  const [cameraDistance, setCameraDistance] = useState<number>(60.96); // 200 feet in meters
+  const [cameraYaw, setCameraYaw] = useState<number>(0);
+  const [cameraElevation, setCameraElevation] = useState<number>(15);
 
   const toggleShowActiveVehiclePlot = useCallback(() => {
     setShowActiveVehiclePlot(prev => !prev);
@@ -64,7 +67,7 @@ export const Vehicle3DMapPage = () => {
       longitude: -97.5,
       latitude: 32.75,
       zoom: 16,
-      pitch: 65,
+      pitch: 75,
       bearing: -20,
       padding: { top: 0, bottom: 0, left: 0, right: 0 }
     };
@@ -89,11 +92,16 @@ export const Vehicle3DMapPage = () => {
 
   const handleCameraModeChange = useCallback((mode: 'chase' | 'fixed') => {
     setCameraMode(mode);
+    const currentHeading = mapViewState.bearing || 0;
     if (mode === 'chase' && focusedVehicleId) {
       const vehicle = vehicleStateMap.get(focusedVehicleId);
       if (vehicle) {
-        userBearingOffsetRef.current = mapViewState.bearing - (vehicle.degBearing + 45);
+        const rawYaw = (currentHeading - vehicle.degBearing + 720) % 360;
+        const roundedYaw = Math.round(rawYaw / 5) * 5 % 360;
+        setCameraYaw(roundedYaw > 180 ? roundedYaw - 360 : roundedYaw);
       }
+    } else {
+      setCameraYaw(currentHeading);
     }
   }, [focusedVehicleId, vehicleStateMap, mapViewState.bearing]);
 
@@ -123,24 +131,9 @@ export const Vehicle3DMapPage = () => {
     }
   }, [focusedVehicleId, vehicleStateMap, isDataLoaded, version, navigate]);
 
-  // Handle camera positioning when a vehicle is focused, maintaining bearing relative to vehicle's heading (if in chase mode)
-  useEffect(() => {
-    if (!focusedVehicleId) return;
-    const vehicle = vehicleStateMap.get(focusedVehicleId);
-    if (vehicle) {
-      setMapViewState(prev => ({
-        ...prev,
-        longitude: vehicle.degLongitude,
-        latitude: vehicle.degLatitude,
-        pitch: 45, // Lock pitch to 45 degrees looking down
-        ...(cameraMode === 'chase' ? { bearing: vehicle.degBearing + 45 + userBearingOffsetRef.current } : {})
-      }));
-    }
-  }, [focusedVehicleId, vehicleStateMap, version, cameraMode]);
-
   const lastFocusedIdRef = useRef<string>("");
 
-  // Zoom in and center on the vehicle when focused
+  // Reset camera settings on new vehicle focus
   useEffect(() => {
     if (!focusedVehicleId) {
       lastFocusedIdRef.current = "";
@@ -149,20 +142,33 @@ export const Vehicle3DMapPage = () => {
 
     if (focusedVehicleId !== lastFocusedIdRef.current) {
       lastFocusedIdRef.current = focusedVehicleId;
-      const vehicle = vehicleStateMap.get(focusedVehicleId);
-      if (vehicle) {
-        userBearingOffsetRef.current = 0; // Reset offset on new focus
-        setMapViewState(prev => ({
-          ...prev,
-          longitude: vehicle.degLongitude,
-          latitude: vehicle.degLatitude,
-          zoom: 21.5, // Zoom in close to see the vehicle model
-          pitch: 45, // Set pitch to 45 degrees looking down
-          ...(cameraMode === 'chase' ? { bearing: vehicle.degBearing + 45 } : {})
-        }));
-      }
+      setCameraDistance(60.96); // Reset to 200 feet (60.96m)
+      setCameraYaw(0); // Reset to 0 degrees
+      setCameraElevation(15); // Reset to 15 degrees (75 pitch)
     }
-  }, [focusedVehicleId, vehicleStateMap, cameraMode]);
+  }, [focusedVehicleId]);
+
+  // Handle camera positioning when a vehicle is focused, maintaining bearing/pitch/zoom relative to state variables
+  useEffect(() => {
+    if (!focusedVehicleId) return;
+    const vehicle = vehicleStateMap.get(focusedVehicleId);
+    if (vehicle) {
+      const calculatedZoom = 24.5 - Math.log2(cameraDistance);
+      const calculatedPitch = 90 - cameraElevation;
+      const calculatedBearing = cameraMode === 'chase' 
+        ? (vehicle.degBearing + cameraYaw) 
+        : cameraYaw;
+        
+      setMapViewState(prev => ({
+        ...prev,
+        longitude: vehicle.degLongitude,
+        latitude: vehicle.degLatitude,
+        zoom: calculatedZoom,
+        pitch: calculatedPitch,
+        bearing: (calculatedBearing + 360) % 360
+      }));
+    }
+  }, [focusedVehicleId, vehicleStateMap, version, cameraMode, cameraDistance, cameraYaw, cameraElevation]);
 
   // Centering camera initially on the first active vehicle if available
   useEffect(() => {
@@ -303,15 +309,27 @@ export const Vehicle3DMapPage = () => {
 
   // Handle map movement and user camera interactions
   const onMove = useCallback((evt: any) => {
-    // If the movement was triggered manually by user mouse or touch interaction,
-    // update our relative bearing offset so the camera continues rotating with the vehicle (only in chase mode)
+    setMapViewState(evt.viewState);
+    
     if (focusedVehicleId && evt.originalEvent) {
       const vehicle = vehicleStateMap.get(focusedVehicleId);
-      if (vehicle && cameraMode === 'chase') {
-        userBearingOffsetRef.current = evt.viewState.bearing - (vehicle.degBearing + 45);
+      if (vehicle) {
+        // 1. Calculate cameraDistance from zoom
+        const calculatedDistance = Math.pow(2, 24.5 - evt.viewState.zoom);
+        setCameraDistance(calculatedDistance);
+        
+        // 2. Calculate cameraElevation from pitch
+        setCameraElevation(90 - evt.viewState.pitch);
+        
+        // 3. Calculate cameraYaw from bearing
+        if (cameraMode === 'chase') {
+          const yaw = (evt.viewState.bearing - vehicle.degBearing + 360) % 360;
+          setCameraYaw(yaw > 180 ? yaw - 360 : yaw);
+        } else {
+          setCameraYaw(evt.viewState.bearing);
+        }
       }
     }
-    setMapViewState(evt.viewState);
   }, [focusedVehicleId, vehicleStateMap, cameraMode]);
 
   // Detect vehicle clicks to change focus target
@@ -380,13 +398,19 @@ export const Vehicle3DMapPage = () => {
 
   // Reset view to default perspective
   const resetCamera = useCallback(() => {
-    setMapViewState(prev => ({
-      ...prev,
-      zoom: 16,
-      pitch: 65,
-      bearing: -20
-    }));
-  }, []);
+    if (focusedVehicleId) {
+      setCameraDistance(60.96);
+      setCameraYaw(0);
+      setCameraElevation(15);
+    } else {
+      setMapViewState(prev => ({
+        ...prev,
+        zoom: 16,
+        pitch: 75,
+        bearing: -20
+      }));
+    }
+  }, [focusedVehicleId]);
 
   const focusedVehicle = vehicleStateMap.get(focusedVehicleId);
   const focusedVehicleColor = focusedVehicle?.colorCode;
@@ -412,38 +436,6 @@ export const Vehicle3DMapPage = () => {
 
             {/* Timeline playback control */}
             <PlaybackClock />
-
-            {/* Google Earth Navigation Guide */}
-            <div className="controls-guide-card">
-              <div 
-                className="controls-guide-title" 
-                onClick={() => setIsGuideMinimized(!isGuideMinimized)}
-                style={{ 
-                  cursor: 'pointer', 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  width: '100%', 
-                  marginBottom: isGuideMinimized ? '0' : '6px', 
-                  borderBottom: isGuideMinimized ? 'none' : '1px solid rgba(0, 0, 0, 0.1)', 
-                  paddingBottom: isGuideMinimized ? '0' : '4px' 
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <FontAwesomeIcon icon={faInfoCircle} />
-                  <span>3D Camera Controls</span>
-                </div>
-                <FontAwesomeIcon icon={isGuideMinimized ? faChevronUp : faChevronDown} style={{ fontSize: '0.75rem', color: '#666', marginLeft: '8px' }} />
-              </div>
-              {!isGuideMinimized && (
-                <ul className="controls-guide-list">
-                  <li><strong>Left-Click + Drag</strong>: Pan map</li>
-                  <li><strong>Right-Click + Drag</strong>: Orbit / Tilt perspective</li>
-                  <li><strong>Ctrl + Drag</strong>: Tilt perspective</li>
-                  <li><strong>Scroll / Pinch</strong>: Zoom in/out</li>
-                </ul>
-              )}
-            </div>
 
             {/* Focus Panel */}
             <div className="focus-panel-container">
@@ -509,21 +501,87 @@ export const Vehicle3DMapPage = () => {
                               style={{ cursor: 'pointer' }}
                             />
                           </div>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            className="mt-2"
-                            onClick={() => navigate(`/driver-view/${focusedVehicleId}`)}
-                            style={{ fontSize: '0.75rem', padding: '2px 8px', width: '100%' }}
-                          >
-                            Jump to Driver View
-                          </Button>
+
+                          <div className="mt-2 text-start" style={{ fontSize: '0.8rem', borderTop: '1px solid #eee', paddingTop: '8px' }}>
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <span className="fw-bold" style={{ fontSize: '0.75rem', color: '#666' }}>Distance</span>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{Math.round(cameraDistance / 0.3048)} ft</span>
+                            </div>
+                            <div className="d-flex gap-1 mb-2">
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                style={{ flex: 1, padding: '2px 0', fontSize: '0.75rem' }}
+                                onClick={() => setCameraDistance(prev => Math.max(3.048, prev - 3.048))}
+                              >
+                                -10ft
+                              </Button>
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                style={{ flex: 1, padding: '2px 0', fontSize: '0.75rem' }}
+                                onClick={() => setCameraDistance(prev => Math.min(914.4, prev + 3.048))}
+                              >
+                                +10ft
+                              </Button>
+                            </div>
+
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <span className="fw-bold" style={{ fontSize: '0.75rem', color: '#666' }}>{cameraMode === 'chase' ? 'Yaw' : 'Yaw (Compass)'}</span>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{Math.round(cameraYaw)}°</span>
+                            </div>
+                            <div className="d-flex gap-1 mb-2">
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                style={{ flex: 1, padding: '2px 0', fontSize: '0.75rem' }}
+                                onClick={() => setCameraYaw(prev => (prev - 5 + 360) % 360)}
+                              >
+                                -5°
+                              </Button>
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                style={{ flex: 1, padding: '2px 0', fontSize: '0.75rem' }}
+                                onClick={() => setCameraYaw(prev => (prev + 5) % 360)}
+                              >
+                                +5°
+                              </Button>
+                            </div>
+
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <span className="fw-bold" style={{ fontSize: '0.75rem', color: '#666' }}>Elevation</span>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{Math.round(cameraElevation)}°</span>
+                            </div>
+                            <div className="d-flex gap-1 mb-2">
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                style={{ flex: 1, padding: '2px 0', fontSize: '0.75rem' }}
+                                onClick={() => setCameraElevation(prev => Math.max(0, prev - 5))}
+                              >
+                                -5°
+                              </Button>
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                style={{ flex: 1, padding: '2px 0', fontSize: '0.75rem' }}
+                                onClick={() => setCameraElevation(prev => Math.min(85, prev + 5))}
+                              >
+                                +5°
+                              </Button>
+                            </div>
+                          </div>
 
                           <Button 
                             variant="outline-danger" 
                             size="sm" 
-                            className="mt-1"
-                            onClick={() => setFocusedVehicleId("")}
+                            className="mt-2"
+                            onClick={() => {
+                              if (window.confirm("Are you sure?")) {
+                                setFocusedVehicleId("");
+                              }
+                            }}
                             style={{ fontSize: '0.75rem', padding: '2px 8px', width: '100%' }}
                           >
                             Release Lock
@@ -538,6 +596,16 @@ export const Vehicle3DMapPage = () => {
 
             {/* --- Float-Right Toolbar --- */}
             <div className="map-tools-container-3d">
+              {focusedVehicleId && (
+                <Button
+                  variant="light"
+                  className="shadow-sm border border-primary animate-pulse"
+                  onClick={() => navigate(`/driver-view/${focusedVehicleId}`)}
+                  title="Switch to Driver View"
+                >
+                  <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />
+                </Button>
+              )}
               <Button
                 variant="light"
                 className="shadow-sm"
