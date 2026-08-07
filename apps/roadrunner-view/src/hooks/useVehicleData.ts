@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getCachedAuthToken } from "../components/Utils/AuthUtils";
-import { CONFIG, getRestUrl } from "../config";
+import { getRestUrl } from "../config";
 import { usePlayback } from "../context/PlaybackContext";
 import { VehicleState } from '../models/VehicleState';
 import { VehicleDisplay } from '../models/VehicleDisplay';

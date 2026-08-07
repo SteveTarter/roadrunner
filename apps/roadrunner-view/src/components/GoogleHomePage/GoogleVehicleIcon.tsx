@@ -4,7 +4,7 @@ import { getCachedAuthToken } from "../Utils/AuthUtils";
 import { VehicleDisplay } from "../../models/VehicleDisplay";
 import { VehicleState } from "../../models/VehicleState";
 import { Button, Card } from "react-bootstrap";
-import { CONFIG, getRestUrl } from "../../config";
+import { getRestUrl } from "../../config";
 import { GooglePolyline } from "./GooglePolyline";
 import { useNavigate } from "react-router-dom";
 import { usePlayback } from "../../context/PlaybackContext";

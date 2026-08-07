@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { VehicleDisplay } from "../../models/VehicleDisplay";
 import { VehicleState } from "../../models/VehicleState";
 import { Button, Card } from "react-bootstrap";
-import { CONFIG, getRestUrl } from "../../config";
+import { getRestUrl } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
 
 export const VehicleIcon: React.FC<{

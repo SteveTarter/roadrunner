@@ -1,7 +1,7 @@
 import { fetchAuthSession } from "aws-amplify/auth";
 import { useMemo, useState, useEffect } from 'react';
 import { MaterialReactTable } from 'material-react-table';
-import { CONFIG, getRestUrl } from "../../config";
+import { getRestUrl } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
 import { Button } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";

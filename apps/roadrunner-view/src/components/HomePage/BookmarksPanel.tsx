@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchAuthSession } from "aws-amplify/auth";
-import { CONFIG, getRestUrl } from "../../config";
+import { getRestUrl } from "../../config";
 import { Card, CardHeader, CardBody, ListGroup, ListGroupItem, Spinner } from 'reactstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';

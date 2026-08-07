@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHome, faMagic, faBars, faChartLine, faSatellite } from '@fortawesome/free-solid-svg-icons';
 import { ViewControl } from '../DriverViewPage/ViewControl';
-import { CONFIG, getRestUrl } from "../../config";
+import { getRestUrl } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
 import { usePlayback } from "../../context/PlaybackContext";
 import { useMapViewState } from '../../context/MapViewStateContext';

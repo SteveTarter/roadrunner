@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getCachedAuthToken } from '../components/Utils/AuthUtils';
-import { CONFIG, getRestUrl } from "../config";
+import { getRestUrl } from "../config";
 import { SimulationSession } from '../models/SimulationSession';
 import { MapWrapper } from '../components/Utils/MapWrapper';
 import { usePlayback } from '../context/PlaybackContext';
