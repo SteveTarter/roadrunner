@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button, Card, CardBody, CardHeader, Form, FormGroup, FormLabel } from "react-bootstrap";
 import { Input } from "reactstrap";
 import { fetchAuthSession } from "aws-amplify/auth";
-import { CONFIG } from "../../config";
+import { CONFIG, getRestUrl } from "../../config";
 import { PointPicker } from '../Shared/PointPicker';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
@@ -183,7 +183,7 @@ export const CrissCrossPanel = (props: {
   const createCrissCross = async (): Promise<void> => {
     setInProgress(true);
 
-    const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/create-crisscross`;
+    const url = getRestUrl('/api/vehicle/create-crisscross');
 
     const payload = {
       degLatitude: selectedCenter?.lat || 0,

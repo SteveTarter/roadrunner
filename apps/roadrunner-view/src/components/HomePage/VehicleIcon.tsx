@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { VehicleDisplay } from "../../models/VehicleDisplay";
 import { VehicleState } from "../../models/VehicleState";
 import { Button, Card } from "react-bootstrap";
-import { CONFIG } from "../../config";
+import { getRestUrl } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
 
 export const VehicleIcon: React.FC<{
@@ -53,9 +53,8 @@ export const VehicleIcon: React.FC<{
 
       try {
         // Get the latest VehicleStates
-        const restUrlBase = CONFIG.ROADRUNNER_REST_URL_BASE;
         const apiPath = dataSource === 'postgis' ? '/api/db-vehicle' : '/api/vehicle';
-        const getStatesUrl: string = `${restUrlBase}${apiPath}/get-vehicle-directions/${props.vehicleState.id}`;
+        const getStatesUrl = getRestUrl(`${apiPath}/get-vehicle-directions/${props.vehicleState.id}`);
         fetch(getStatesUrl, {
           method: 'get',
           headers: {

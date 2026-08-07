@@ -2,7 +2,7 @@ import { Button, Card, Form, CardHeader, CardBody } from "react-bootstrap";
 import { fetchAuthSession } from "aws-amplify/auth";
 // eslint-disable-next-line
 import { useNavigate } from "react-router-dom";
-import { CONFIG } from "../../config";
+import { CONFIG, getRestUrl } from "../../config";
 import { Address } from '../../models/Address';
 import { TripPlan } from '../../models/TripPlan';
 import { PointPicker } from '../Shared/PointPicker';
@@ -68,7 +68,7 @@ export const CreateVehiclePanel = (props: {
       buildAddress("destination", selectedDestination)
     ]);
 
-    const url = `${CONFIG.ROADRUNNER_REST_URL_BASE}/api/vehicle/create-new`;
+    const url = getRestUrl('/api/vehicle/create-new');
     props.returnToNow();
     try {
       // Get the latest session right before the call

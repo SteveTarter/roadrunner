@@ -1,6 +1,8 @@
 package com.tarterware.roadrunner.adapters.kafka;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -44,42 +46,55 @@ public class PostGISTelemetryConsumer
         this.telemetryRepository = telemetryRepository;
         // Construct GeometryFactory with WGS84 SRID 4326
         this.geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
-        log.info("PostGISTelemetryConsumer is ACTIVE and ready to persist telemetry to PostGIS");
+        log.info("PostGISTelemetryConsumer is ACTIVE and ready to persist telemetry to PostGIS in batch mode");
     }
 
     @KafkaListener(
             topics = "${com.tarterware.roadrunner.kafka.topic.vehicle-position}",
-            groupId = "PostGISTelemetryConsumer"
+            groupId = "PostGISTelemetryConsumer",
+            containerFactory = "batchKafkaListenerContainerFactory"
     )
-    public void receive(@Payload VehiclePositionEvent event)
+    public void receive(@Payload List<VehiclePositionEvent> events)
     {
-        log.debug("PostGIS Consumer: Received event for vehicle {} with status {}", event.vehicleId(), event.status());
+        if (events == null || events.isEmpty())
+        {
+            return;
+        }
+
+        log.debug("PostGIS Consumer: Received batch of {} telemetry events", events.size());
 
         try
         {
-            VehicleTelemetry telemetry = new VehicleTelemetry();
-            telemetry.setVehicleId(event.vehicleId());
-            telemetry.setHeading(event.heading());
-            telemetry.setSpeed(event.speed());
-            telemetry.setSequenceNumber(event.sequenceNumber());
-            telemetry.setNsLastExec(event.nsLastExec());
-            telemetry.setPositionValid(event.positionValid());
-            telemetry.setPositionLimited(event.positionLimited());
-            telemetry.setColorCode(event.colorCode());
-            telemetry.setManagerHost(event.managerHost());
-            telemetry.setStatus(event.status());
-            telemetry.setTimestamp(Instant.now());
+            List<VehicleTelemetry> telemetryList = new ArrayList<>();
+            for (VehiclePositionEvent event : events)
+            {
+                VehicleTelemetry telemetry = new VehicleTelemetry();
+                telemetry.setVehicleId(event.vehicleId());
+                telemetry.setHeading(event.heading());
+                telemetry.setSpeed(event.speed());
+                telemetry.setSequenceNumber(event.sequenceNumber());
+                telemetry.setNsLastExec(event.nsLastExec());
+                telemetry.setPositionValid(event.positionValid());
+                telemetry.setPositionLimited(event.positionLimited());
+                telemetry.setColorCode(event.colorCode());
+                telemetry.setManagerHost(event.managerHost());
+                telemetry.setStatus(event.status());
+                telemetry.setTimestamp(event.eventTime() != null ? event.eventTime() : Instant.now());
 
-            // Build JTS Point (Longitude, Latitude)
-            Point position = geometryFactory.createPoint(new Coordinate(event.longitude(), event.latitude()));
-            telemetry.setPosition(position);
+                // Build JTS Point (Longitude, Latitude)
+                Point position = geometryFactory.createPoint(new Coordinate(event.longitude(), event.latitude()));
+                telemetry.setPosition(position);
 
-            telemetryRepository.save(telemetry);
-            log.trace("Saved telemetry record for vehicle {}", event.vehicleId());
+                telemetryList.add(telemetry);
+            }
+
+            telemetryRepository.saveAll(telemetryList);
+            log.trace("Saved batch of {} telemetry records", events.size());
         }
         catch (Exception e)
         {
-            log.error("Failed to persist telemetry event for vehicle {} to PostGIS", event.vehicleId(), e);
+            log.error("Failed to persist batch of {} telemetry events to PostGIS", events.size(), e);
         }
     }
 }
+

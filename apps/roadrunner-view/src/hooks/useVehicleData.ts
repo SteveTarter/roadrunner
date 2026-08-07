@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getCachedAuthToken } from "../components/Utils/AuthUtils";
-import { CONFIG } from "../config";
+import { getRestUrl } from "../config";
 import { usePlayback } from "../context/PlaybackContext";
 import { VehicleState } from '../models/VehicleState';
 import { VehicleDisplay } from '../models/VehicleDisplay';
@@ -64,8 +64,7 @@ export const useVehicleData = ({
       // Loop until we have swallowed every page for the current timeAnchor
       while (currentPage < totalPages) {
         const apiPath = dataSource === 'postgis' ? '/api/db-playback' : '/api/playback';
-        let url =
-          `${CONFIG.ROADRUNNER_REST_URL_BASE}${apiPath}/state?page=${currentPage}`;
+        let url = getRestUrl(`${apiPath}/state?page=${currentPage}`);
 
         url += `&pageSize=${pageSize}`;
 
@@ -131,7 +130,7 @@ export const useVehicleData = ({
     return (start + delta * ratio + 360) % 360;
   };
 
-  const LIVE_INTERPOLATION_DELAY_MS = 2000;
+  const LIVE_INTERPOLATION_DELAY_MS = 5000;
 
   /**
    * THE PLAYBACK ENGINE: Syncs the UI maps to the specific playback time.
