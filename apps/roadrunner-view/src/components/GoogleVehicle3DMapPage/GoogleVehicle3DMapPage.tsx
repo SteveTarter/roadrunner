@@ -1,7 +1,6 @@
 import './GoogleVehicle3DMapPage.css';
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AppNavBar } from '../NavBar/AppNavBar';
 import { PlaybackClock } from '../Utils/PlaybackClock';
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Button, Card, Form } from 'react-bootstrap';
