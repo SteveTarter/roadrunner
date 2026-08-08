@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { CONFIG } from "../../config";
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useHelp } from '../../context/HelpContext';
 
 import {
   Collapse,
@@ -122,6 +123,8 @@ export const AppNavBar = ({
     return () => { cancelled = true; };
   }, []);
 
+  const { openHelp } = useHelp();
+
   const logoutAndReturn = async () => {
     try {
       await signOut({ global: true });
@@ -139,8 +142,9 @@ export const AppNavBar = ({
   }, [navigate]);
 
   const gotoGuidePage = useCallback(() => {
-    navigate('/guide/overview');
-  }, [navigate]);
+    openHelp('overview');
+    setIsOpen(false);
+  }, [openHelp]);
 
 
   const gotoHomePage = useCallback(() => {
@@ -172,7 +176,6 @@ export const AppNavBar = ({
             {additionalMenuItems && additionalMenuItems(() => setIsOpen(false))}
             <NavItem>
               <NavLink
-                to="/guide/overview"
                 id="guideOverviewBtn"
                 onClick={() => gotoGuidePage()}
                 style={{ cursor: "pointer" }}

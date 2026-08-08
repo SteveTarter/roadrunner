@@ -10,7 +10,7 @@ import { ProfilePage } from './components/ProfilePage/ProfilePage';
 import { DriverViewPage } from './components/DriverViewPage/DriverViewPage';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import fontawesome from '@fortawesome/fontawesome'
-import { faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faArrowLeft, faArrowRight, fa0 } from '@fortawesome/free-solid-svg-icons';
+import { faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faArrowLeft, faArrowRight, fa0, faQuestionCircle } from '@fortawesome/free-solid-svg-icons';
 import { faPowerOff, faUser } from '@fortawesome/fontawesome-free-solid'
 import { AboutPage } from './components/AboutPage/AboutPage';
 import { GuidePage } from './components/GuidePage/GuidePage';
@@ -18,8 +18,10 @@ import { Vehicle3DMapPage } from './components/Vehicle3DMapPage/Vehicle3DMapPage
 import { GoogleHomePage } from './components/GoogleHomePage/GoogleHomePage';
 import { GoogleVehicle3DMapPage } from './components/GoogleVehicle3DMapPage/GoogleVehicle3DMapPage';
 import { GoogleDriverViewPage } from './components/GoogleDriverViewPage/GoogleDriverViewPage';
+import { HelpProvider } from './context/HelpContext';
+import { HelpDrawer } from './components/Shared/HelpDrawer';
 
-library.add(faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faArrowLeft, faArrowRight, fa0 );
+library.add(faHome, faSatellite, faMap, faUpRightAndDownLeftFromCenter, faEye, faEyeSlash, faArrowLeft, faArrowRight, fa0, faQuestionCircle );
 fontawesome.library.add(faPowerOff, faUser);
 
 const HomeRedirect = () => {
@@ -70,48 +72,51 @@ const WrappedGoogleDriverViewPage = () => (
 export const App = () => {
 
   return (
-    <div className='d-flex flex-column min-vh-100'>
-      <div className='flex-grow-1'>
-      <Routes>
-        <Route path='/' element={<HomeRedirect />} />
-        <Route
-          path='/home'
-          element={<AuthenticationGuard component={() => <ProviderEnforcedRoute requiredProvider="mapbox" component={HomePage} />} />}
-        />
-        <Route
-          path='/google/home'
-          element={<AuthenticationGuard component={() => <ProviderEnforcedRoute requiredProvider="google" component={WrappedGoogleHomePage} />} />}
-        />
-        <Route
-          path='/google/3d-view'
-          element={<AuthenticationGuard component={() => <ProviderEnforcedRoute requiredProvider="google" component={WrappedGoogleVehicle3DMapPage} />} />}
-        />
-        <Route
-          path='/google/driver-view/:vehicleId'
-          element={<AuthenticationGuard component={() => <ProviderEnforcedRoute requiredProvider="google" component={WrappedGoogleDriverViewPage} />} />}
-        />
-        <Route
-          path='/about'
-          element={<AuthenticationGuard component={AboutPage} />}
-        />
-        <Route
-          path='/guide/:guideId'
-          element={<AuthenticationGuard component={GuidePage} />}
-        />
-        <Route
-          path="/profile"
-          element={<AuthenticationGuard component={ProfilePage} />}
-        />
-        <Route
-          path='/driver-view/:vehicleId'
-          element={<AuthenticationGuard component={() => <ProviderEnforcedRoute requiredProvider="mapbox" component={DriverViewPage} />} />}
-        />
-        <Route
-          path='/3d-view'
-          element={<AuthenticationGuard component={() => <ProviderEnforcedRoute requiredProvider="mapbox" component={Vehicle3DMapPage} />} />}
-        />
-      </Routes>
+    <HelpProvider>
+      <div className='d-flex flex-column min-vh-100'>
+        <div className='flex-grow-1'>
+        <Routes>
+          <Route path='/' element={<HomeRedirect />} />
+          <Route
+            path='/home'
+            element={<AuthenticationGuard component={() => <ProviderEnforcedRoute requiredProvider="mapbox" component={HomePage} />} />}
+          />
+          <Route
+            path='/google/home'
+            element={<AuthenticationGuard component={() => <ProviderEnforcedRoute requiredProvider="google" component={WrappedGoogleHomePage} />} />}
+          />
+          <Route
+            path='/google/3d-view'
+            element={<AuthenticationGuard component={() => <ProviderEnforcedRoute requiredProvider="google" component={WrappedGoogleVehicle3DMapPage} />} />}
+          />
+          <Route
+            path='/google/driver-view/:vehicleId'
+            element={<AuthenticationGuard component={() => <ProviderEnforcedRoute requiredProvider="google" component={WrappedGoogleDriverViewPage} />} />}
+          />
+          <Route
+            path='/about'
+            element={<AuthenticationGuard component={AboutPage} />}
+          />
+          <Route
+            path='/guide/:guideId'
+            element={<AuthenticationGuard component={GuidePage} />}
+          />
+          <Route
+            path="/profile"
+            element={<AuthenticationGuard component={ProfilePage} />}
+          />
+          <Route
+            path='/driver-view/:vehicleId'
+            element={<AuthenticationGuard component={() => <ProviderEnforcedRoute requiredProvider="mapbox" component={DriverViewPage} />} />}
+          />
+          <Route
+            path='/3d-view'
+            element={<AuthenticationGuard component={() => <ProviderEnforcedRoute requiredProvider="mapbox" component={Vehicle3DMapPage} />} />}
+          />
+        </Routes>
+        </div>
+        <HelpDrawer />
       </div>
-    </div>
+    </HelpProvider>
   );
 }

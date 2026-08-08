@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { usePlayback } from "../../context/PlaybackContext";
 import { useSimulationSessionData } from '../../hooks/useSimulationSessionData';
 import { Button } from "react-bootstrap";
+import { HelpIconButton } from "./HelpIconButton";
 import {
   LineChart,
   Line,
@@ -385,7 +386,12 @@ export const ActiveVehiclePlot = (props: {
         boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
       }}
     >
-      <h5>{getDynamicTitle(domain[0], domain[1])}</h5>
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <h5 className="mb-0 d-flex align-items-center">
+          {getDynamicTitle(domain[0], domain[1])}
+          <HelpIconButton topicId="active-vehicle-plot" title="Active Vehicle Plot Help" className="ms-2" />
+        </h5>
+      </div>
 
       <div
         ref={chartRef}

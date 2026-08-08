@@ -9,6 +9,7 @@ import { PointPicker } from '../Shared/PointPicker';
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { HelpIconButton } from "../Shared/HelpIconButton";
 
 export const CreateVehiclePanel = (props: {
   setIsCreateVehicleActive: any,
@@ -114,7 +115,10 @@ export const CreateVehiclePanel = (props: {
 <Card style={{ width: '20rem', alignSelf: 'end', top: 40, left:20 }}>
 
   <CardHeader className="d-flex justify-content-between align-items-center bg-dark text-white py-2">
-    <h6 className="mb-0">Create Vehicle</h6>
+    <h6 className="mb-0 d-flex align-items-center">
+      Create Vehicle
+      <HelpIconButton topicId="create-vehicle" title="Create Vehicle Help" className="ms-2 text-white-50" />
+    </h6>
     <Button onClick={cancelCreateVehicle} variant="white" className="text-white">
       <FontAwesomeIcon icon={faTimes} />
     </Button>

@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import { Button } from "react-bootstrap";
 import { usePlayback } from "../../context/PlaybackContext";
+import { HelpIconButton } from "../Shared/HelpIconButton";
 
 export type Bookmark = {
   vehicleId: string;
@@ -69,7 +70,10 @@ export const BookmarksPanel: React.FC<BookmarksPanelProps> = ({ onClose, onSelec
     <Card style={{ width: '20rem', alignSelf: 'end', top: 40, left:20 }}>
 
       <CardHeader className="d-flex justify-content-between align-items-center bg-dark text-white py-2">
-        <h6 className="mb-0">Bookmarks</h6>
+        <h6 className="mb-0 d-flex align-items-center">
+          Bookmarks
+          <HelpIconButton topicId="bookmarks" title="Bookmarks Help" className="ms-2 text-white-50" />
+        </h6>
         <Button onClick={onClose} variant="white" className="text-white">
           <FontAwesomeIcon icon={faTimes} />
         </Button>
