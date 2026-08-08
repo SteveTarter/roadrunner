@@ -109,6 +109,7 @@ export const BookmarksPanel: React.FC<BookmarksPanelProps> = ({ onClose, onSelec
                     size="sm"
                     onClick={() => onSelectBookmark(bookmark.vehicleId, bookmark.start)}
                     title="Jump to Scenario"
+                    style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
                     ▶️ Playback
                   </Button>

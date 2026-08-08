@@ -79,43 +79,67 @@ export const SimulationTable = (props: {
     return () => controller.abort();
   }, [pagination.pageIndex, pagination.pageSize, dataSource]);
 
-  const columns = useMemo(() => [
-    {
-      accessorKey: 'id',
-      header: 'Vehicle',
-      size: 150,
-      Cell: ({ cell }: any) => cell.getValue()
-    },
-    {
-      accessorKey: 'username',
-      header: 'Username',
-      size: 200,
-      // Fallback to "unknown-user" if username is missing or empty
-      Cell: ({ cell }: any) => cell.getValue() || "unknown-user"    },
-    {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const columns = useMemo(() => {
+    const cols = [
+      {
+        accessorKey: 'id',
+        header: 'Vehicle',
+        size: isMobile ? 85 : 150,
+        Cell: ({ cell }: any) => {
+          const val = cell.getValue() || "";
+          return isMobile && val.length > 8 ? val.substring(0, 8) : val;
+        }
+      }
+    ];
+
+    if (!isMobile) {
+      cols.push({
+        accessorKey: 'username',
+        header: 'Username',
+        size: 200,
+        Cell: ({ cell }: any) => cell.getValue() || "unknown-user"
+      });
+    }
+
+    cols.push({
       accessorKey: 'start',
       header: 'Start Time',
-      size: 200,
+      size: isMobile ? 120 : 200,
       Cell: ({ cell }: any) => new Date(cell.getValue()).toLocaleTimeString([], timeFormatOptions) + 'Z'
-    },
-    {
+    });
+
+    cols.push({
       header: 'Actions',
-      size: 120,
+      size: isMobile ? 80 : 120,
       Cell: ({ row }: any) => {
         return (
           <Button
-           size="sm"
-           onClick={() => {
-            setPlaybackSession(row.original.start);
-             const provider = localStorage.getItem('roadrunner_map_provider') || 'mapbox';
-             navigate(provider === 'google' ? `/google/driver-view/${row.original.id}` : `/driver-view/${row.original.id}`);
-          }}>
-            ▶️ Playback
+            size="sm"
+            onClick={() => {
+              setPlaybackSession(row.original.start);
+              const provider = localStorage.getItem('roadrunner_map_provider') || 'mapbox';
+              navigate(provider === 'google' ? `/google/driver-view/${row.original.id}` : `/driver-view/${row.original.id}`);
+            }}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {isMobile ? "▶️ Play" : "▶️ Playback"}
           </Button>
         );
       }
-    }
-  ], [navigate, setPlaybackSession]);
+    });
+
+    return cols;
+  }, [navigate, setPlaybackSession, isMobile]);
 
   return (
     <div
