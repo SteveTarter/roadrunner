@@ -186,7 +186,8 @@ export const GoogleDriverViewPage = () => {
       });
     }
 
-    navigate('/google/home');
+    const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
+    navigate(provider === 'google' ? '/google/home' : '/home');
   }, [navigate, vehicleState, homeMapViewState, setHomeMapViewState, goingHome]);
 
   // Import Maps 3D library programmatically
@@ -466,7 +467,10 @@ export const GoogleDriverViewPage = () => {
 
               <Button
                 variant="light"
-                onClick={() => navigate(`/google/3d-view?vehicleId=${vehicleId}`)}
+                onClick={() => {
+                  const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
+                  navigate(provider === 'google' ? `/google/3d-view?vehicleId=${vehicleId}` : `/3d-view?vehicleId=${vehicleId}`);
+                }}
                 className="shadow-sm border border-primary animate-pulse"
                 title="Switch to 3D Map View"
               >

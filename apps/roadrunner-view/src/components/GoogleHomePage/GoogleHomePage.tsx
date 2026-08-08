@@ -180,7 +180,8 @@ export const GoogleHomePage = () => {
 
     const sessionTime = new Date(startTime).toLocaleTimeString([], timeFormatOptions) + 'Z';
     setPlaybackSession(sessionTime);
-    navigate(`/google/driver-view/${vehicleId}`);
+    const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
+    navigate(provider === 'google' ? `/google/driver-view/${vehicleId}` : `/driver-view/${vehicleId}`);
     setShowBookmarksPanel(false);
   }, [navigate, setPlaybackSession]);
 
