@@ -45,7 +45,7 @@ export const AppNavBar = ({
   const { dataSource, setDataSource } = usePlayback();
 
   const [mapProvider, setMapProvider] = useState<'mapbox' | 'google'>(() => {
-    return (localStorage.getItem('roadrunner_map_provider') as 'mapbox' | 'google') || 'mapbox';
+    return (localStorage.getItem('roadrunner_map_provider') as 'mapbox' | 'google') || 'google';
   });
 
   const handleProviderChange = (newProvider: 'mapbox' | 'google') => {
@@ -220,19 +220,21 @@ export const AppNavBar = ({
                 </DropdownItem>
               </DropdownMenu>
             </UncontrolledDropdown>
-            <UncontrolledDropdown nav inNavbar>
-              <DropdownToggle nav caret id="dataSourceDropDown">
-                Source: {dataSource === 'postgis' ? 'PostGIS' : 'Kafka/Redis'}
-              </DropdownToggle>
-              <DropdownMenu>
-                <DropdownItem onClick={() => setDataSource('redis_kafka')}>
-                  Kafka/Redis (Real-time)
-                </DropdownItem>
-                <DropdownItem onClick={() => setDataSource('postgis')}>
-                  PostGIS (Database)
-                </DropdownItem>
-              </DropdownMenu>
-            </UncontrolledDropdown>
+            {window.location.hostname !== 'roadrunner-view.tarterware.com' && (
+              <UncontrolledDropdown nav inNavbar>
+                <DropdownToggle nav caret id="dataSourceDropDown">
+                  Source: {dataSource === 'postgis' ? 'PostGIS' : 'Kafka/Redis'}
+                </DropdownToggle>
+                <DropdownMenu>
+                  <DropdownItem onClick={() => setDataSource('redis_kafka')}>
+                    Kafka/Redis (Real-time)
+                  </DropdownItem>
+                  <DropdownItem onClick={() => setDataSource('postgis')}>
+                    PostGIS (Database)
+                  </DropdownItem>
+                </DropdownMenu>
+              </UncontrolledDropdown>
+            )}
           </Nav>
 
           {/* Right-aligned items */}
