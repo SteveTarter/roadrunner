@@ -407,6 +407,7 @@ export const DriverViewPage = () => {
   const managerHost = useMemo(() => {
     if (!vehicleState) return "";
     const host = vehicleState.managerHost;
+    if (!host) return "";
     const lastDashIndex = host.lastIndexOf('-');
     return lastDashIndex >= 0 ? host.substring(lastDashIndex + 1) : host;
   }, [vehicleState]);

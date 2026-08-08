@@ -169,6 +169,7 @@ export const GoogleDriverViewPage = () => {
   const managerHost = useMemo(() => {
     if (!vehicleState) return "";
     const host = vehicleState.managerHost;
+    if (!host) return "";
     const lastDashIndex = host.lastIndexOf('-');
     return lastDashIndex >= 0 ? host.substring(lastDashIndex + 1) : host;
   }, [vehicleState]);
@@ -412,35 +413,6 @@ export const GoogleDriverViewPage = () => {
               ))}
           </gmp-map-3d>
 
-            {/* Float-left buttons */}
-            <div
-              style={{
-                position: "absolute",
-                top: "10px",
-                left: "10px",
-                display: "flex",
-                gap: "10px",
-                zIndex: 1000,
-              }}
-            >
-              <Button
-                variant="light"
-                onClick={gotoHomePage}
-                className="shadow-sm"
-                title="Return to home page"
-              >
-                <FontAwesomeIcon icon={faHome} />
-              </Button>
-              <Button
-                variant="light"
-                 onClick={() => navigate(`/google/3d-view?vehicleId=${vehicleId}`)}
-                 className="shadow-sm border border-primary animate-pulse"
-                 title="Switch to 3D Map View"
-               >
-                 <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />
-              </Button>
-            </div>
-
             {/* timeline control */}
             <PlaybackClock />
 
@@ -483,6 +455,24 @@ export const GoogleDriverViewPage = () => {
                 zIndex: 1000,
               }}
             >
+              <Button
+                variant="light"
+                onClick={gotoHomePage}
+                className="shadow-sm"
+                title="Return to home page"
+              >
+                <FontAwesomeIcon icon={faHome} />
+              </Button>
+
+              <Button
+                variant="light"
+                onClick={() => navigate(`/google/3d-view?vehicleId=${vehicleId}`)}
+                className="shadow-sm border border-primary animate-pulse"
+                title="Switch to 3D Map View"
+              >
+                <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />
+              </Button>
+
               <Button
                 variant="light"
                 className="shadow-sm"

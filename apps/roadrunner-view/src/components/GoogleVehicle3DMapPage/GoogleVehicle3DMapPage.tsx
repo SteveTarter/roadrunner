@@ -1,15 +1,13 @@
 import './GoogleVehicle3DMapPage.css';
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AppNavBar } from '../NavBar/AppNavBar';
 import { PlaybackClock } from '../Utils/PlaybackClock';
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Button, Card, Form } from 'react-bootstrap';
 import { useApiIsLoaded } from '@vis.gl/react-google-maps';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faSatellite,
-  faMap,
+  faHome,
   faMagic,
   faBars,
   faUpRightAndDownLeftFromCenter,
@@ -107,7 +105,6 @@ export const GoogleVehicle3DMapPage = () => {
   const { playbackOffset } = usePlayback();
   const apiIsLoaded = useApiIsLoaded();
 
-  const [mapStyle, setMapStyle] = useState<'satellite' | 'hybrid'>('satellite');
   const [isMapReady, setIsMapReady] = useState(false);
   const [searchParams] = useSearchParams();
   const initialVehicleId = searchParams.get('vehicleId') || "";
@@ -568,10 +565,7 @@ export const GoogleVehicle3DMapPage = () => {
     }
   }, [isDataLoaded, vehicleList]);
 
-  // Toggle Street (hybrid) vs Satellite maps
-  const toggleMapStyle = useCallback(() => {
-    setMapStyle(prev => (prev === 'satellite' ? 'hybrid' : 'satellite'));
-  }, []);
+
 
   const focusedVehicle = vehicleStateMap.get(focusedVehicleId);
   const focusedVehicleColor = focusedVehicle?.colorCode;
@@ -584,7 +578,7 @@ export const GoogleVehicle3DMapPage = () => {
           <div className="map-container-3d">
             <gmp-map-3d
               ref={setMapRef}
-              mode={mapStyle}
+              mode="satellite"
               default-ui-hidden="true"
               altitude-mode="RELATIVE_TO_GROUND"
               style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
@@ -596,9 +590,6 @@ export const GoogleVehicle3DMapPage = () => {
                 />
               ))}
             </gmp-map-3d>
-
-            {/* Standard shared navigation bar */}
-            <AppNavBar />
 
             {/* Timeline playback control */}
             <PlaybackClock />
@@ -762,6 +753,15 @@ export const GoogleVehicle3DMapPage = () => {
 
             {/* --- Float-Right Toolbar --- */}
             <div className="map-tools-container-3d">
+              <Button
+                variant="light"
+                className="shadow-sm"
+                onClick={() => navigate('/google/home')}
+                title="Home"
+              >
+                <FontAwesomeIcon icon={faHome} />
+              </Button>
+
               {focusedVehicleId && (
                 <Button
                   variant="light"
@@ -784,15 +784,6 @@ export const GoogleVehicle3DMapPage = () => {
               <Button
                 variant="light"
                 className="shadow-sm"
-                onClick={toggleMapStyle}
-                title={mapStyle === 'satellite' ? "Hybrid Display" : "Satellite Display"}
-              >
-                <FontAwesomeIcon icon={mapStyle === 'satellite' ? faMap : faSatellite} />
-              </Button>
-
-              <Button
-                variant="light"
-                className="shadow-sm"
                 onClick={() => setIsInterpolationEnabled(!isInterpolationEnabled)}
                 title={isInterpolationEnabled ? "Disable Smoothing" : "Enable Smoothing"}
               >
@@ -807,7 +798,6 @@ export const GoogleVehicle3DMapPage = () => {
               >
                 <FontAwesomeIcon icon={faChartLine} />
               </Button>
-
             </div>
             {showActiveVehiclePlot && (
               <ActiveVehiclePlot

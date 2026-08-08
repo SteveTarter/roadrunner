@@ -56,29 +56,6 @@ export const ManageMenu = (props: {
 
   return (
     <>
-      {/* Only show items that make vehicles to creator group members */}
-      {isCreator && (
-        <>
-          <NavItem>
-            <NavLink
-              id="createVehicleBtn"
-              onClick={() => handleCreateVehicle()}
-              style={{ cursor: "pointer" }}
-            >
-              Create vehicle
-            </NavLink>
-          </NavItem>
-          <NavItem>
-            <NavLink
-              id="crissCrossBtn"
-              onClick={() => handleCreateCrissCross()}
-              style={{ cursor: "pointer" }}
-            >
-              Create criss-cross
-            </NavLink>
-          </NavItem>
-        </>
-      )}
       <NavItem>
         <NavLink
             id="bookmarks"
@@ -106,6 +83,29 @@ export const ManageMenu = (props: {
           Active Vehicle Plot
         </NavLink>
       </NavItem>
+      {/* Only show items that make vehicles to creator group members */}
+      {isCreator && (
+        <>
+          <NavItem>
+            <NavLink
+              id="createVehicleBtn"
+              onClick={() => handleCreateVehicle()}
+              style={{ cursor: "pointer" }}
+            >
+              Create vehicle
+            </NavLink>
+          </NavItem>
+          <NavItem>
+            <NavLink
+              id="crissCrossBtn"
+              onClick={() => handleCreateCrissCross()}
+              style={{ cursor: "pointer" }}
+            >
+              Create criss-cross
+            </NavLink>
+          </NavItem>
+        </>
+      )}
     </>
-  )
+  );
 }

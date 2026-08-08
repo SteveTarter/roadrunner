@@ -1,7 +1,7 @@
 /* 3D Map Page specific styling */
 .map-container-3d {
   position: absolute;
-  top: 55px; /* Adjusts for the navbar height */
+  top: 0px;
   left: 0;
   right: 0;
   bottom: 0;
