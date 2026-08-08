@@ -142,13 +142,6 @@ export const AppNavBar = ({
     navigate('/guide/overview');
   }, [navigate]);
 
-  const gotoThreeDMapPage = useCallback(() => {
-    if (mapProvider === 'google') {
-      navigate('/google/3d-view');
-    } else {
-      navigate('/3d-view');
-    }
-  }, [navigate, mapProvider]);
 
   const gotoHomePage = useCallback(() => {
     if (mapProvider === 'google') {
@@ -166,7 +159,6 @@ export const AppNavBar = ({
         <Collapse isOpen={isOpen} navbar>
           {/* Left-aligned items */}
           <Nav className="me-auto" navbar>
-            {additionalMenuItems && additionalMenuItems(() => setIsOpen(false))}
             <NavItem>
               <NavLink
                 to={mapProvider === 'google' ? "/google/home" : "/home"}
@@ -177,16 +169,7 @@ export const AppNavBar = ({
                 Home
               </NavLink>
             </NavItem>
-            <NavItem>
-              <NavLink
-                to={mapProvider === 'google' ? "/google/3d-view" : "/3d-view"}
-                id="threeDMapBtn"
-                onClick={() => gotoThreeDMapPage()}
-                style={{ cursor: "pointer" }}
-              >
-                3D Map
-              </NavLink>
-            </NavItem>
+            {additionalMenuItems && additionalMenuItems(() => setIsOpen(false))}
             <NavItem>
               <NavLink
                 to="/guide/overview"

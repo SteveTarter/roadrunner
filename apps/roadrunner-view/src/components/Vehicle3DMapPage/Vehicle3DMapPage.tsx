@@ -2,7 +2,6 @@ import './Vehicle3DMapPage.css';
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Map, { useMap, ViewState } from "react-map-gl";
-import { AppNavBar } from '../NavBar/AppNavBar';
 import { PlaybackClock } from '../Utils/PlaybackClock';
 import { SpinnerLoading } from "../Utils/SpinnerLoading";
 import { Button, Card, Form } from 'react-bootstrap';
@@ -17,7 +16,8 @@ import {
   faChartLine,
   faChevronDown,
   faChevronUp,
-  faExchangeAlt
+  faExchangeAlt,
+  faHome
 } from '@fortawesome/free-solid-svg-icons';
 import { CONFIG } from "../../config";
 import { useVehicleData } from '../../hooks/useVehicleData';
@@ -431,8 +431,6 @@ export const Vehicle3DMapPage = () => {
             mapboxAccessToken={mapboxToken}
             maxPitch={85}
           >
-            {/* Standard shared navigation bar */}
-            <AppNavBar />
 
             {/* Timeline playback control */}
             <PlaybackClock />
@@ -596,6 +594,14 @@ export const Vehicle3DMapPage = () => {
 
             {/* --- Float-Right Toolbar --- */}
             <div className="map-tools-container-3d">
+              <Button
+                variant="light"
+                className="shadow-sm"
+                onClick={() => navigate('/home')}
+                title="Home"
+              >
+                <FontAwesomeIcon icon={faHome} />
+              </Button>
               {focusedVehicleId && (
                 <Button
                   variant="light"
