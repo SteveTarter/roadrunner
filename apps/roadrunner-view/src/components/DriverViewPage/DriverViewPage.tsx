@@ -89,7 +89,8 @@ export const DriverViewPage = () => {
       });
     }
 
-    navigate('/home');
+    const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
+    navigate(provider === 'google' ? '/google/home' : '/home');
   }, [navigate, vehicleState, homeMapViewState, setHomeMapViewState, goingHome]);
 
   // Check if vehicle is absent in active tracking and query historical session if needed
@@ -462,7 +463,10 @@ export const DriverViewPage = () => {
                <Button
                  variant="light"
                  className="shadow-sm border border-primary animate-pulse"
-                 onClick={() => navigate(`/3d-view?vehicleId=${vehicleId}`)}
+                  onClick={() => {
+                    const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
+                    navigate(provider === 'google' ? `/google/3d-view?vehicleId=${vehicleId}` : `/3d-view?vehicleId=${vehicleId}`);
+                  }}
                  title="Switch to 3D Map View"
                >
                  <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />

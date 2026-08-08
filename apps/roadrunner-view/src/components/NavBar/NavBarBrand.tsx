@@ -7,7 +7,10 @@ export const NavBarBrand: React.FC = () => {
   return (
     <div 
       className="nav-bar__brand" 
-      onClick={() => navigate('/home')} 
+      onClick={() => {
+        const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
+        navigate(provider === 'google' ? '/google/home' : '/home');
+      }} 
       style={{ cursor: 'pointer' }}
     >
       <img

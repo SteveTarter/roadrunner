@@ -3,6 +3,7 @@ import { getCachedAuthToken } from "../Utils/AuthUtils";
 import type { LayerProps } from "react-map-gl";
 import type { Feature } from "geojson";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { VehicleDisplay } from "../../models/VehicleDisplay";
 import { VehicleState } from "../../models/VehicleState";
 import { Button, Card } from "react-bootstrap";
@@ -13,6 +14,7 @@ export const VehicleIcon: React.FC<{
   vehicleState: VehicleState,
   vehicleDisplay: VehicleDisplay
 }> = (props) => {
+  const navigate = useNavigate();
   const { dataSource } = usePlayback();
   const [token, setToken] = useState("");
   const [directionsGeometry, setDirectionsGeometry] = useState([]);
@@ -136,7 +138,13 @@ export const VehicleIcon: React.FC<{
               Speed: {(Math.round(MPS_TO_MPH * props.vehicleState.metersPerSecond * 10) / 10).toFixed(1)} MPH<br/>
               Bearing: {(Math.round(props.vehicleState.degBearing * 10) / 10).toFixed(1)}&deg;
             </Card.Text>
-            <Button variant="primary" href={`/driver-view/${props.vehicleState.id}`}>
+            <Button
+              variant="primary"
+              onClick={() => {
+                const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
+                navigate(provider === 'google' ? `/google/driver-view/${props.vehicleState.id}` : `/driver-view/${props.vehicleState.id}`);
+              }}
+            >
               Jump into vehicle
             </Button>
           </Card.Body>

@@ -5,7 +5,8 @@ export function AboutPage() {
   const navigate = useNavigate();
 
   const goHome = () => {
-    navigate(`/home`);
+    const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
+    navigate(provider === 'google' ? '/google/home' : '/home');
   }
 
   return <MarkdownPageLayout

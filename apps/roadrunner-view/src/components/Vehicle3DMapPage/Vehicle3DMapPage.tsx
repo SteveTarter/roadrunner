@@ -597,7 +597,10 @@ export const Vehicle3DMapPage = () => {
               <Button
                 variant="light"
                 className="shadow-sm"
-                onClick={() => navigate('/home')}
+                onClick={() => {
+                  const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
+                  navigate(provider === 'google' ? '/google/home' : '/home');
+                }}
                 title="Home"
               >
                 <FontAwesomeIcon icon={faHome} />
@@ -606,7 +609,10 @@ export const Vehicle3DMapPage = () => {
                 <Button
                   variant="light"
                   className="shadow-sm border border-primary animate-pulse"
-                  onClick={() => navigate(`/driver-view/${focusedVehicleId}`)}
+                  onClick={() => {
+                    const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
+                    navigate(provider === 'google' ? `/google/driver-view/${focusedVehicleId}` : `/driver-view/${focusedVehicleId}`);
+                  }}
                   title="Switch to Driver View"
                 >
                   <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />

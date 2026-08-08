@@ -175,7 +175,8 @@ export const GoogleVehicleIcon: React.FC<{
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/google/driver-view/${props.vehicleState.id}`);
+                  const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
+                  navigate(provider === 'google' ? `/google/driver-view/${props.vehicleState.id}` : `/driver-view/${props.vehicleState.id}`);
                 }}
               >
                 Jump into vehicle
