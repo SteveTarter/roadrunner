@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavItem, NavLink } from "reactstrap";
 import { fetchAuthSession } from "aws-amplify/auth";
+import { usePlayback } from '../../context/PlaybackContext';
 
 export const ManageMenu = (props: {
   openCreateVehicle: any,
@@ -11,6 +12,7 @@ export const ManageMenu = (props: {
   closeNavbar: () => void
 }) => {
 
+  const { dataSource } = usePlayback();
   const [isCreator, setIsCreator] = useState(false);
 
   useEffect(() => {
@@ -83,8 +85,8 @@ export const ManageMenu = (props: {
           Active Vehicle Plot
         </NavLink>
       </NavItem>
-      {/* Only show items that make vehicles to creator group members */}
-      {isCreator && (
+      {/* Only show items that make vehicles to creator group members and when Kafka/Redis is active */}
+      {isCreator && dataSource === 'redis_kafka' && (
         <>
           <NavItem>
             <NavLink
