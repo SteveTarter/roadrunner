@@ -233,12 +233,28 @@ export const useVehicleData = ({
      // If in playback mode, fetch pages every 2.5s. Live is fetched every 250 ms.
     var fetchInterval = playbackOffset === 0 ? 250 : 2500;
 
-    fetchBatchRef.current();
+    const doFetch = () => {
+      if (!document.hidden) {
+        fetchBatchRef.current();
+      }
+    };
 
-    const fetchTimer = window.setInterval(() => {
-      fetchBatchRef.current();
-    }, fetchInterval);
-    return () => window.clearInterval(fetchTimer);
+    doFetch();
+
+    const fetchTimer = window.setInterval(doFetch, fetchInterval);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        doFetch();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(fetchTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [playbackOffset]);
 
   // Run the Playback Engine (High Frequency)
