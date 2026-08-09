@@ -85,21 +85,33 @@ export const HelpDrawer: React.FC = () => {
           <div className="markdown-help-body">
             <ReactMarkdown
               components={{
-                img: ({ node, ...props }) => (
-                  <img
-                    style={{
-                      maxWidth: '100%',
-                      height: 'auto',
-                      borderRadius: '6px',
-                      border: '1px solid #dee2e6',
-                      boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                      marginTop: '8px',
-                      marginBottom: '16px'
-                    }}
-                    {...props}
-                    alt={props.alt || 'Help graphic'}
-                  />
-                )
+                img: ({ node, ...props }) => {
+                  let imageSrc = props.src || '';
+                  if (imageSrc.startsWith('./images/')) {
+                    imageSrc = '/guide/' + imageSrc.substring(2);
+                  } else if (imageSrc.startsWith('images/')) {
+                    imageSrc = '/guide/' + imageSrc;
+                  } else if (imageSrc.startsWith('./')) {
+                    imageSrc = '/guide/' + imageSrc.substring(2);
+                  }
+
+                  return (
+                    <img
+                      {...props}
+                      src={imageSrc}
+                      style={{
+                        maxWidth: '100%',
+                        height: 'auto',
+                        borderRadius: '6px',
+                        border: '1px solid #dee2e6',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                        marginTop: '8px',
+                        marginBottom: '16px'
+                      }}
+                      alt={props.alt || 'Help graphic'}
+                    />
+                  );
+                }
               }}
             >
               {content}

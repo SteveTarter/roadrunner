@@ -79,23 +79,33 @@ export function MarkdownPageLayout({ title, markdownUrl, onClose }: MarkdownPage
           <Container>
             <ReactMarkdown
               components={{
-                // This tells react-markdown: "Whenever you see a markdown image,
-                // render it with these styles applied."
-                img: ({node, ...props}) => (
-                  <img
-                    style={{
-                      maxWidth: '100%',
-                      height: 'auto',
-                      borderRadius: '8px',
-                      border: '1px solid #dee2e6', /* Light gray Bootstrap border */
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)', /* Subtle shadow */
-                      marginTop: '10px',
-                      marginBottom: '20px'
-                    }}
-                    {...props}
-                    alt={props.alt || "Page image"}
-                  />
-                )
+                img: ({node, ...props}) => {
+                  let imageSrc = props.src || '';
+                  if (imageSrc.startsWith('./images/')) {
+                    imageSrc = '/guide/' + imageSrc.substring(2);
+                  } else if (imageSrc.startsWith('images/')) {
+                    imageSrc = '/guide/' + imageSrc;
+                  } else if (imageSrc.startsWith('./')) {
+                    imageSrc = '/guide/' + imageSrc.substring(2);
+                  }
+
+                  return (
+                    <img
+                      {...props}
+                      src={imageSrc}
+                      style={{
+                        maxWidth: '100%',
+                        height: 'auto',
+                        borderRadius: '8px',
+                        border: '1px solid #dee2e6', /* Light gray Bootstrap border */
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)', /* Subtle shadow */
+                        marginTop: '10px',
+                        marginBottom: '20px'
+                      }}
+                      alt={props.alt || "Page image"}
+                    />
+                  );
+                }
               }}
             >
               {content}
