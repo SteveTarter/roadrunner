@@ -10,7 +10,6 @@ import {
   faHome,
   faMagic,
   faBars,
-  faUpRightAndDownLeftFromCenter,
   faChartLine,
   faChevronDown,
   faChevronUp,
@@ -527,43 +526,7 @@ export const GoogleVehicle3DMapPage = () => {
     }
   }, [isDataLoaded, isMapReady, vehicleList, hasCenteredInitially]);
 
-  // Fit view bounds to contain all active vehicles
-  const fitAllOnScreen = useCallback(() => {
-    if (!isDataLoaded || vehicleList.length === 0) return;
 
-    let minLng = 180, maxLng = -180, minLat = 90, maxLat = -90;
-    vehicleList.forEach(v => {
-      minLng = Math.min(minLng, v.degLongitude);
-      maxLng = Math.max(maxLng, v.degLongitude);
-      minLat = Math.min(minLat, v.degLatitude);
-      maxLat = Math.max(maxLat, v.degLatitude);
-    });
-
-    const centerLat = (minLat + maxLat) / 2;
-    const centerLng = (minLng + maxLng) / 2;
-    const deltaLat = maxLat - minLat;
-    const deltaLng = maxLng - minLng;
-
-    const distLat = deltaLat * 111000;
-    const distLng = deltaLng * 111000 * Math.cos(centerLat * Math.PI / 180);
-    const maxDist = Math.max(distLat, distLng, 500);
-
-    const mapEl = mapRef.current;
-    if (mapEl) {
-      isProgrammaticUpdateRef.current = true;
-      mapEl.flyCameraTo({
-        endCamera: {
-          center: { lat: centerLat, lng: centerLng, altitude: 0 },
-          range: maxDist * 1.5,
-          heading: -20,
-          tilt: 65,
-          altitudeMode: 'RELATIVE_TO_GROUND'
-        },
-        durationMillis: 0
-      });
-      isProgrammaticUpdateRef.current = false;
-    }
-  }, [isDataLoaded, vehicleList]);
 
 
 
@@ -778,14 +741,6 @@ export const GoogleVehicle3DMapPage = () => {
                   <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />
                 </Button>
               )}
-              <Button
-                variant="light"
-                className="shadow-sm"
-                onClick={fitAllOnScreen}
-                title="Fit All Vehicles"
-              >
-                <FontAwesomeIcon icon={faUpRightAndDownLeftFromCenter} />
-              </Button>
 
               <Button
                 variant="light"
