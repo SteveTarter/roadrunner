@@ -133,17 +133,37 @@ export const useSimulationSessionData = () => {
   }, [isDataLoaded, bufferNum]);
 
   useEffect(() => {
-    fetchBatch();
+    const doFetch = () => {
+      if (!document.hidden) {
+        fetchBatch();
+      }
+    };
 
-    const fetchTimer = window.setInterval(fetchBatch, 2500);
-    return () => window.clearInterval(fetchTimer);
+    doFetch();
+
+    const fetchTimer = window.setInterval(doFetch, 2500);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        doFetch();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(fetchTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchBatch]);
 
   // Clear map cache when data source toggles
   useEffect(() => {
     simulationSessionMapRef.current.clear();
     setIsDataLoaded(false);
-    fetchBatch();
+    if (!document.hidden) {
+      fetchBatch();
+    }
   }, [dataSource, fetchBatch]);
 
   return {
