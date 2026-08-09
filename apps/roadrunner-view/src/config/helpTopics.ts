@@ -41,5 +41,11 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
     title: 'Criss-Cross Pattern Panel Guide',
     markdownUrl: '/guide/CreateCrissCrossPanel.md',
     summary: 'Generate complex intersection and criss-cross vehicle patterns.'
+  },
+  'about': {
+    id: 'about',
+    title: 'About Roadrunner & Privacy Notice',
+    markdownUrl: '/about/About.md',
+    summary: 'Project overview, architecture, GitHub repository, and privacy policy.'
   }
 };

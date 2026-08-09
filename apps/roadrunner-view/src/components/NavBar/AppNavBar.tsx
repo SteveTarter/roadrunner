@@ -138,8 +138,9 @@ export const AppNavBar = ({
   };
 
   const gotoAboutPage = useCallback(() => {
-    navigate('/about');
-  }, [navigate]);
+    openHelp('about');
+    setIsOpen(false);
+  }, [openHelp]);
 
   const gotoGuidePage = useCallback(() => {
     openHelp('overview');
@@ -185,7 +186,6 @@ export const AppNavBar = ({
             </NavItem>
             <NavItem>
               <NavLink
-                to="/about"
                 id="aboutBtn"
                 onClick={() => gotoAboutPage()}
                 style={{ cursor: "pointer" }}
