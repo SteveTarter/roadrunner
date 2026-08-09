@@ -6,4 +6,4 @@ If specifying a point by address, autocomplete is used to aid choosing the point
 
 Below is the Create Vehicle Panel:
 
-![Create Vehicle Panel](./images/CreateVehiclePanel.png)
+![Create Vehicle Panel](/guide/images/CreateVehiclePanel.png)

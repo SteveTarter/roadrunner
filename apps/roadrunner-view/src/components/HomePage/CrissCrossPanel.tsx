@@ -6,6 +6,7 @@ import { CONFIG, getRestUrl } from "../../config";
 import { PointPicker } from '../Shared/PointPicker';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { HelpIconButton } from "../Shared/HelpIconButton";
 
 export const CrissCrossPanel = (props: {
   setIsCrissCrossActive: any,
@@ -234,7 +235,10 @@ export const CrissCrossPanel = (props: {
   return (
     <Card style={{ width: '20rem', alignSelf: 'end', top: 20 }}>
       <CardHeader className="d-flex justify-content-between align-items-center bg-dark text-white py-2">
-        <h6 className="mb-0">Create Criss-Cross</h6>
+        <h6 className="mb-0 d-flex align-items-center">
+          Create Criss-Cross
+          <HelpIconButton topicId="create-criss-cross" title="Criss-Cross Help" className="ms-2 text-white-50" />
+        </h6>
         <Button onClick={cancelCrissCross} variant="white" className="text-white">
           <FontAwesomeIcon icon={faTimes} />
         </Button>

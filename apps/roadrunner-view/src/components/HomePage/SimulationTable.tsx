@@ -4,7 +4,7 @@ import { MaterialReactTable } from 'material-react-table';
 import { getRestUrl } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
 import { Button } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { HelpIconButton } from "../Shared/HelpIconButton";
 
 const timeFormatOptions: Intl.DateTimeFormatOptions = {
     timeZone: 'UTC',
@@ -21,8 +21,6 @@ export const SimulationTable = (props: {
   toggleSimTable: any,
   returnToNow: any,
 }) => {
-  const navigate = useNavigate();
-
   const [data, setData] = useState([]);
   const [rowCount, setRowCount] = useState(0);
 
@@ -58,88 +56,80 @@ export const SimulationTable = (props: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
           },
-          credentials: 'include',
-          signal: controller.signal,
+          signal: controller.signal
         });
+        const result = await res.json();
 
-        const pagedModel = await res.json();
-        const sessions = pagedModel._embedded?.simulationSessions ?? [];
-
-        setData(sessions);
-        setRowCount(pagedModel.page?.totalElements ?? 0);
-      } catch (err:any) {
-        if (err.name !== "AbortError") {
-          console.error("Fetch error:", err);
+        // Handle single-object response if API returns array or object
+        if (result && Array.isArray(result.sessions)) {
+          setData(result.sessions);
+          setRowCount(result.totalCount || result.sessions.length);
+        } else if (Array.isArray(result)) {
+          setData(result as any);
+          setRowCount(result.length);
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Failed to load simulation sessions", err);
         }
       }
     }
 
     loadPage();
-
     return () => controller.abort();
   }, [pagination.pageIndex, pagination.pageSize, dataSource]);
 
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const columns = useMemo(() => {
-    const cols = [
+  const columns = useMemo(
+    () => [
       {
-        accessorKey: 'id',
-        header: 'Vehicle',
-        size: isMobile ? 85 : 150,
-        Cell: ({ cell }: any) => {
-          const val = cell.getValue() || "";
-          return isMobile && val.length > 8 ? val.substring(0, 8) : val;
-        }
-      }
-    ];
-
-    if (!isMobile) {
-      cols.push({
-        accessorKey: 'username',
-        header: 'Username',
-        size: 200,
-        Cell: ({ cell }: any) => cell.getValue() || "unknown-user"
-      });
-    }
-
-    cols.push({
-      accessorKey: 'start',
-      header: 'Start Time',
-      size: isMobile ? 120 : 200,
-      Cell: ({ cell }: any) => new Date(cell.getValue()).toLocaleTimeString([], timeFormatOptions) + 'Z'
-    });
-
-    cols.push({
-      header: 'Actions',
-      size: isMobile ? 80 : 120,
-      Cell: ({ row }: any) => {
-        return (
+        accessorKey: 'vehicleId',
+        header: 'Vehicle ID',
+        size: 150,
+      },
+      {
+        accessorFn: (row: any) => {
+          const date = new Date(row.start);
+          return date.toLocaleString('en-US', timeFormatOptions);
+        },
+        id: 'start',
+        header: 'Start Time (UTC)',
+        size: 180,
+      },
+      {
+        accessorFn: (row: any) => {
+          const date = new Date(row.end);
+          return date.toLocaleString('en-US', timeFormatOptions);
+        },
+        id: 'end',
+        header: 'End Time (UTC)',
+        size: 180,
+      },
+      {
+        accessorFn: (row: any) => `${row.pointCount ?? 0} pts`,
+        id: 'pointCount',
+        header: 'Data Points',
+        size: 120,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        size: 120,
+        Cell: ({ row }: { row: any }) => (
           <Button
+            variant="primary"
             size="sm"
             onClick={() => {
               setPlaybackSession(row.original.start);
-              const provider = localStorage.getItem('roadrunner_map_provider') || 'mapbox';
-              navigate(provider === 'google' ? `/google/driver-view/${row.original.id}` : `/driver-view/${row.original.id}`);
+              props.toggleSimTable();
             }}
-            style={{ whiteSpace: 'nowrap' }}
           >
-            {isMobile ? "▶️ Play" : "▶️ Playback"}
+            Jump to
           </Button>
-        );
-      }
-    });
-
-    return cols;
-  }, [navigate, setPlaybackSession, isMobile]);
+        ),
+      },
+    ],
+    [props, setPlaybackSession]
+  );
 
   return (
     <div
@@ -149,7 +139,7 @@ export const SimulationTable = (props: {
         top: 20,
         zIndex: 1000, // Ensure it's above the Map layers
         background: 'white',
-        padding: '10px',
+        padding: '10px 14px',
         borderRadius: '8px',
         width: '94%',
         maxWidth: 'fit-content',
@@ -157,6 +147,12 @@ export const SimulationTable = (props: {
         boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
       }}
     >
+      <div className="d-flex justify-content-between align-items-center mb-2 px-1">
+        <h6 className="mb-0 fw-bold d-flex align-items-center text-dark">
+          Simulation Sessions
+          <HelpIconButton topicId="sim-table" title="Simulation Table Help" className="ms-2" />
+        </h6>
+      </div>
       <MaterialReactTable
         columns={columns}
         data={data}

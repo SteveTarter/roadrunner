@@ -11,7 +11,6 @@ import {
   faMap, 
   faMagic, 
   faBars, 
-  faUpRightAndDownLeftFromCenter, 
   faCompass,
   faChartLine,
   faChevronDown,
@@ -360,35 +359,6 @@ export const Vehicle3DMapPage = () => {
     }
   }, [threeDMap, vehicleList]);
 
-  // Fit view bounds to contain all active vehicles
-  const fitAllOnScreen = useCallback(() => {
-    if (!isDataLoaded || vehicleList.length === 0) return;
-
-    let minLongitude = 360.0;
-    let minLatitude = 360.0;
-    let maxLongitude = -360.0;
-    let maxLatitude = -360.0;
-
-    vehicleList.forEach((vehicle) => {
-      minLatitude = Math.min(minLatitude, vehicle.degLatitude);
-      minLongitude = Math.min(minLongitude, vehicle.degLongitude);
-      maxLatitude = Math.max(maxLatitude, vehicle.degLatitude);
-      maxLongitude = Math.max(maxLongitude, vehicle.degLongitude);
-    });
-
-    // Expand bounds buffer slightly
-    const deltaLng = Math.max(0.005, maxLongitude - minLongitude);
-    const deltaLat = Math.max(0.005, maxLatitude - minLatitude);
-
-    threeDMap?.fitBounds([
-      [minLongitude - deltaLng * 0.1, minLatitude - deltaLat * 0.1],
-      [maxLongitude + deltaLng * 0.1, maxLatitude + deltaLat * 0.1]
-    ], {
-      pitch: mapViewState.pitch,
-      bearing: mapViewState.bearing,
-      duration: 1000
-    });
-  }, [isDataLoaded, vehicleList, threeDMap, mapViewState.pitch, mapViewState.bearing]);
 
   // Toggle Street vs Satellite maps
   const toggleMapStyle = useCallback(() => {
@@ -618,14 +588,6 @@ export const Vehicle3DMapPage = () => {
                   <FontAwesomeIcon icon={faExchangeAlt} className="text-primary" />
                 </Button>
               )}
-              <Button
-                variant="light"
-                className="shadow-sm"
-                onClick={fitAllOnScreen}
-                title="Fit All Vehicles"
-              >
-                <FontAwesomeIcon icon={faUpRightAndDownLeftFromCenter} />
-              </Button>
 
               <Button
                 variant="light"

@@ -1,14 +1,22 @@
-Roadrunner is a portfolio vehicle-simulation application built to demonstrate full-stack, cloud, mapping, and distributed-system development. This project was started in part to gain real life experience with Kafka and Redis.
+About Roadrunner
+================
 
-The application uses Google sign-in and Amazon Cognito for authentication. When you sign in, Roadrunner may receive basic account information such as your name, email address, and user identifier. Roadrunner does not receive or store your Google or Cognito password.
+Roadrunner is a full-stack, cloud-native vehicle simulation application built to demonstrate real-time telemetry streaming, interactive 2D/3D geospatial visualization, and distributed systems architecture.
 
-Roadrunner may use cookies, browser storage, or authentication tokens to maintain login sessions and secure API requests. Third-party providers such as Google, Amazon Cognito, AWS, and Mapbox may process limited technical data needed to provide authentication, hosting, mapping, routing, logging, or API functionality.
+Architecture Overview
+---------------------
+- **Backend Engine** (`apps/roadrunner`): Java 17 / Spring Boot service performing vehicle trajectory generation, route interpolation, REST control plane, and real-time Kafka & Redis telemetry streaming.
+- **Frontend Viewer** (`apps/roadrunner-view`): React / TypeScript application with dual Mapbox GL JS & Google Maps 3D WebGL rendering, 1st-person driver view perspective, and contextual help documentation.
+- **Infrastructure & Cloud** (`orchestration/`): Terraform automation, AWS Aurora Serverless PostGIS, S3 + CloudFront CDN, Amazon Cognito auth, and Kubernetes / Minikube manifests.
 
-Roadrunner may collect limited technical logs, API request information, and simulation data for debugging, monitoring, security, and demonstration purposes. It is not intended to collect sensitive personal information, and you should not enter confidential or sensitive data into the application.
+GitHub Repository
+-----------------
+The project is consolidated in a single monorepo on GitHub:
+- [Roadrunner Monorepo](https://github.com/SteveTarter/roadrunner)
 
-Roadrunner is a portfolio/demo project, not a production transportation, dispatch, navigation, or safety system. It may change over time, contain bugs, or experience downtime. Roadrunner does not sell user data.
-
-Roadrunner's code is hosted on Github in three repos:
-- [Roadrunner](https://github.com/SteveTarter/roadrunner): Spring Boot-based Backend
-- [Roadrunner Viewer](https://github.com/SteveTarter/roadrunner-view): React-based viewer
-- [Roadrunner K8S Orchestration](https://github.com/SteveTarter/roadrunner-k8s-orchestration): Install to minikube or AWS kubernetes cluster
+Privacy Notice & Disclaimer
+---------------------------
+- **Authentication**: Roadrunner uses Google Sign-In and Amazon Cognito for authentication. When you sign in, Roadrunner receives basic account information (name, email address, user ID). Passwords are managed directly by Cognito/Google and are never received or stored by Roadrunner.
+- **Cookies & Storage**: Tokens, cookies, or browser storage are used solely to maintain authenticated sessions and secure API requests.
+- **Data & Logging**: Limited technical logs and simulation telemetry data are collected for monitoring, security, and demo purposes. Do not submit sensitive personal information.
+- **Disclaimer**: Roadrunner is a portfolio demonstration application, not a production transportation, dispatch, navigation, or safety system.
