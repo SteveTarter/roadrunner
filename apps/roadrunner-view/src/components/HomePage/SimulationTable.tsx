@@ -60,14 +60,20 @@ export const SimulationTable = (props: {
         });
         const result = await res.json();
 
-        // Handle single-object response if API returns array or object
-        if (result && Array.isArray(result.sessions)) {
-          setData(result.sessions);
-          setRowCount(result.totalCount || result.sessions.length);
-        } else if (Array.isArray(result)) {
-          setData(result as any);
-          setRowCount(result.length);
-        }
+        // Support HATEOAS (_embedded.simulationSessions), custom sessions property, or raw array
+        const sessions =
+          result._embedded?.simulationSessions ||
+          result._embedded?.simulationSessionList ||
+          result.sessions ||
+          (Array.isArray(result) ? result : []);
+
+        const total =
+          result.page?.totalElements ??
+          result.totalCount ??
+          sessions.length;
+
+        setData(sessions);
+        setRowCount(total);
       } catch (err: any) {
         if (err.name !== 'AbortError') {
           console.error("Failed to load simulation sessions", err);
@@ -82,14 +88,16 @@ export const SimulationTable = (props: {
   const columns = useMemo(
     () => [
       {
-        accessorKey: 'vehicleId',
+        accessorFn: (row: any) => row.vehicleId || row.id,
+        id: 'vehicleId',
         header: 'Vehicle ID',
         size: 150,
       },
       {
         accessorFn: (row: any) => {
+          if (!row.start) return 'N/A';
           const date = new Date(row.start);
-          return date.toLocaleString('en-US', timeFormatOptions);
+          return isNaN(date.getTime()) ? 'N/A' : date.toLocaleString('en-US', timeFormatOptions);
         },
         id: 'start',
         header: 'Start Time (UTC)',
@@ -97,8 +105,9 @@ export const SimulationTable = (props: {
       },
       {
         accessorFn: (row: any) => {
+          if (!row.end) return 'Active / In Progress';
           const date = new Date(row.end);
-          return date.toLocaleString('en-US', timeFormatOptions);
+          return isNaN(date.getTime()) ? 'Active / In Progress' : date.toLocaleString('en-US', timeFormatOptions);
         },
         id: 'end',
         header: 'End Time (UTC)',
