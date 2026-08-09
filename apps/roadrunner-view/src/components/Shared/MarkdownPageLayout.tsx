@@ -15,7 +15,7 @@ export function MarkdownPageLayout({ title, markdownUrl, onClose }: MarkdownPage
 
   // Fetch the markdown text when the component mounts or the URL changes
   useEffect(() => {
-    fetch(markdownUrl)
+    fetch(`${markdownUrl}?t=${Date.now()}`, { cache: 'no-cache' })
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Failed to load markdown: ${response.statusText}`);

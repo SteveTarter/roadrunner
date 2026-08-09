@@ -19,7 +19,7 @@ export const HelpDrawer: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    fetch(topic.markdownUrl)
+    fetch(`${topic.markdownUrl}?t=${Date.now()}`, { cache: 'no-cache' })
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Failed to load documentation (${res.status})`);
