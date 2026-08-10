@@ -1,8 +1,9 @@
-import { fetchAuthSession } from "aws-amplify/auth";
 import { useMemo, useState, useEffect } from 'react';
 import { MaterialReactTable } from 'material-react-table';
 import { getRestUrl } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
+import { getCachedAuthToken } from "../Utils/AuthUtils";
+import { useSimulationSessionData } from "../../hooks/useSimulationSessionData";
 import { Button } from "react-bootstrap";
 import { HelpIconButton } from "../Shared/HelpIconButton";
 
@@ -21,10 +22,11 @@ export const SimulationTable = (props: {
   toggleSimTable: any,
   returnToNow: any,
 }) => {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState<any[]>([]);
   const [rowCount, setRowCount] = useState(0);
 
   const { playbackOffset, setPlaybackSession, dataSource } = usePlayback();
+  const { simulationSessionMap } = useSimulationSessionData();
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -36,28 +38,32 @@ export const SimulationTable = (props: {
 
     async function loadPage() {
       try {
-        // Get the latest session right before the call
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
-
-        if (!accessToken) {
-          console.error("Session expired");
-          return;
-        }
+        const accessToken = await getCachedAuthToken();
 
         const apiPath = dataSource === 'postgis' ? '/api/db-vehicle' : '/api/vehicle';
         const url = getRestUrl(
           `${apiPath}/simulation-sessions?page=${pagination.pageIndex}&pageSize=${pagination.pageSize}`
         );
 
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json"
+        };
+        if (accessToken) {
+          headers["Authorization"] = `Bearer ${accessToken}`;
+        }
+
         const res = await fetch(url, {
           method: 'GET',
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
+          headers,
+          credentials: 'include',
           signal: controller.signal
         });
+
+        if (!res.ok) {
+          console.warn(`SimulationTable fetch returned status ${res.status}`);
+          throw new Error(`HTTP ${res.status}`);
+        }
+
         const result = await res.json();
 
         // Support HATEOAS (_embedded.simulationSessions), custom sessions property, or raw array
@@ -72,18 +78,30 @@ export const SimulationTable = (props: {
           result.totalCount ??
           sessions.length;
 
-        setData(sessions);
-        setRowCount(total);
+        if (sessions.length > 0) {
+          setData(sessions);
+          setRowCount(total);
+          return;
+        }
       } catch (err: any) {
         if (err.name !== 'AbortError') {
-          console.error("Failed to load simulation sessions", err);
+          console.error("Failed to load simulation sessions directly", err);
         }
+      }
+
+      // Fallback: If direct fetch failed or returned no items, use cached simulationSessionMap from useSimulationSessionData
+      if (simulationSessionMap && simulationSessionMap.size() > 0) {
+        const fallbackSessions = simulationSessionMap.values();
+        const startIdx = pagination.pageIndex * pagination.pageSize;
+        const endIdx = startIdx + pagination.pageSize;
+        setData(fallbackSessions.slice(startIdx, endIdx));
+        setRowCount(fallbackSessions.length);
       }
     }
 
     loadPage();
     return () => controller.abort();
-  }, [pagination.pageIndex, pagination.pageSize, dataSource]);
+  }, [pagination.pageIndex, pagination.pageSize, dataSource, simulationSessionMap]);
 
   const columns = useMemo(
     () => [
