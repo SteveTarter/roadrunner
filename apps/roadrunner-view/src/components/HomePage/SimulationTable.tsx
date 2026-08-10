@@ -126,7 +126,7 @@ export const SimulationTable = (props: {
 
       // Fallback: If direct fetch failed or returned no items, use cached simulationSessionMap from useSimulationSessionData
       if (simulationSessionMap && simulationSessionMap.size() > 0) {
-        const fallbackSessions = simulationSessionMap.values();
+        const fallbackSessions = Array.from(simulationSessionMap.values());
         console.debug(`SimulationTable fallback using simulationSessionMap with ${fallbackSessions.length} sessions`);
         const startIdx = pagination.pageIndex * pagination.pageSize;
         const endIdx = startIdx + pagination.pageSize;
