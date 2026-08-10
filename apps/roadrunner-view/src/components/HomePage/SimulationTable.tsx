@@ -34,7 +34,7 @@ export const SimulationTable = (props: {
     return Array.from(simulationSessionMap.values()).sort((a: any, b: any) => {
       const startA = new Date(a.start).getTime() || 0;
       const startB = new Date(b.start).getTime() || 0;
-      return startB - startA; // Sort newest sessions first
+      return startA - startB; // Sort earliest sessions first, latest last
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simulationSessionMap, activeCountData]);
