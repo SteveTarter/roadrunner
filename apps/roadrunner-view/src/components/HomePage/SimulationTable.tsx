@@ -18,15 +18,52 @@ const timeFormatOptions: Intl.DateTimeFormatOptions = {
     second: '2-digit'
 };
 
+function extractSessions(result: any): any[] {
+  if (!result) return [];
+  if (Array.isArray(result)) return result;
+
+  // 1. Check inside _embedded (Spring HATEOAS / HAL)
+  if (result._embedded && typeof result._embedded === 'object') {
+    if (Array.isArray(result._embedded.simulationSessions)) {
+      return result._embedded.simulationSessions;
+    }
+    const found = Object.values(result._embedded).find((val: any) => Array.isArray(val));
+    if (found) return found as any[];
+  }
+
+  // 2. Check common root properties
+  if (Array.isArray(result.simulationSessions)) return result.simulationSessions;
+  if (Array.isArray(result.sessions)) return result.sessions;
+  if (Array.isArray(result.content)) return result.content;
+  if (Array.isArray(result.data)) return result.data;
+
+  // 3. Fallback: find any array property on root object
+  const anyArray = Object.values(result).find((val: any) => Array.isArray(val));
+  if (anyArray) return anyArray as any[];
+
+  return [];
+}
+
+function extractTotalCount(result: any, fallbackCount: number): number {
+  if (!result || typeof result !== 'object') return fallbackCount;
+  if (typeof result.page?.totalElements === 'number') return result.page.totalElements;
+  if (typeof result.totalElements === 'number') return result.totalElements;
+  if (typeof result.totalCount === 'number') return result.totalCount;
+  if (typeof result.total === 'number') return result.total;
+  if (typeof result.count === 'number') return result.count;
+  return fallbackCount;
+}
+
 export const SimulationTable = (props: {
   toggleSimTable: any,
   returnToNow: any,
 }) => {
   const [data, setData] = useState<any[]>([]);
   const [rowCount, setRowCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   const { playbackOffset, setPlaybackSession, dataSource } = usePlayback();
-  const { simulationSessionMap } = useSimulationSessionData();
+  const { simulationSessionMap, activeCountData } = useSimulationSessionData();
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -37,6 +74,7 @@ export const SimulationTable = (props: {
     const controller = new AbortController();
 
     async function loadPage() {
+      setIsLoading(true);
       try {
         const accessToken = await getCachedAuthToken();
 
@@ -44,6 +82,8 @@ export const SimulationTable = (props: {
         const url = getRestUrl(
           `${apiPath}/simulation-sessions?page=${pagination.pageIndex}&pageSize=${pagination.pageSize}`
         );
+
+        console.debug(`SimulationTable fetching URL: ${url}`);
 
         const headers: Record<string, string> = {
           "Content-Type": "application/json"
@@ -65,22 +105,17 @@ export const SimulationTable = (props: {
         }
 
         const result = await res.json();
+        console.debug("SimulationTable raw API response:", result);
 
-        // Support HATEOAS (_embedded.simulationSessions), custom sessions property, or raw array
-        const sessions =
-          result._embedded?.simulationSessions ||
-          result._embedded?.simulationSessionList ||
-          result.sessions ||
-          (Array.isArray(result) ? result : []);
+        const sessions = extractSessions(result);
+        const total = extractTotalCount(result, sessions.length);
 
-        const total =
-          result.page?.totalElements ??
-          result.totalCount ??
-          sessions.length;
+        console.debug(`SimulationTable extracted ${sessions.length} sessions (totalCount: ${total})`, sessions);
 
         if (sessions.length > 0) {
           setData(sessions);
           setRowCount(total);
+          setIsLoading(false);
           return;
         }
       } catch (err: any) {
@@ -92,16 +127,21 @@ export const SimulationTable = (props: {
       // Fallback: If direct fetch failed or returned no items, use cached simulationSessionMap from useSimulationSessionData
       if (simulationSessionMap && simulationSessionMap.size() > 0) {
         const fallbackSessions = simulationSessionMap.values();
+        console.debug(`SimulationTable fallback using simulationSessionMap with ${fallbackSessions.length} sessions`);
         const startIdx = pagination.pageIndex * pagination.pageSize;
         const endIdx = startIdx + pagination.pageSize;
         setData(fallbackSessions.slice(startIdx, endIdx));
         setRowCount(fallbackSessions.length);
+      } else {
+        setData([]);
+        setRowCount(0);
       }
+      setIsLoading(false);
     }
 
     loadPage();
     return () => controller.abort();
-  }, [pagination.pageIndex, pagination.pageSize, dataSource, simulationSessionMap]);
+  }, [pagination.pageIndex, pagination.pageSize, dataSource, simulationSessionMap, activeCountData]);
 
   const columns = useMemo(
     () => [
@@ -186,7 +226,7 @@ export const SimulationTable = (props: {
         manualPagination // Tells MRT NOT to do client-side paging
         rowCount={rowCount}
         onPaginationChange={setPagination}
-        state={{ pagination }}
+        state={{ pagination, isLoading }}
         layoutMode="grid"
         enableStickyHeader
         displayColumnDefOptions={{
