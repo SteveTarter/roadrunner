@@ -1,8 +1,7 @@
-import { fetchAuthSession } from "aws-amplify/auth";
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { MaterialReactTable } from 'material-react-table';
-import { getRestUrl } from "../../config";
 import { usePlayback } from "../../context/PlaybackContext";
+import { useSimulationSessionData } from "../../hooks/useSimulationSessionData";
 import { Button } from "react-bootstrap";
 import { HelpIconButton } from "../Shared/HelpIconButton";
 
@@ -21,75 +20,47 @@ export const SimulationTable = (props: {
   toggleSimTable: any,
   returnToNow: any,
 }) => {
-  const [data, setData] = useState([]);
-  const [rowCount, setRowCount] = useState(0);
-
-  const { playbackOffset, setPlaybackSession, dataSource } = usePlayback();
+  const { playbackOffset, setPlaybackSession } = usePlayback();
+  const { simulationSessionMap, activeCountData } = useSimulationSessionData();
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10
   });
 
-  useEffect(() => {
-    const controller = new AbortController();
+  // Extract all sessions directly from simulationSessionMap (same data source as ActiveVehiclePlot)
+  const allSessions = useMemo(() => {
+    if (!simulationSessionMap || simulationSessionMap.size() === 0) return [];
+    return Array.from(simulationSessionMap.values()).sort((a: any, b: any) => {
+      const startA = new Date(a.start).getTime() || 0;
+      const startB = new Date(b.start).getTime() || 0;
+      return startA - startB; // Sort earliest sessions first, latest last
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [simulationSessionMap, activeCountData]);
 
-    async function loadPage() {
-      try {
-        // Get the latest session right before the call
-        const session = await fetchAuthSession();
-        const accessToken = session.tokens?.accessToken?.toString();
+  const rowCount = allSessions.length;
 
-        if (!accessToken) {
-          console.error("Session expired");
-          return;
-        }
-
-        const apiPath = dataSource === 'postgis' ? '/api/db-vehicle' : '/api/vehicle';
-        const url = getRestUrl(
-          `${apiPath}/simulation-sessions?page=${pagination.pageIndex}&pageSize=${pagination.pageSize}`
-        );
-
-        const res = await fetch(url, {
-          method: 'GET',
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          signal: controller.signal
-        });
-        const result = await res.json();
-
-        // Handle single-object response if API returns array or object
-        if (result && Array.isArray(result.sessions)) {
-          setData(result.sessions);
-          setRowCount(result.totalCount || result.sessions.length);
-        } else if (Array.isArray(result)) {
-          setData(result as any);
-          setRowCount(result.length);
-        }
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          console.error("Failed to load simulation sessions", err);
-        }
-      }
-    }
-
-    loadPage();
-    return () => controller.abort();
-  }, [pagination.pageIndex, pagination.pageSize, dataSource]);
+  // Paginate sessions locally for MaterialReactTable
+  const paginatedData = useMemo(() => {
+    const startIdx = pagination.pageIndex * pagination.pageSize;
+    const endIdx = startIdx + pagination.pageSize;
+    return allSessions.slice(startIdx, endIdx);
+  }, [allSessions, pagination.pageIndex, pagination.pageSize]);
 
   const columns = useMemo(
     () => [
       {
-        accessorKey: 'vehicleId',
+        accessorFn: (row: any) => row.vehicleId || row.id,
+        id: 'vehicleId',
         header: 'Vehicle ID',
         size: 150,
       },
       {
         accessorFn: (row: any) => {
+          if (!row.start) return 'N/A';
           const date = new Date(row.start);
-          return date.toLocaleString('en-US', timeFormatOptions);
+          return isNaN(date.getTime()) ? 'N/A' : date.toLocaleString('en-US', timeFormatOptions);
         },
         id: 'start',
         header: 'Start Time (UTC)',
@@ -97,8 +68,9 @@ export const SimulationTable = (props: {
       },
       {
         accessorFn: (row: any) => {
+          if (!row.end) return 'Active / In Progress';
           const date = new Date(row.end);
-          return date.toLocaleString('en-US', timeFormatOptions);
+          return isNaN(date.getTime()) ? 'Active / In Progress' : date.toLocaleString('en-US', timeFormatOptions);
         },
         id: 'end',
         header: 'End Time (UTC)',
@@ -155,7 +127,7 @@ export const SimulationTable = (props: {
       </div>
       <MaterialReactTable
         columns={columns}
-        data={data}
+        data={paginatedData}
         manualPagination // Tells MRT NOT to do client-side paging
         rowCount={rowCount}
         onPaginationChange={setPagination}
