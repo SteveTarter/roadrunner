@@ -15,6 +15,8 @@ import {
   ReferenceDot
 } from 'recharts';
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 export const ActiveVehiclePlot = (props: {
   toggleShowActiveVehiclePlot: any,
   vehicleId?: any | null
@@ -36,11 +38,59 @@ export const ActiveVehiclePlot = (props: {
 
   const chartRef = React.useRef<HTMLDivElement>(null);
 
-  const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-  const INITIAL_END = Date.now();
-  const INITIAL_START = INITIAL_END - ONE_WEEK_MS;
+  // Calculate full available time window from session data
+  const [availableStart, availableEnd] = useMemo(() => {
+    const now = Date.now();
+    let minStart = Infinity;
+    let maxEnd = now;
 
-  const [domain, setDomain] = useState<[number, number]>([INITIAL_START, INITIAL_END]);
+    if (simulationSessionMap && simulationSessionMap.size() > 0) {
+      simulationSessionMap.forEach((s: any) => {
+        if (s.start) {
+          const startMs = typeof s.start === 'number' ? s.start : new Date(s.start).getTime();
+          if (!isNaN(startMs) && startMs < minStart) {
+            minStart = startMs;
+          }
+        }
+        if (s.end) {
+          const endMs = typeof s.end === 'number' ? s.end : new Date(s.end).getTime();
+          if (!isNaN(endMs) && endMs > maxEnd) {
+            maxEnd = endMs;
+          }
+        }
+      });
+    }
+
+    if (sortedCountKeys && sortedCountKeys.length > 0) {
+      const firstKey = sortedCountKeys[0];
+      const lastKey = sortedCountKeys[sortedCountKeys.length - 1];
+      if (firstKey < minStart) minStart = firstKey;
+      if (lastKey > maxEnd) maxEnd = lastKey;
+    }
+
+    if (minStart === Infinity) {
+      minStart = now - ONE_DAY_MS;
+    }
+
+    let start = minStart;
+    const end = maxEnd;
+
+    // Enforce minimum window of 1 day if runs are all within the last day or no valid runs
+    if (end - start < ONE_DAY_MS) {
+      start = end - ONE_DAY_MS;
+    }
+
+    return [start, end];
+  }, [simulationSessionMap, sortedCountKeys]);
+
+  const [domain, setDomain] = useState<[number, number]>([availableStart, availableEnd]);
+
+  // Sync default domain when availableStart or availableEnd changes, if not scoped to a single vehicleId and not zoomed manually
+  useEffect(() => {
+    if (!props.vehicleId && allowResize) {
+      setDomain([availableStart, availableEnd]);
+    }
+  }, [availableStart, availableEnd, props.vehicleId, allowResize]);
 
   useEffect(() => {
     if(!chartRef || !chartRef.current || !mouseX || !mouseY) return;
@@ -130,7 +180,7 @@ export const ActiveVehiclePlot = (props: {
 
   }, [sortedCountKeys, activeCountMap, simulationSessionMap, props.vehicleId, allowResize]);
 
-  const getMidnightTicks = (start: number, end: number) => {
+  const getMidnightTicks = useCallback((start: number, end: number) => {
     const ticks = [];
     // Create a date object starting at the beginning of the domain
     let current = new Date(start);
@@ -138,13 +188,23 @@ export const ActiveVehiclePlot = (props: {
     // Normalize to the start of the next UTC day
     current.setUTCHours(24, 0, 0, 0);
 
+    const span = end - start;
+    let stepDays = 1;
+    if (span > 180 * ONE_DAY_MS) {
+      stepDays = 30;
+    } else if (span > 60 * ONE_DAY_MS) {
+      stepDays = 7;
+    } else if (span > 14 * ONE_DAY_MS) {
+      stepDays = 2;
+    }
+
     while (current.getTime() <= end) {
       ticks.push(current.getTime());
-      // Advance by exactly 24 hours
-      current.setUTCDate(current.getUTCDate() + 1);
+      // Advance by stepDays days
+      current.setUTCDate(current.getUTCDate() + stepDays);
     }
     return ticks;
-  };
+  }, []);
 
   const isMultiDay = useMemo(() => {
     const startDate = new Date(domain[0]);
@@ -170,7 +230,7 @@ export const ActiveVehiclePlot = (props: {
       return getMidnightTicks(domain[0], domain[1]);
     }
     return undefined; // Fall back to automatic even spacing for small time spans
-  }, [domain]);
+  }, [domain, getMidnightTicks]);
 
   const hoveredCount = useMemo(() => {
     if (!msXPoint || !chartData || chartData.length === 0) return 0;
@@ -205,6 +265,7 @@ export const ActiveVehiclePlot = (props: {
 
   // Extracted zoom logic for reuse between Wheel and Touch
   const performZoom = useCallback((isZoomIn: boolean, anchor: number) => {
+    setAllowResize(false);
     const [currentStart, currentEnd] = domain;
     const zoomFactor = 0.1;
 
@@ -212,8 +273,8 @@ export const ActiveVehiclePlot = (props: {
       let newStart = currentStart + (anchor - currentStart) * zoomFactor;
       let newEnd = currentEnd - (currentEnd - anchor) * zoomFactor;
 
-      newStart = Math.max(INITIAL_START, newStart);
-      newEnd = Math.min(INITIAL_END, newEnd);
+      newStart = Math.max(availableStart, newStart);
+      newEnd = Math.min(availableEnd, newEnd);
 
       // Prevent zooming in too far (e.g., closer than 1 minute)
       if (newEnd - newStart > 60000) {
@@ -223,12 +284,12 @@ export const ActiveVehiclePlot = (props: {
       let newStart = currentStart - (anchor - currentStart) * zoomFactor;
       let newEnd = currentEnd + (currentEnd - anchor) * zoomFactor;
 
-      newStart = Math.max(INITIAL_START, newStart);
-      newEnd = Math.min(INITIAL_END, newEnd);
+      newStart = Math.max(availableStart, newStart);
+      newEnd = Math.min(availableEnd, newEnd);
 
       setDomain([newStart, newEnd]);
     }
-  }, [domain, INITIAL_END, INITIAL_START]);
+  }, [domain, availableStart, availableEnd]);
 
   // Helper to format the title based on the viewable span
   const getDynamicTitle = (start: number, end: number) => {
