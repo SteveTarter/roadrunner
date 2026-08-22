@@ -82,19 +82,6 @@ export const useSimulationSessionData = () => {
   useEffect(() => {
     if (!isDataLoaded || (simulationSessionMapRef.current.size() === 0)) return;
 
-    // Remove any SimulationSessions that have timed out.
-    let clearList: string[] = [];
-    const msTimeout = new Date().getTime() - 7 * 24 * 60 * 60 * 1000;
-    simulationSessionMapRef.current.forEach((s: SimulationSession) => {
-      const msStart = new Date(s.start).getTime();
-      if (msStart < msTimeout) {
-        clearList.push(s.id);
-      }
-    });
-    clearList.forEach((id: string) => {
-      simulationSessionMapRef.current.delete(id);
-    })
-
     // Generate a Map of session events
     const eventMap = new MapWrapper<number, number>();
     const msNow = new Date().getTime();
