@@ -148,31 +148,51 @@ export const PointPicker = ({
         markerRef.current = null;
       }
 
-      // Reuse/update Google AdvancedMarkerElement
-      if (typeof google !== 'undefined' && google.maps && google.maps.marker?.AdvancedMarkerElement) {
+      // Reuse/update Google Marker (AdvancedMarkerElement or standard Marker)
+      if (typeof google !== 'undefined' && google.maps) {
         const position = { lat: selectedLat, lng: selectedLng };
 
         if (googleMarkerRef.current) {
-          googleMarkerRef.current.position = position;
+          if (typeof googleMarkerRef.current.setPosition === 'function') {
+            googleMarkerRef.current.setPosition(position);
+          } else {
+            googleMarkerRef.current.position = position;
+          }
           if (googleInfoWindowRef.current) {
             googleInfoWindowRef.current.setPosition(position);
           }
         } else {
-          const marker = new google.maps.marker.AdvancedMarkerElement({
-            position: position,
-            map: map,
-            title: label
-          });
+          let marker: any = null;
+          if (google.maps.marker?.AdvancedMarkerElement) {
+            try {
+              marker = new google.maps.marker.AdvancedMarkerElement({
+                position: position,
+                map: map,
+                title: label
+              });
+            } catch (err) {
+              console.warn("AdvancedMarkerElement initialization failed, falling back to google.maps.Marker", err);
+            }
+          }
+          if (!marker && google.maps.Marker) {
+            marker = new google.maps.Marker({
+              position: position,
+              map: map,
+              title: label
+            });
+          }
 
-          const infoWindow = new google.maps.InfoWindow({
-            content: `<div style="color: #000; font-weight: bold; padding: 2px 5px;">${label}</div>`,
-            disableAutoPan: true
-          });
+          if (marker) {
+            const infoWindow = new google.maps.InfoWindow({
+              content: `<div style="color: #000; font-weight: bold; padding: 2px 5px;">${label}</div>`,
+              disableAutoPan: true
+            });
 
-          infoWindow.open(map, marker);
+            infoWindow.open(map, marker);
 
-          googleMarkerRef.current = marker;
-          googleInfoWindowRef.current = infoWindow;
+            googleMarkerRef.current = marker;
+            googleInfoWindowRef.current = infoWindow;
+          }
         }
       }
     }

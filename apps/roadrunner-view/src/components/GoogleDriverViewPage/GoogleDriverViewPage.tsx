@@ -261,8 +261,7 @@ export const GoogleDriverViewPage = () => {
           }
         }
       } catch (error) {
-        console.error("Historical session lookup failed, exiting to home:", error);
-        gotoHomePage();
+        console.error("Historical session lookup failed:", error);
       } finally {
         setIsSearchingSession(false);
         setHasCheckedHistory(true);
@@ -274,6 +273,17 @@ export const GoogleDriverViewPage = () => {
 
   // Handle Auto-Redirects
   useEffect(() => {
+    if (goingHome) return;
+
+    if (isDataLoaded && version > 0 && !isSearchingSession && hasCheckedHistory && !vehicleStateMap.has(vehicleId) && !lastState) {
+      if (missingTimestampRef.current === null) {
+        missingTimestampRef.current = Date.now();
+      } else if (Date.now() - missingTimestampRef.current > 10000) {
+        gotoHomePage();
+      }
+      return;
+    }
+
     const msCurrentTime = Date.now() - playbackOffset;
 
     if ((playbackOffset === 0) && lastState && (lastState.msEpochLastRun < msCurrentTime - (30 * 1000))) {
@@ -283,8 +293,9 @@ export const GoogleDriverViewPage = () => {
     const currentState = vehicleStateMap.get(vehicleId);
     if (currentState && (lastState?.msEpochLastRun !== currentState.msEpochLastRun)) {
       setLastState(currentState);
+      missingTimestampRef.current = null;
     }
-  }, [vehicleStateMap, vehicleId, lastState, playbackOffset, gotoHomePage]);
+  }, [vehicleStateMap, vehicleId, lastState, playbackOffset, gotoHomePage, isDataLoaded, version, isSearchingSession, hasCheckedHistory, goingHome]);
 
   const getCoordinateAtBearingAndRange = useCallback((degLatitude: number, degLongitude: number, degBearing: number, mRange: number) => {
     const KM_EARTH_RADIUS = 6378.14;
