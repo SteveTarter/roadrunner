@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MaterialReactTable } from 'material-react-table';
 import { usePlayback } from "../../context/PlaybackContext";
 import { useSimulationSessionData } from "../../hooks/useSimulationSessionData";
@@ -20,6 +21,7 @@ export const SimulationTable = (props: {
   toggleSimTable: any,
   returnToNow: any,
 }) => {
+  const navigate = useNavigate();
   const { playbackOffset, setPlaybackSession } = usePlayback();
   const { simulationSessionMap, activeCountData } = useSimulationSessionData();
 
@@ -91,8 +93,13 @@ export const SimulationTable = (props: {
             variant="primary"
             size="sm"
             onClick={() => {
+              const vehicleId = row.original.vehicleId || row.original.id;
               setPlaybackSession(row.original.start);
               props.toggleSimTable();
+              if (vehicleId) {
+                const provider = localStorage.getItem('roadrunner_map_provider') || 'google';
+                navigate(provider === 'google' ? `/google/driver-view/${vehicleId}` : `/driver-view/${vehicleId}`);
+              }
             }}
           >
             Jump to
@@ -100,7 +107,7 @@ export const SimulationTable = (props: {
         ),
       },
     ],
-    [props, setPlaybackSession]
+    [props, setPlaybackSession, navigate]
   );
 
   return (

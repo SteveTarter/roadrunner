@@ -52,19 +52,19 @@ const ProviderEnforcedRoute = ({ requiredProvider, component: Component }: { req
 };
 
 const WrappedGoogleHomePage = () => (
-  <APIProvider apiKey={CONFIG.GOOGLE_MAPS_API_KEY || ''} version="weekly">
+  <APIProvider apiKey={CONFIG.GOOGLE_MAPS_API_KEY || ''} version="weekly" region="CA">
     <GoogleHomePage />
   </APIProvider>
 );
 
 const WrappedGoogleVehicle3DMapPage = () => (
-  <APIProvider apiKey={CONFIG.GOOGLE_MAPS_API_KEY || ''} version="beta">
+  <APIProvider apiKey={CONFIG.GOOGLE_MAPS_API_KEY || ''} version="beta" region="CA">
     <GoogleVehicle3DMapPage />
   </APIProvider>
 );
 
 const WrappedGoogleDriverViewPage = () => (
-  <APIProvider apiKey={CONFIG.GOOGLE_MAPS_API_KEY || ''} version="beta">
+  <APIProvider apiKey={CONFIG.GOOGLE_MAPS_API_KEY || ''} version="beta" region="CA">
     <GoogleDriverViewPage />
   </APIProvider>
 );
